@@ -1,13 +1,13 @@
 [versions]
-sdk-compile = "36"
+sdk-compile = "37"
 sdk-min = "28"
 sdk-target = "36"
 sdk-robolectric = "35"
 
 coroutines = "1.10.2"
-room = "2.8.4"
+room = "2.8.5"
 kotlin = "2.3.21"
-media3 = "1.10.0"
+media3 = "1.10.1"
 jvm-bytecode = "17"
 jvm-toolchain = "21"
 agp = "9.2.0"
@@ -15,23 +15,23 @@ ktlint-core = "1.8.0"
 ktlint-gradlePlugin = "0.14.0"
 retrofit = "3.0.0"
 metro = "0.13.2"
-navigation3 = "1.1.1"
-aboutlibraries = "11.2.3"
+navigation3 = "1.1.7"
+aboutlibraries = "11.6.3"
 
 [libraries]
 aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutlibraries" }
 androidPluginForGradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 junit = "junit:junit:4.13.2"
-mockk = "io.mockk:mockk:1.14.9"
-paging-runtime = "androidx.paging:paging-runtime-ktx:3.4.2"
-paging-compose = "androidx.paging:paging-compose:3.4.2"
+mockk = "io.mockk:mockk:1.14.11"
+paging-runtime = "androidx.paging:paging-runtime-ktx:3.5.1"
+paging-compose = "androidx.paging:paging-compose:3.5.1"
 retrofit-core = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-scalars = { module = "com.squareup.retrofit2:converter-scalars", version.ref = "retrofit" }
 retrofit-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
-robolectric = "org.robolectric:robolectric:4.16.1"
+robolectric = "org.robolectric:robolectric:4.17"
 coil = "io.coil-kt:coil-compose:2.7.0"
-appCompat = "androidx.appcompat:appcompat:1.7.1"
-androidxCore = "androidx.core:core-ktx:1.18.0"
+appCompat = "androidx.appcompat:appcompat:1.8.0"
+androidxCore = "androidx.core:core-ktx:1.19.0"
 kotlin-pluginForGradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 documentFile = "androidx.documentfile:documentfile:1.1.0"
@@ -40,12 +40,12 @@ datastore = "androidx.datastore:datastore-core:1.2.1"
 seismic = "com.squareup:seismic:1.0.3"
 turbine = "app.cash.turbine:turbine:1.2.1"
 molecule = "app.cash.molecule:molecule-runtime:2.2.0"
-okhttp = "com.squareup.okhttp3:okhttp-coroutines:5.3.2"
+okhttp = "com.squareup.okhttp3:okhttp-coroutines:5.5.0"
 review = "com.google.android.play:review-ktx:2.0.1"
 lottie = "com.airbnb.android:lottie-compose:6.7.1"
 clikt = "com.github.ajalt.clikt:clikt:5.1.0"
 jebml = "org.jitsi:jebml:2.4.4-6-gb310849"
-slf4j-noop = "org.slf4j:slf4j-nop:2.0.17"
+slf4j-noop = "org.slf4j:slf4j-nop:2.0.19"
 
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutines" }
@@ -73,10 +73,10 @@ media3-inspector = { module = "androidx.media3:media3-inspector", version.ref = 
 media3-testUtils-core = { module = "androidx.media3:media3-test-utils", version.ref = "media3" }
 media3-testUtils-robolectric = { module = "androidx.media3:media3-test-utils-robolectric", version.ref = "media3" }
 
-lifecycle = "androidx.lifecycle:lifecycle-runtime-ktx:2.10.0"
-lifecycle-viewmodel-compose = "androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0"
+lifecycle = "androidx.lifecycle:lifecycle-runtime-ktx:2.11.0"
+lifecycle-viewmodel-compose = "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0"
 
-compose-bom = "androidx.compose:compose-bom:2026.04.01"
+compose-bom = "androidx.compose:compose-bom:2026.09.00"
 compose-ui-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling-core = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
@@ -88,7 +88,7 @@ compose-ui-testManifest = { module = "androidx.compose.ui:ui-test-manifest" }
 compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 compose-animation-graphics = { module = "androidx.compose.animation:animation-graphics" }
-graphicsShapes = "androidx.graphics:graphics-shapes:1.0.1"
+graphicsShapes = "androidx.graphics:graphics-shapes:1.1.0"
 compose-animation-animation = { module = "androidx.compose.animation:animation" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-activity = "androidx.activity:activity-compose:1.13.0"
@@ -101,7 +101,7 @@ metro-runtime = { module = "dev.zacsweers.metro:runtime", version.ref = "metro" 
 
 ktlint-core = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint-core" }
 ktlint-gradlePlugin = { module = "io.github.usefulness:ktlint-gradle-plugin", version.ref = "ktlint-gradlePlugin" }
-ktlint-compose = "io.nlopez.compose.rules:ktlint:0.5.8"
+ktlint-compose = "io.nlopez.compose.rules:ktlint:0.6.6"
 
 [bundles]
 compose = [
@@ -143,7 +143,7 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "2.3.7" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.12" }
 ktlint = { id = "io.github.usefulness.ktlint-gradle-plugin", version.ref = "ktlint-gradlePlugin" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutlibraries" }

@@ -58,6 +58,19 @@ echo "./gradlew lintKotlin" > .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
+## Dependency updates
+
+Run Renovate locally from the repository root:
+
+```sh
+./scripts/renovate_local.sh
+```
+
+The script uses pinned Renovate and Node versions, validates `renovate.json`, and
+runs Renovate's local lookup-only mode for Gradle dependencies. Local mode does
+not edit files or create branches. Apply reviewed updates in small batches, then
+run the unit, lint, build, and relevant emulator tests before committing them.
+
 ## Releasing
 
 To release a new version, push a `vMAJOR.MINOR` tag, or dispatch the

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
   ],
@@ -26,7 +27,7 @@
       ]
     },
     {
-      "groupName": "Kotlin, KSP, Mero",
+      "groupName": "Kotlin, KSP, Metro",
       "matchPackageNames": [
         "org.jetbrains.kotlin:{/,}**",
         "org.jetbrains.kotlin.{/,}**",
@@ -43,15 +44,6 @@
       ]
     },
     {
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "pin",
-        "digest"
-      ],
-      "automerge": true
-    },
-    {
       "matchPackageNames": [
         "com.google.android.play:review-ktx"
       ],
@@ -60,5 +52,6 @@
   ],
   "prHourlyLimit": 0,
   "prConcurrentLimit": 0,
+  "automerge": false,
   "configMigration": true
 }
