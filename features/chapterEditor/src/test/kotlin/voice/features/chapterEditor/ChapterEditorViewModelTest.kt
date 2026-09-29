@@ -257,7 +257,7 @@ class ChapterEditorViewModelTest {
       every { overridesForBook(bookId) } returns overrideFlow
     }
     val vm = viewModel(
-      book = book(chapters = listOf(chapter), offset = -2, positionInChapter = 130_000L),
+      book = book(chapters = listOf(chapter), offset = 0, positionInChapter = 130_000L),
       overrides = listOf(manual),
       overrideRepo = overrideRepo,
     )
@@ -272,7 +272,7 @@ class ChapterEditorViewModelTest {
 
       assertEquals("Prologue", state.chapters[0].displayName)
       coVerify(exactly = 0) { overrideRepo.set(chapterId, 0L, bookId, any()) }
-      coVerify { overrideRepo.set(chapterId, 60_000L, bookId, "Chapter 9") }
+      coVerify { overrideRepo.set(chapterId, 60_000L, bookId, "Chapter 11") }
     }
   }
 

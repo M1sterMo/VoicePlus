@@ -189,9 +189,12 @@ public class ChapterEditorViewModel(
 
   private fun setOffset(offset: Int) {
     if (localOffset.value == offset) return
-    // ponytail: Reuse existing overrides as range anchors; add a dedicated anchor table only if
-    // users need to edit or remove individual offset ranges later.
-    if (initialOffset?.let { it != 0 } == true && chaptersToFreeze == null) {
+    // Once a book has needed a correction, keep the names before the currently playing mark.
+    // Audiobooks can contain extra or missing embedded marks, so one global offset cannot describe
+    // the whole timeline. Existing manual names remain authoritative.
+    if (chaptersToFreeze == null &&
+      (initialOffset?.let { it != 0 } == true || chaptersBeforeCurrent.any { it.hasOverride })
+    ) {
       chaptersToFreeze = chaptersBeforeCurrent.filterNot { it.hasOverride }
     }
     localOffset.value = offset
@@ -209,7 +212,7 @@ public class ChapterEditorViewModel(
             )
           }
         }
-        // Freeze once per editor session so subsequent adjustments respect restored names.
+        // Freeze once per editor session so repeated +/- taps do not rewrite prior ranges.
         if (chaptersToFreeze != null) chaptersToFreeze = emptyList()
         bookRepository.updateBook(bookId) { it.copy(chapterNameOffset = offset) }
       }
