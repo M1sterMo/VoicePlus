@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
@@ -19,7 +20,6 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Gavel
-import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Lock
@@ -43,9 +43,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.retain.retain
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,6 +64,7 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import voice.core.common.rootGraphAs
+import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.ui.VoiceTheme
@@ -91,6 +96,7 @@ private fun Settings(
   snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
   val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+  var showAppearanceSettings by rememberSaveable { mutableStateOf(false) }
   Scaffold(
     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     snackbarHost = {
@@ -120,84 +126,53 @@ private fun Settings(
     LazyColumn(
       modifier = Modifier.padding(contentPadding),
       contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-      verticalArrangement = Arrangement.spacedBy(20.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+      item(key = "appearance") {
+        SettingsGroup {
+          AppearanceSettingsRow(viewState) {
+            showAppearanceSettings = true
+          }
+        }
+      }
+
       item(key = "library") {
         SettingsSection(stringResource(StringsR.string.settings_section_library)) {
-          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PrioritySettingsItem(
-              title = stringResource(StringsR.string.listening_stats),
-              supportingText = stringResource(StringsR.string.settings_listening_stats_summary),
-              icon = Icons.Outlined.BarChart,
-              containerColor = MaterialTheme.colorScheme.primaryContainer,
-              contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-              onClick = listener::openListeningStats,
-            )
-            PrioritySettingsItem(
-              title = stringResource(StringsR.string.backup_title),
-              supportingText = stringResource(StringsR.string.settings_backup_summary),
-              icon = Icons.Outlined.FolderOpen,
-              containerColor = MaterialTheme.colorScheme.secondaryContainer,
-              contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              onClick = listener::openBackup,
-            )
-          }
-        }
-      }
-
-      item(key = "playback") {
-        SettingsSection(stringResource(StringsR.string.settings_section_playback)) {
           SettingsGroup {
-            SeekTimeRow(viewState.seekTimeInSeconds, listener::onSeekAmountRowClick)
-            SettingsDivider()
-            AutoRewindRow(viewState.autoRewindInSeconds, listener::onAutoRewindRowClick)
-            SettingsDivider()
-            MediaButtonActionRow(
-              title = stringResource(StringsR.string.pref_media_button_double_click),
-              currentAction = viewState.mediaButtonDoubleClickAction,
-              onClick = listener::onMediaButtonDoubleClickRowClick,
+            ListItem(
+              modifier = Modifier.clickable { listener.openListeningStats() },
+              colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+              leadingContent = {
+                Icon(Icons.Outlined.BarChart, contentDescription = null)
+              },
+              headlineContent = {
+                Text(stringResource(StringsR.string.listening_stats))
+              },
+              supportingContent = {
+                Text(stringResource(StringsR.string.settings_listening_stats_summary))
+              },
+              trailingContent = {
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+              },
             )
             SettingsDivider()
-            MediaButtonActionRow(
-              title = stringResource(StringsR.string.pref_media_button_triple_click),
-              currentAction = viewState.mediaButtonTripleClickAction,
-              onClick = listener::onMediaButtonTripleClickRowClick,
-            )
-          }
-        }
-      }
-
-      item(key = "lockscreen") {
-        SettingsSection(stringResource(StringsR.string.settings_section_lockscreen)) {
-          SettingsGroup {
-            LockscreenSliderRow(
-              currentMode = viewState.lockscreenSliderMode,
-              onClick = listener::onLockscreenSliderRowClick,
+            ListItem(
+              modifier = Modifier.clickable { listener.openBackup() },
+              colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+              leadingContent = {
+                Icon(Icons.Outlined.FolderOpen, contentDescription = null)
+              },
+              headlineContent = {
+                Text(stringResource(StringsR.string.backup_title))
+              },
+              supportingContent = {
+                Text(stringResource(StringsR.string.settings_backup_summary))
+              },
+              trailingContent = {
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+              },
             )
             SettingsDivider()
-            LockscreenSecondaryTextRow(
-              currentMode = viewState.lockscreenSecondaryTextMode,
-              onClick = listener::onLockscreenSecondaryTextRowClick,
-            )
-          }
-        }
-      }
-
-      item(key = "sleep_timer") {
-        SettingsSection(stringResource(StringsR.string.settings_section_sleep_timer)) {
-          SettingsGroup {
-            SleepTimerCard(
-              autoSleepTimer = viewState.autoSleepTimer,
-              autoResetEnabled = viewState.sleepTimerAutoResetEnabled,
-              listener = listener,
-            )
-          }
-        }
-      }
-
-      item(key = "books") {
-        SettingsSection(stringResource(StringsR.string.settings_section_books)) {
-          SettingsGroup {
             if (viewState.showFolderPickerEntry) {
               ListItem(
                 modifier = Modifier.clickable { listener.openFolderPicker() },
@@ -266,32 +241,52 @@ private fun Settings(
         }
       }
 
-      item(key = "appearance") {
-        SettingsSection(stringResource(StringsR.string.settings_section_appearance)) {
+      item(key = "playback") {
+        SettingsSection(stringResource(StringsR.string.settings_section_playback)) {
           SettingsGroup {
-            ListItem(
-              modifier = Modifier.clickable { listener.toggleGrid() },
-              colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-              leadingContent = {
-                val imageVector = if (viewState.useGrid) {
-                  Icons.Outlined.GridView
-                } else {
-                  Icons.AutoMirrored.Outlined.ViewList
-                }
-                Icon(imageVector, contentDescription = null)
-              },
-              headlineContent = { Text(stringResource(StringsR.string.pref_use_grid)) },
-              trailingContent = {
-                Switch(
-                  checked = viewState.useGrid,
-                  onCheckedChange = { listener.toggleGrid() },
-                )
-              },
+            SeekTimeRow(viewState.seekTimeInSeconds, listener::onSeekAmountRowClick)
+            SettingsDivider()
+            AutoRewindRow(viewState.autoRewindInSeconds, listener::onAutoRewindRowClick)
+            SettingsDivider()
+            MediaButtonActionRow(
+              title = stringResource(StringsR.string.pref_media_button_double_click),
+              currentAction = viewState.mediaButtonDoubleClickAction,
+              onClick = listener::onMediaButtonDoubleClickRowClick,
             )
-            if (viewState.showDarkThemePref) {
-              SettingsDivider()
-              DarkThemeRow(viewState.useDarkTheme, listener::toggleDarkTheme)
-            }
+            SettingsDivider()
+            MediaButtonActionRow(
+              title = stringResource(StringsR.string.pref_media_button_triple_click),
+              currentAction = viewState.mediaButtonTripleClickAction,
+              onClick = listener::onMediaButtonTripleClickRowClick,
+            )
+          }
+        }
+      }
+
+      item(key = "sleep_timer") {
+        SettingsSection(stringResource(StringsR.string.settings_section_sleep_timer)) {
+          SettingsGroup {
+            SleepTimerCard(
+              autoSleepTimer = viewState.autoSleepTimer,
+              autoResetEnabled = viewState.sleepTimerAutoResetEnabled,
+              listener = listener,
+            )
+          }
+        }
+      }
+
+      item(key = "lockscreen") {
+        SettingsSection(stringResource(StringsR.string.settings_section_lockscreen)) {
+          SettingsGroup {
+            LockscreenSliderRow(
+              currentMode = viewState.lockscreenSliderMode,
+              onClick = listener::onLockscreenSliderRowClick,
+            )
+            SettingsDivider()
+            LockscreenSecondaryTextRow(
+              currentMode = viewState.lockscreenSecondaryTextMode,
+              onClick = listener::onLockscreenSecondaryTextRowClick,
+            )
           }
         }
       }
@@ -365,6 +360,20 @@ private fun Settings(
         SettingsSection(stringResource(StringsR.string.settings_section_about)) {
           SettingsGroup {
             ListItem(
+              modifier = Modifier.clickable { listener.openPrivacyPolicy() },
+              colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+              leadingContent = {
+                Icon(Icons.Outlined.Lock, contentDescription = null)
+              },
+              headlineContent = {
+                Text(stringResource(StringsR.string.privacy_policy))
+              },
+              trailingContent = {
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+              },
+            )
+            SettingsDivider()
+            ListItem(
               modifier = Modifier.clickable { listener.openLicenses() },
               colors = ListItemDefaults.colors(containerColor = Color.Transparent),
               leadingContent = {
@@ -387,6 +396,13 @@ private fun Settings(
       }
     }
     Dialog(viewState, listener)
+  }
+  if (showAppearanceSettings) {
+    AppearanceSettingsSheet(
+      state = viewState,
+      listener = listener,
+      onDismiss = { showAppearanceSettings = false },
+    )
   }
 }
 
@@ -681,6 +697,12 @@ private fun LockscreenSecondaryTextDialog(
       }
     },
   )
+}
+
+internal fun GridMode.toLabelRes(): Int = when (this) {
+  GridMode.LIST -> StringsR.string.library_view_list
+  GridMode.BOOKS -> StringsR.string.library_view_books
+  GridMode.GRID, GridMode.FOLLOW_DEVICE -> StringsR.string.library_view_grid
 }
 
 private fun LockscreenSliderMode.toLabelRes(): Int = when (this) {

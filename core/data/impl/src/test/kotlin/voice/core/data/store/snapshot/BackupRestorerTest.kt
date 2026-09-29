@@ -17,6 +17,7 @@ import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
 import voice.core.data.ListeningSession
+import voice.core.data.MarkData
 import voice.core.data.repo.BookContentRepoImpl
 import voice.core.data.repo.internals.AppDb
 import voice.core.data.repo.internals.MemoryDataStore
@@ -45,6 +46,7 @@ class BackupRestorerTest {
   fun teardown() = db.close()
 
   private fun restorer() = BackupRestorer(
+    organisationDao = db.libraryOrganisationDao(),
     ring = ring,
     bookContentDao = db.bookContentDao(),
     bookmarkDao = db.bookmarkDao(),
@@ -82,6 +84,22 @@ class BackupRestorerTest {
     slot0.updateData { snapshotOf("a", "b") }
     restorer().restoreIfNeeded()
     db.bookContentDao().all().map { it.id.value } shouldContainExactlyInAnyOrder listOf("a", "b")
+  }
+
+  @Test
+  fun `legacy ring restore protects its saved title from a later metadata scan`() = runTest {
+    val legacy = snapshotOf("a").copy(
+      schemaVersion = 6,
+      books = listOf(book("a", true).copy(name = "My saved title").toDto()),
+    )
+    slot0.updateData { legacy }
+
+    restorer().restoreIfNeeded()
+
+    db.bookContentDao().all().single().let {
+      it.name shouldBe "My saved title"
+      it.nameOverridden shouldBe true
+    }
   }
 
   @Test
@@ -160,11 +178,16 @@ class BackupRestorerTest {
 
   @Test
   fun `released db65 backup restores progress and listening statistics into room`() = runTest {
-    contentRepo.put(book("book-1", active = true))
     val decoded = ExternalBackupBundleCodec.decode(
       snapshotTestJson,
       backupFixture("db65-envelope-without-chapter-file-size.json"),
     ) as ExternalBackupBundleDecodeResult.Valid
+    contentRepo.put(
+      decoded.snapshot.books.single().toBookContentOrNull()!!.copy(
+        positionInChapter = 0,
+        lastPlayedAt = Instant.EPOCH,
+      ),
+    )
 
     restorer().applyDirect(decoded.snapshot) shouldBe 1
 
@@ -221,20 +244,71 @@ class BackupRestorerTest {
   }
 
   @Test
+  fun `canApplyDirect rejects an inactive live book with the same id`() = runTest {
+    contentRepo.put(book("a", active = false))
+
+    restorer().canApplyDirect(snapshotOf("a")) shouldBe false
+  }
+
+  @Test
+  fun `canApplyDirect rejects a hidden book whose old id needs re-keying`() = runTest {
+    contentRepo.put(book("a", active = true))
+    val snapshot = snapshotOf("a", "old-hidden").copy(
+      books = listOf(
+        book("a", active = true).toDto(),
+        book("old-hidden", active = false).toDto(),
+      ),
+      hiddenBooks = setOf("old-hidden"),
+    )
+
+    restorer().canApplyDirect(snapshot) shouldBe false
+  }
+
+  @Test
   fun `auto-restore brings back the hidden set and keeps hidden books out`() = runTest {
     slot0.updateData { snapshotOf("a", "b").copy(hiddenBooks = setOf("b")) }
     restorer().restoreIfNeeded()
     excluded.data.first() shouldBe setOf("b")
-    db.bookContentDao().all().map { it.id.value } shouldContainExactlyInAnyOrder listOf("a")
+    db.bookContentDao().all().single { it.id.value == "a" }.isActive shouldBe true
+    db.bookContentDao().all().single { it.id.value == "b" }.isActive shouldBe false
   }
 
   @Test
-  fun `applyDirect reports only what it actually wrote`() = runTest {
-    // Live book is FRESHER than the snapshot: the freshness guard keeps it, so nothing is written.
-    contentRepo.put(book("a", active = true).copy(lastPlayedAt = Instant.ofEpochMilli(9_999)))
-    val snapshot = snapshotOf("a") // snapshot books carry lastPlayedAt = EPOCH
+  fun `direct restore keeps hidden edited metadata but not library visibility`() = runTest {
+    contentRepo.put(book("a", active = true).copy(name = "Live title"))
+    val image = File("restored-hidden.png").absoluteFile
+    val snapshot = snapshotOf("a").copy(
+      books = listOf(book("a", active = false).copy(name = "Edited hidden title").toDto()),
+      hiddenBooks = setOf("a"),
+    )
 
-    restorer().applyDirect(snapshot) shouldBe 0
+    restorer().applyDirect(snapshot, mapOf("a" to image)) shouldBe 1
+
+    db.bookContentDao().all().single().let {
+      it.name shouldBe "Edited hidden title"
+      it.cover shouldBe image
+      it.isActive shouldBe false
+    }
+    excluded.data.first() shouldBe setOf("a")
+  }
+
+  @Test
+  fun `applyDirect restores metadata while preserving newer playback`() = runTest {
+    contentRepo.put(
+      book("a", active = true).copy(
+        name = "Live title",
+        positionInChapter = 42,
+        lastPlayedAt = Instant.ofEpochMilli(9_999),
+      ),
+    )
+    val snapshot = snapshotOf("a").copy(books = listOf(snapshotOf("a").books.single().copy(name = "Backed-up title")))
+
+    restorer().applyDirect(snapshot) shouldBe 1
+    db.bookContentDao().all().single().let {
+      it.name shouldBe "Backed-up title"
+      it.positionInChapter shouldBe 42
+      it.lastPlayedAt shouldBe Instant.ofEpochMilli(9_999)
+    }
   }
 
   @Test
@@ -249,5 +323,88 @@ class BackupRestorerTest {
     restorer().applyDirect(snapshot) shouldBe 1
 
     db.bookContentDao().all().single().cover shouldBe liveCover
+  }
+
+  @Test
+  fun `portable cover and edited title replace scanned metadata on restore`() = runTest {
+    contentRepo.put(book("a", active = true).copy(name = "Original title", cover = File("scanned.png")))
+    val image = File("restored.png").absoluteFile
+    val snapshot = snapshotOf("a").let { it.copy(books = listOf(it.books.single().copy(name = "Edited title"))) }
+    restorer().applyDirect(snapshot, mapOf("a" to image)) shouldBe 1
+    db.bookContentDao().all().single().name shouldBe "Edited title"
+    db.bookContentDao().all().single().cover shouldBe image
+  }
+
+  @Test
+  fun `portable metadata wins while newer live playback survives`() = runTest {
+    val liveCover = File("live.png").absoluteFile
+    contentRepo.put(
+      book("a", active = true).copy(
+        name = "Live title",
+        cover = liveCover,
+        positionInChapter = 33,
+        lastPlayedAt = Instant.ofEpochMilli(9_999),
+      ),
+    )
+    val image = File("restored.png").absoluteFile
+    val snapshot = snapshotOf("a").copy(books = listOf(snapshotOf("a").books.single().copy(name = "Restored title")))
+    restorer().applyDirect(snapshot, mapOf("a" to image)) shouldBe 1
+    db.bookContentDao().all().single().let {
+      it.name shouldBe "Restored title"
+      it.cover shouldBe image
+      it.positionInChapter shouldBe 33
+      it.lastPlayedAt shouldBe Instant.ofEpochMilli(9_999)
+    }
+  }
+
+  @Test
+  fun `portable metadata does not replace a newer rescanned chapter layout`() = runTest {
+    val newChapter = ChapterId("replacement")
+    contentRepo.put(
+      book("a", active = true).copy(
+        name = "Live title",
+        chapters = listOf(newChapter),
+        currentChapter = newChapter,
+        positionInChapter = 17,
+        lastPlayedAt = Instant.ofEpochMilli(9_999),
+      ),
+    )
+    val snapshot = snapshotOf("a").copy(
+      books = listOf(snapshotOf("a").books.single().copy(name = "Restored title")),
+    )
+    restorer().applyDirect(snapshot) shouldBe 1
+    db.bookContentDao().all().single().let {
+      it.name shouldBe "Restored title"
+      it.chapters shouldBe listOf(newChapter)
+      it.currentChapter shouldBe newChapter
+      it.positionInChapter shouldBe 17
+      it.lastPlayedAt shouldBe Instant.ofEpochMilli(9_999)
+    }
+  }
+
+  @Test
+  fun `direct restore keeps rescanned chapter metadata even without newer playback`() = runTest {
+    val chapterId = ChapterId("ca")
+    val liveChapter = Chapter(
+      id = chapterId,
+      name = "Live chapter",
+      duration = 2_000,
+      fileLastModified = Instant.ofEpochMilli(2_000),
+      markData = listOf(MarkData(0, "Live mark")),
+    )
+    val backedUpChapter = liveChapter.copy(
+      name = "Stale chapter",
+      duration = 1_000,
+      fileLastModified = Instant.EPOCH,
+      markData = listOf(MarkData(0, "Stale mark")),
+    )
+    contentRepo.put(book("a", active = true))
+    db.chapterDao().insert(liveChapter)
+    val snapshot = snapshotOf("a").copy(chapters = listOf(backedUpChapter.toDto(relName = "chapter.mp3")))
+
+    restorer().applyDirect(snapshot) shouldBe 1
+
+    db.chapterDao().chapter(chapterId) shouldBe liveChapter
+    db.bookContentDao().all().single().chapters shouldBe listOf(chapterId)
   }
 }

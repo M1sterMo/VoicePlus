@@ -1,42 +1,32 @@
-Its an offline audiobook player. With some quality of life features such as: character lists, listining statistics, listening log, media button customisation, smart sleep timer and more. 
+VoicePlus is a free, open-source player for audiobooks stored on your device. Choose your audiobook folders with Android's file picker, then listen offline without creating an account.
 
-Built on Voice by Paul Woitaschek (go try that first, it's polished and actively maintained). VoicePlus adds a few extras and strips the telemetry.
+PLAYBACK
 
+- Remembers your position in each book
+- Adjustable playback speed and bookmarks
+- Volume boost, with an option to remember it across all books
+- Sleep timer with end-of-chapter options and interaction reset
+- Customizable playback toolbar, lock-screen controls and media-button actions
+- Android Auto and a resizable home-screen widget
 
-WHAT'S DIFFERENT FROM VOICE
+MAKE YOUR LIBRARY YOURS
 
-- Listening Log: every session recorded locally so you can see when and how long you listened
-- Listening Statistics: charts and summaries of your history, all computed on-device
-- Character List: attach a cast list to any book for quick reference while listening
-- Hidden Books: hide books from your library without deleting them
-- Chapter Name Editor: correct wrong chapter numbers with a single offset, or rename chapters, without touching your files
-- Resizable widget with configurable opacity and text scale
-- Customizable media button actions (double-press and triple-press)
-- Sleep timer auto-reset on interaction, with N-chapter countdown
-- Firebase removed entirely. No analytics, no crash reporting, no remote config
-
-
-THE BASICS (inherited from Voice, credit to Paul)
-
-- Local files only. No accounts, no cloud sync
-- Remembers your position in every book
-- Adjustable playback speed
-- Sleep timer with end-of-chapter detection
-- Bookmarks
-- Android Auto
-- Material You design, light and dark themes
-- Cover art search via DuckDuckGo (only when you trigger it)
-
+- Book-inspired portrait covers, Grid or List view, and two or three books per row
+- Personal shelves and manually grouped series with editable book order
+- Current keeps in-progress books easy to reach, even inside a series
+- Edit titles and covers without rewriting audio files; preserve edits through rescans and portable backups
+- Listening log and statistics calculated on your device
+- Character notes for each book
+- Edit chapter names and fix incorrect chapter numbering
+- Hide books without deleting their files
+- Back up and restore your progress and settings
 
 PRIVACY
 
-Nothing leaves your device. The only network activity is the optional cover art search, and only when you open that screen and ask for it. No analytics. No crash reporters. Nothing running in the background.
+VoicePlus has no account, ads, analytics or crash-reporting service. Your library and listening history are stored locally. If Android system backup is enabled, eligible app data may be backed up by your configured provider. The optional online cover search sends a book title and author query to DuckDuckGo; opening a result downloads an image from its host. Cover search only runs when you choose to use it.
 
 Privacy policy: https://github.com/mistermo-vibecode/VoicePlus/blob/main/PRIVACY.md
 
-
 OPEN SOURCE
 
-GPL v3. Source at https://github.com/mistermo-vibecode/VoicePlus
-
-Built on Voice by Paul Woitaschek: https://github.com/PaulWoitaschek/Voice
+VoicePlus is a GPLv3-licensed fork of Voice by Paul Woitaschek, with additional features and changes by Mistermo. Source code: https://github.com/mistermo-vibecode/VoicePlus

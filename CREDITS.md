@@ -5,7 +5,7 @@
 VoicePlus is a fork of **Voice**, an open-source Android audiobook player created and maintained by **Paul Woitaschek**.
 
 - Upstream repository: https://github.com/PaulWoitaschek/Voice
-- Upstream author: Paul Woitaschek (woitaschek@gmail.com)
+- Upstream author: [Paul Woitaschek](https://github.com/PaulWoitaschek)
 - Upstream license: GNU General Public License v3.0
 
 The Voice project has received contributions from many community members. The full list of contributors is available at https://github.com/PaulWoitaschek/Voice/graphs/contributors.
@@ -30,7 +30,7 @@ VoicePlus builds on the Android open-source ecosystem. Key dependencies include:
 | [Media3 / ExoPlayer](https://github.com/google/ExoPlayer) | Apache 2.0 |
 | [Room](https://developer.android.com/training/data-storage/room) | Apache 2.0 |
 | [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Apache 2.0 |
-| [Hilt / Metro](https://github.com/ZacSweers/metro) | Apache 2.0 |
+| [Metro](https://github.com/ZacSweers/metro) | Apache 2.0 |
 | [Coil](https://github.com/coil-kt/coil) | Apache 2.0 |
 | [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) | Apache 2.0 |
 

@@ -1,5 +1,43 @@
 # VoicePlus Changelog
 
+## v1.29 — Shelves, Series & Book View
+
+- Book-inspired covers, personal shelves and series stacks, with two or three books per row.
+- Editable shelf and series order, including drag-to-move between shelves.
+- Appearance controls for Books, Grid and List layouts.
+- Title and cover edits survive rescans and portable backups without changing audio files.
+- More stable chapter-number corrections across irregular chapter markers.
+- Protection against accidental media-button resume after the sleep timer finishes.
+- Optional remembered volume boost across all books.
+- Updated dependencies and phone/tablet screenshots, with distinct F-Droid screenshot slots.
+
+---
+
+## v1.28 — Playback Toolbar & Completion Badges
+
+- Customize the now-playing toolbar with up to four shortcuts; choices are included in settings backups.
+- Add quick bookmarks alongside named bookmarks.
+- Completed books show a completion badge and finish date.
+- Refreshed phone and tablet screenshots.
+
+---
+
+## v1.27 — Chapter, Search & Android Auto Fixes
+
+- Later chapter corrections preserve earlier and restored chapter names.
+- Long-press menus work in search results — thanks [@JamesDBartlett3](https://github.com/JamesDBartlett3).
+- Android Auto forward/rewind keeps the correct direction without changing headset preferences — thanks [@geofgowan](https://github.com/geofgowan) for reporting.
+
+---
+
+## v1.26 — Listening Statistics & Playback Fixes
+
+- Clearer listening records, recent totals, finished books and relisten counts.
+- Playback speed changes are remembered — thanks [@tomwhat](https://github.com/tomwhat).
+- Improved Android backup restore for listening history and cover art.
+
+---
+
 ## v1.25 — Lock Screen, Bookmarks & Logs
 
 - Customize lock-screen progress, secondary text, and chapter/timed-skip controls.

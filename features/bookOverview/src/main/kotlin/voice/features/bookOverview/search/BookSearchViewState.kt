@@ -12,6 +12,7 @@ sealed interface BookSearchViewState {
     val books: List<BookOverviewItemViewState>,
     val layoutMode: BookOverviewLayoutMode,
     override val query: String,
+    val booksPerRow: Int = 2,
   ) : BookSearchViewState
 
   data class EmptySearch(

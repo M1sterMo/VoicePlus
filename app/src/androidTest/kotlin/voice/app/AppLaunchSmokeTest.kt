@@ -6,7 +6,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
@@ -16,7 +16,10 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.zacsweers.metro.Inject
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,14 +32,15 @@ import voice.core.data.GridMode
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.ChapterRepo
 import voice.core.data.store.GridModeStore
-import voice.core.data.store.NotStartedExpandedStore
 import voice.core.data.store.OnboardingCompletedStore
+import voice.core.scanner.MediaScanTrigger
 import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class AppLaunchSmokeTest {
 
   @get:Rule
+  @Suppress("DEPRECATION") // Real controller listeners must be disposed on the Android main thread.
   val composeRule = createEmptyComposeRule()
 
   @Inject
@@ -48,11 +52,32 @@ class AppLaunchSmokeTest {
   @field:[Inject GridModeStore]
   lateinit var gridModeStore: DataStore<GridMode>
 
-  @field:[Inject NotStartedExpandedStore]
-  lateinit var notStartedExpandedStore: DataStore<Boolean>
+  @Inject
+  lateinit var scanner: MediaScanTrigger
 
   @field:[Inject OnboardingCompletedStore]
   lateinit var onboardingCompletedStore: DataStore<Boolean>
+
+  private var oldActive = emptyList<BookId>()
+  private var oldLayout = GridMode.FOLLOW_DEVICE
+  private var oldOnboarding = false
+
+  @Before
+  fun rememberLibrary() = runBlocking {
+    rootGraphAs<TestGraph>().inject(this@AppLaunchSmokeTest)
+    oldActive = bookContentRepo.all().filter { it.isActive }.map { it.id }
+    oldLayout = gridModeStore.data.first()
+    oldOnboarding = onboardingCompletedStore.data.first()
+    scanner.scanAndAwait()
+  }
+
+  @After
+  fun restoreLibrary() = runBlocking {
+    bookContentRepo.setAllInactiveExcept(oldActive)
+    gridModeStore.updateData { oldLayout }
+    onboardingCompletedStore.updateData { oldOnboarding }
+    Unit
+  }
 
   @Test
   fun mainActivityReachesResumedState() {
@@ -77,16 +102,22 @@ class AppLaunchSmokeTest {
 
   @Test
   @OptIn(ExperimentalTestApi::class)
-  fun bookOverviewRestoresListPositionAfterSettingsBack() {
-    rootGraphAs<TestGraph>().inject(this)
+  fun bookOverviewBooksRestoresScrollPositionAfterPlaybackBack() {
+    assertBookOverviewRestoresScrollPosition(GridMode.BOOKS)
+  }
 
+  @Test
+  @OptIn(ExperimentalTestApi::class)
+  fun bookOverviewRestoresListPositionAfterSettingsBack() {
     val targetBookName = "Scroll Test Book 29"
     prepareScrollableLibrary(GridMode.LIST)
 
     ActivityScenario.launch(MainActivity::class.java).use {
+      composeRule.waitUntilAtLeastOneExists(hasScrollToIndexAction(), 10_000)
       composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(targetBookName))
       composeRule.onNode(hasText(targetBookName) and hasClickAction()).assertIsDisplayed()
-      composeRule.onNode(hasContentDescription("Settings")).performClick()
+      composeRule.onNode(hasContentDescription("Library options")).performClick()
+      composeRule.onNode(hasText("Settings")).performClick()
       composeRule.waitUntilAtLeastOneExists(hasContentDescription("Close"), 10_000)
       composeRule.onNode(hasContentDescription("Close")).performClick()
 
@@ -101,12 +132,11 @@ class AppLaunchSmokeTest {
   @Test
   @OptIn(ExperimentalTestApi::class)
   fun bookOverviewRestoresListPositionAfterActivityRecreation() {
-    rootGraphAs<TestGraph>().inject(this)
-
     val targetBookName = "Scroll Test Book 29"
     prepareScrollableLibrary(GridMode.LIST)
 
     ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+      composeRule.waitUntilAtLeastOneExists(hasScrollToIndexAction(), 10_000)
       composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(targetBookName))
       composeRule.onNode(hasText(targetBookName) and hasClickAction()).assertIsDisplayed()
 
@@ -122,12 +152,11 @@ class AppLaunchSmokeTest {
 
   @OptIn(ExperimentalTestApi::class)
   private fun assertBookOverviewRestoresScrollPosition(gridMode: GridMode) {
-    rootGraphAs<TestGraph>().inject(this)
-
     val targetBookName = "Scroll Test Book 29"
     prepareScrollableLibrary(gridMode)
 
     ActivityScenario.launch(MainActivity::class.java).use {
+      composeRule.waitUntilAtLeastOneExists(hasScrollToIndexAction(), 10_000)
       val library = composeRule.onNode(hasScrollToIndexAction())
       library.performScrollToNode(hasText(targetBookName))
       composeRule.onNode(hasText(targetBookName) and hasClickAction())
@@ -159,8 +188,8 @@ class AppLaunchSmokeTest {
   private fun prepareScrollableLibrary(gridMode: GridMode) = runBlocking {
     onboardingCompletedStore.updateData { true }
     gridModeStore.updateData { gridMode }
-    notStartedExpandedStore.updateData { true }
     prepareScrollableLibrary()
+    bookContentRepo.setAllInactiveExcept((0 until 30).map { BookId("scroll-test-book-$it") })
   }
 
   private suspend fun prepareScrollableLibrary() {

@@ -1,102 +1,114 @@
-# Screenshot refresh — v1.28
+# Screenshots
 
-Approved dark-mode set. These are real app captures with fictional demo data, not mock UI.
-The screenshot build includes the current v1.28 working-tree changes; its version
-label remains `1.27-debug` until release preparation updates it.
+Real v1.29 app captures, not mock UI. The phone gallery leads with two-column
+Books view (four visible entries), personal shelves and opened series stacks.
+README and F-Droid use matching captioned device frames with a matte charcoal backdrop.
+Untouched app captures are retained separately as the source masters.
 
-## Capture set
+## Demo library
 
-- Library, including completed-book badges
-- Playback
-- Listening log
-- Bookmarks
-- Listening statistics
-- Character list
-- Sleep timer
-- Playback toolbar customization
-- Playback, media-button and lock-screen settings
+The emulator contains twelve classic books, manually arranged into two shelves
+and three series: Sherlock Holmes, Alice’s Adventures and The Oz Books. Display
+titles can be shortened; most covers retain their edition titles. Alice uses
+the edition’s original `images/cover.source.jpg` artwork, without its title strip,
+so both portrait Books view and square playback cropping look clean. Bookmarks,
+character notes, sessions and statistics are fictional. Audio is a local test
+fixture, not a recording of these editions. No phone database or history is used.
 
-Nine phone masters live in `phone/`. Five captures each live in `tablet-7/` and
-`tablet-10/`. Keep plain captures for F-Droid and export framed derivatives for
-the README. Do not stretch phone captures to produce tablet images.
+Artwork comes from [Standard Ebooks](https://standardebooks.org/about), which
+dedicates its edition work to the public domain:
 
-All captures use dark mode, 09:41, hidden notification/network icons and a full
-battery. The app renders at each display size before capture:
-
-| Set | Pixels | Emulator density |
-| --- | --- | --- |
-| Phone | 1080 × 2400 | 420 dpi |
-| 7-inch class | 800 × 1280 | 213 dpi |
-| 10-inch class | 1600 × 2560 | 320 dpi |
-
-These use display/density overrides on the disposable Pixel AVD, not separate
-tablet hardware profiles. Phone display defaults are restored after the run.
-The root README uses nine framed PNGs, while Fastlane contains the plain captures.
-The local `preview.html` includes a "Make it yours" section with toolbar, settings
-and sleep-timer captures. These two additional customization shots are intended
-for the F-Droid phone set as well as the README presentation.
-
-## Export
-
-Run `python3 docs/screenshots/export.py` from the repository root with
-`agent-browser` and its Chromium installed. The exporter uses a private browser
-session, renders the approved HTML/CSS frames at 2× scale, then copies the plain
-masters into Fastlane. All framed PNGs are 698 × 1544 for aligned README rows.
-No generative editing is applied to the screenshots. The browser-export workflow
-preserves the approved frame styling and leaves raw captures unchanged.
-
-The README links each framed card to its full-resolution plain capture. No
-JavaScript or custom CSS is required on GitHub. No tag, release, push or external
-publication is performed by the exporter.
-
-## Demo content
-
-Six classic titles use covers supplied by [Standard Ebooks](https://standardebooks.org/about),
-which dedicates its work to the public domain. The source editions are:
-
-- [Alice’s Adventures in Wonderland](https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel)
-- [Pride and Prejudice](https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice)
+- Arthur Conan Doyle: [Adventures](https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes),
+  [Memoirs](https://standardebooks.org/ebooks/arthur-conan-doyle/the-memoirs-of-sherlock-holmes),
+  [The Hound of the Baskervilles](https://standardebooks.org/ebooks/arthur-conan-doyle/the-hound-of-the-baskervilles),
+  [Return](https://standardebooks.org/ebooks/arthur-conan-doyle/the-return-of-sherlock-holmes)
+- Lewis Carroll: [Alice’s Adventures in Wonderland](https://standardebooks.org/ebooks/lewis-carroll/alices-adventures-in-wonderland/john-tenniel),
+  [Through the Looking-Glass](https://standardebooks.org/ebooks/lewis-carroll/through-the-looking-glass/john-tenniel)
+- L. Frank Baum: [The Wonderful Wizard of Oz](https://standardebooks.org/ebooks/l-frank-baum/the-wonderful-wizard-of-oz),
+  [The Marvelous Land of Oz](https://standardebooks.org/ebooks/l-frank-baum/the-marvelous-land-of-oz)
+- [The Time Machine](https://standardebooks.org/ebooks/h-g-wells/the-time-machine)
 - [Treasure Island](https://standardebooks.org/ebooks/robert-louis-stevenson/treasure-island)
 - [The Secret Garden](https://standardebooks.org/ebooks/frances-hodgson-burnett/the-secret-garden)
-- [The Adventures of Sherlock Holmes](https://standardebooks.org/ebooks/arthur-conan-doyle/the-adventures-of-sherlock-holmes)
-- [The Time Machine](https://standardebooks.org/ebooks/h-g-wells/the-time-machine)
+- [Pride and Prejudice](https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice)
 
-The audio is a locally generated silent fixture, not a recording from those
-editions. Bookmarks, character descriptions and listening activity are synthetic.
-No phone database or personal history was copied.
-Alice uses the edition's original `images/cover.source.jpg` artwork and the demo
-title "Alice in Wonderland" to avoid cropped lettering and a scrolling title.
+## Capture and export
 
-## F-Droid replacement
+Use current `libreDebug` on a test emulator. Back up its database and DataStores
+before seeding. Never seed the physical phone. Use default font scale, 09:41 and
+a full demo battery; wait for covers and transitions to settle. Render the app
+at each display size instead of resizing phone captures.
 
-The existing phone directory includes four legacy `N_en-US.png` names in addition
-to the eight feature-named screenshots. Keep those legacy slots populated with
-fresh images: an earlier repository change documents that deletion did not remove
-orphaned screenshots from the F-Droid index.
+| Set | Pixels | Density | Theme |
+| --- | --- | --- | --- |
+| Phone | 1080 × 2400 | 420 dpi | Dark, plus light library |
+| 7-inch class | 800 × 1280 | 200 dpi | Dark |
+| 10-inch class | 1600 × 2560 | 320 dpi | Light |
 
-The live listing also references `sevenInchScreenshots/1_en-US.png` through
-`4_en-US.png` and the corresponding four `tenInchScreenshots` files. Those exact
-paths now contain current tablet-sized captures, with a fifth bookmarks shot
-added in each size. Verify the live
-listing after F-Droid refreshes; repository changes alone do not prove cleanup.
+These are display/density overrides on `VoicePlusTest`, not separate hardware
+profiles. Thirteen phone masters live in `phone/`; five current captures each
+live in `tablet-7/` and `tablet-10/`. Superseded tablet bookmark masters were
+removed (recoverable in Git). README uses nine framed images; `preview.html` shows
+all phone and tablet frames. `fdroid-preview.html` shows the exact 22 exported
+PNGs in the current F-Droid website order.
 
-The 12 phone slots contain nine unique captures; library, playback and toolbar
-are repeated only to overwrite retained legacy slots. `5_edit_book.png` now
-showcases toolbar customization; `3_en-US.png` showcases bookmarks. The complete
-filename mapping is in `export.py`. Existing images remain recoverable in Git.
+```sh
+python3 docs/screenshots/export.py
+python3 -m unittest discover -s docs/screenshots -p 'test_*.py'
+python3 docs/screenshots/validate.py
+```
+
+The exporter requires `agent-browser` and Chromium; validation requires Pillow
+(CI pins its version). An isolated browser renders frames at 3× (1080 × 2160),
+then copies those frames to the existing F-Droid slots. Phone frames live in
+`framed/`; tablet frames in `framed-tablet-7/` and `framed-tablet-10/`. Headlines,
+device borders and shadows are rendered around real captures—not generated app
+UI. The README uses the same phone frames. No push, tag or publication occurs.
+
+## F-Droid slots: no duplicates
+
+The v1.28 exporter repeated three captures under legacy and newer filenames,
+causing duplicate library, playback and toolbar images. F-Droid also has a
+documented [deleted-image retention issue](https://gitlab.com/fdroid/fdroidserver/-/issues/490),
+so deletion or renaming alone is not a safe cleanup strategy. Overwrite every
+published slot without adding new metadata filenames.
+
+| Phone filename | New scene |
+| --- | --- |
+| `1_en-US.png` | Dark Books library |
+| `1_library.png` | Light Books library |
+| `2_en-US.png` | Opened series |
+| `2_playback.png` | Playback |
+| `3_en-US.png` | Appearance |
+| `3_sleep_timer.png` | Sleep timer |
+| `4_character_list.png` | Character notes |
+| `4_en-US.png` | Bookmarks |
+| `5_edit_book.png` | Title and cover editor |
+| `6_settings.png` | Playback settings |
+| `7_listening_log.png` | Listening log |
+| `8_listening_stats.png` | Listening statistics |
+
+Both tablet directories retain `1_en-US.png` through `5_en-US.png`, now showing
+library, series, playback, listening log and statistics in order. Filenames are
+stable slot identifiers, not necessarily their original scene.
+
+`validate.py` is the single mapping used by the exporter. It rejects missing or
+unexpected slots, wrong dimensions, mismatches with exported frames, repeated
+source scenes and identical decoded pixels, even when PNG encoding differs.
+It checks both raw captures and final frames: adding different captions cannot
+disguise a duplicate capture. A source-pixel fingerprint stored in each frame
+also detects edits to masters that require re-exporting. F-Droid may strip PNG
+metadata when publishing; fingerprints are for local/CI validation, not the
+public repository. Visually review near-duplicates and framing too.
+
+After F-Droid refreshes, verify the [live listing](https://f-droid.org/en/packages/com.github.mistermo_vibecode.voiceplus/):
+12 distinct phone screenshots and five current captures for each tablet size.
+Local checks do not prove the public repository refreshed. If extra retired
+assets persist, request repository-side cleanup; do not add new filenames.
 
 ## Local session recovery
 
-The disposable `VoicePlusRelease127` AVD contains the demo library. It is currently
-managed by Android Studio, so discover its emulator serial rather than assuming
-a fixed port. Never target the connected physical phone.
-
-- Pre-change emulator backup: `/private/tmp/voiceplus-screenshot-emulator-before.tar`
-- Fictional seed generator: `/private/tmp/voiceplus-screenshot-demo/seed.py`
-- Portable seeded archive: `/private/tmp/voiceplus-screenshot-demo-portable.tar`
-- Build log: `/private/tmp/voiceplus-screenshots-build.log`
-- Capture script: `/private/tmp/voiceplus-capture-set.py`
-
-When transferring archives to Android, use `COPYFILE_DISABLE=1 tar --format=ustar`.
-The default macOS extended-header archive produced empty files with Android's tar;
-the portable transfer was checked and corrected before captures.
+The demo is retained for future captures. The ignored `artifacts/v1.29-screenshots/`
+directory holds `emulator-before.tar`, copied/migrated data, fixture generator,
+source artwork and the portable demo archive. No secrets or phone data belong
+in committed screenshots. Stop the app before restoring original data, and
+preserve the screenshot demo separately first.

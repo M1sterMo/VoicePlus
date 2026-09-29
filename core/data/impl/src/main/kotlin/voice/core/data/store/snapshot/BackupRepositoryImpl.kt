@@ -10,6 +10,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -21,8 +22,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import voice.core.data.folders.PersistedUriPermissions
 import voice.core.data.repo.internals.AppDb
+import voice.core.data.repo.internals.dao.BookContentDao
 import voice.core.data.store.snapshot.rekey.ReKeyResult
 import voice.core.logging.api.Logger
+import java.io.File
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -38,6 +41,7 @@ internal data class BackupState(
   // and after 7 autos the pre-wipe file holding the unmatched books' data would be pruned away.
   // Cleared by a fully-matched restore, or overridden by an explicit "Back up now".
   val restorePending: Boolean = false,
+  val includesCoverImages: Boolean = false,
 )
 
 /** The automatic saves kept in the folder. Older autos are pruned; manual saves never are. */
@@ -54,6 +58,7 @@ public class BackupRepositoryImpl internal constructor(
   private val osWipeRestorer: OsWipeRestorer,
   private val backupRestorer: BackupRestorer,
   private val settingsSnapshotter: SettingsSnapshotter,
+  private val bookContentDao: BookContentDao,
 ) : BackupRepository {
 
   // Serialize import/export so a restore cannot interleave with a backup write.
@@ -176,28 +181,36 @@ public class BackupRepositoryImpl internal constructor(
         }
         val snapshot = ring.best() ?: return@withLock BackupExportResult.SkippedNoSnapshot
         withContext(Dispatchers.IO) {
-          val fingerprint = ExternalBackupBundleCodec.meaningfulFingerprint(json, snapshot)
-          if (!manual && stateStore.data.first().lastBackupFingerprint == fingerprint) {
+          val coverDirectory = File(context.filesDir, "bookCovers")
+          val portableSnapshot = PortableBackupArchive.withAvailableCovers(snapshot, coverDirectory)
+          val omittedCovers = snapshot.books.count { it.coverPath != null } - portableSnapshot.books.count { it.coverPath != null }
+          if (omittedCovers > 0) Logger.w("External backup skipped $omittedCovers unavailable cover image(s)")
+          val fingerprint = ExternalBackupBundleCodec.meaningfulFingerprint(json, portableSnapshot)
+          if (!manual && state.includesCoverImages && stateStore.data.first().lastBackupFingerprint == fingerprint) {
             return@withContext BackupExportResult.SkippedUnchanged
           }
           // Always a NEW file: a crashed or interrupted write can only ever add a bad file, never
-          // damage an existing good one. (A same-second name collision makes SAF append " (1)" —
-          // the file works but won't be listed; the next write self-heals a second later.)
-          val documentUri = createDocument(folder, BackupFileNames.fileName(manual, Instant.now()))
+          // damage an existing good one. The random suffix prevents same-timestamp collisions.
+          val requestedName = BackupFileNames.fileName(manual, Instant.now())
+          val documentUri = createDocument(folder, requestedName)
             ?: return@withContext BackupExportResult.Failed
-          if (!writeDocumentText(documentUri, ExternalBackupBundleCodec.encode(json, snapshot))) {
+          try {
+            if (documentDisplayName(documentUri) != requestedName) error("Backup provider renamed the destination")
+            val output = context.contentResolver.openOutputStream(documentUri, "wt") ?: error("Backup destination unavailable")
+            val exported = output.use {
+              PortableBackupArchive.write(json, portableSnapshot, coverDirectory, it)
+            }
+            val verified = readEntry(documentUri)
+            if (verified !is ExternalReadResult.Valid || verified.snapshot != exported) {
+              error("Backup read-back failed")
+            }
+          } catch (error: Exception) {
             discardBadWrite(documentUri)
-            return@withContext BackupExportResult.Failed
-          }
-          val verified = readDocumentText(documentUri)
-            ?.let { ExternalBackupBundleCodec.decode(json, it) }
-          if (verified != ExternalBackupBundleDecodeResult.Valid(snapshot)) {
-            discardBadWrite(documentUri)
-            return@withContext BackupExportResult.Failed
+            throw error
           }
           pruneAutoBackups(folder)
           stateStore.updateData {
-            it.copy(lastBackupMillis = System.currentTimeMillis(), lastBackupFingerprint = fingerprint)
+            it.copy(lastBackupMillis = System.currentTimeMillis(), lastBackupFingerprint = fingerprint, includesCoverImages = true)
           }
           BackupExportResult.Written
         }
@@ -222,13 +235,18 @@ public class BackupRepositoryImpl internal constructor(
   override suspend fun importAndRestore(entry: BackupEntry?) {
     mutex.withLock {
       busyState.value = true
+      var importedCovers: Map<String, File> = emptyMap()
       try {
         val folder = activeFolder() ?: return@withLock
         val read = withContext(Dispatchers.IO) {
-          if (entry != null) readEntry(entry.uri) else probe(listEntries(folder))
+          val result = if (entry != null) readEntry(entry.uri, extractCovers = true) else probe(listEntries(folder), extractCovers = true)
+          if (result is ExternalReadResult.Valid) importedCovers = result.covers
+          result
         }
         val snapshot = when (read) {
-          is ExternalReadResult.Valid -> read.snapshot
+          is ExternalReadResult.Valid -> {
+            read.snapshot
+          }
           ExternalReadResult.Corrupt -> {
             statusState.value = BackupStatus(BackupStatusKind.BackupUnreadable)
             return@withLock
@@ -247,7 +265,7 @@ public class BackupRepositoryImpl internal constructor(
         if (backupRestorer.canApplyDirect(snapshot)) {
           // Same device, ids alive: apply additively without the scan + re-key machinery.
           // applyDirect owns the whole commit (rows, then hidden set + settings on success).
-          val restored = backupRestorer.applyDirect(snapshot)
+          val restored = backupRestorer.applyDirect(snapshot, importedCovers)
           stateStore.updateData { it.copy(restorePending = false) }
           lastRestoreState.value = RestoreSummary(restoredCount = restored, unmatched = emptyList())
           statusState.value = BackupStatus(BackupStatusKind.RestoreComplete, restoredCount = restored)
@@ -255,7 +273,7 @@ public class BackupRepositoryImpl internal constructor(
           // The re-key scan derives names, so the one scan-affecting setting must precede it;
           // everything else is applied only after the restore succeeds.
           settingsSnapshotter.applyScanAffecting(snapshot.settings)
-          val result = osWipeRestorer.run(snapshot)
+          val result = osWipeRestorer.run(snapshot, importedCovers)
           settingsSnapshotter.apply(snapshot.settings)
           // While books remain unmatched, their data lives ONLY in the backup files: suppress
           // automatic exports so a partial-library save can't shadow (and eventually prune) them.
@@ -269,6 +287,15 @@ public class BackupRepositoryImpl internal constructor(
         Logger.w(t, "External backup import failed; library is unaffected")
         statusState.value = BackupStatus(BackupStatusKind.BackupUnreadable)
       } finally {
+        // Never leave images from an unmatched/failed import behind, or delete a committed cover.
+        if (importedCovers.isNotEmpty()) {
+          withContext(NonCancellable + Dispatchers.IO) {
+            runCatching {
+              val referenced = bookContentDao.all().mapNotNullTo(mutableSetOf()) { it.cover }
+              importedCovers.values.filterNot { it in referenced }.forEach { it.delete() }
+            }.onFailure { Logger.w(it, "Could not clean up unused imported artwork") }
+          }
+        }
         busyState.value = false
       }
     }
@@ -280,7 +307,10 @@ public class BackupRepositoryImpl internal constructor(
   }
 
   private sealed interface ExternalReadResult {
-    data class Valid(val snapshot: LibrarySnapshot) : ExternalReadResult
+    data class Valid(
+      val snapshot: LibrarySnapshot,
+      val covers: Map<String, File> = emptyMap(),
+    ) : ExternalReadResult
     data object Missing : ExternalReadResult
     data object Corrupt : ExternalReadResult
     data object RefusedNewer : ExternalReadResult
@@ -291,10 +321,13 @@ public class BackupRepositoryImpl internal constructor(
    * but a save from a NEWER app version stops the search — silently restoring older data past it
    * would look like data loss. The user is told to update the app instead.
    */
-  private fun probe(entries: List<BackupEntry>): ExternalReadResult {
+  private fun probe(
+    entries: List<BackupEntry>,
+    extractCovers: Boolean = false,
+  ): ExternalReadResult {
     if (entries.isEmpty()) return ExternalReadResult.Missing
     entries.forEach { entry ->
-      when (val read = readEntry(entry.uri)) {
+      when (val read = readEntry(entry.uri, extractCovers)) {
         is ExternalReadResult.Valid, ExternalReadResult.RefusedNewer -> return read
         ExternalReadResult.Corrupt, ExternalReadResult.Missing -> Unit // try the next one
       }
@@ -302,12 +335,34 @@ public class BackupRepositoryImpl internal constructor(
     return ExternalReadResult.Corrupt
   }
 
-  private fun readEntry(uri: Uri): ExternalReadResult {
-    val text = runCatching { readDocumentText(uri) }.getOrNull() ?: return ExternalReadResult.Missing
-    return when (val decoded = ExternalBackupBundleCodec.decode(json, text)) {
+  private fun readEntry(
+    uri: Uri,
+    extractCovers: Boolean = false,
+  ): ExternalReadResult {
+    val decoded = runCatching {
+      context.contentResolver.openInputStream(uri)?.buffered()?.use { input ->
+        input.mark(2)
+        val archive = input.read() == 'P'.code && input.read() == 'K'.code
+        input.reset()
+        if (archive) {
+          PortableBackupArchive.read(json, input, if (extractCovers) File(context.filesDir, "bookCovers") else null)
+        } else {
+          ExternalBackupBundleCodec.decode(json, input.reader().readText())
+        }
+      }
+    }.getOrNull() ?: return ExternalReadResult.Missing
+    return when (decoded) {
       ExternalBackupBundleDecodeResult.Corrupt -> ExternalReadResult.Corrupt
       ExternalBackupBundleDecodeResult.NewerFormat -> ExternalReadResult.RefusedNewer
-      is ExternalBackupBundleDecodeResult.Valid -> decoded.snapshot.compatibility()
+      is ExternalBackupBundleDecodeResult.Valid -> {
+        val result = decoded.snapshot.compatibility()
+        if (result is ExternalReadResult.Valid) {
+          result.copy(covers = decoded.covers)
+        } else {
+          decoded.covers.values.forEach { it.delete() }
+          result
+        }
+      }
     }
   }
 
@@ -316,21 +371,8 @@ public class BackupRepositoryImpl internal constructor(
       Logger.w("Refusing external backup from a newer version (schema=$schemaVersion, db=$dbVersion)")
       ExternalReadResult.RefusedNewer
     } else {
-      ExternalReadResult.Valid(this)
+      ExternalReadResult.Valid(withTitleOverrideCompatibility())
     }
-  }
-
-  private fun readDocumentText(uri: Uri): String? {
-    return context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-  }
-
-  private fun writeDocumentText(
-    uri: Uri,
-    text: String,
-  ): Boolean {
-    val stream = context.contentResolver.openOutputStream(uri, "wt") ?: return false
-    stream.bufferedWriter().use { it.write(text) }
-    return true
   }
 
   /** All VoicePlus backup files in the folder, newest first (legacy fixed-name bundles last). */
@@ -368,7 +410,19 @@ public class BackupRepositoryImpl internal constructor(
     displayName: String,
   ): Uri? {
     val parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
-    return DocumentsContract.createDocument(context.contentResolver, parent, "application/json", displayName)
+    return DocumentsContract.createDocument(context.contentResolver, parent, "application/zip", displayName)
+  }
+
+  private fun documentDisplayName(uri: Uri): String? {
+    return context.contentResolver.query(
+      uri,
+      arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+      null,
+      null,
+      null,
+    )?.use { cursor ->
+      if (!cursor.moveToFirst()) null else cursor.getString(0)
+    }
   }
 
   private fun deleteDocument(uri: Uri): Boolean {

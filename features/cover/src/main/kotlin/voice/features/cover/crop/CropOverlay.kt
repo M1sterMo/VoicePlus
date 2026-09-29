@@ -16,7 +16,6 @@ import android.widget.FrameLayout
 import androidx.core.view.isVisible
 import voice.core.ui.dpToPxRounded
 import voice.features.cover.R
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.properties.Delegates
@@ -42,6 +41,15 @@ class CropOverlay @JvmOverloads constructor(
   private val dragRectCache = RectF()
   private val dragRect = RectF()
   private val bounds = RectF()
+  var aspectRatio: Float = 1f
+    set(value) {
+      require(value.isFinite() && value > 0f)
+      if (field != value) {
+        field = value
+        resetSelection()
+        invalidate()
+      }
+    }
   private val darkeningPaint = Paint().apply {
     setARGB(120, 0, 0, 0)
   }
@@ -50,11 +58,8 @@ class CropOverlay @JvmOverloads constructor(
     context,
     object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
       override fun onScale(detector: ScaleGestureDetector): Boolean {
-        val dx = detector.currentSpanX - detector.previousSpanX
-        val dy = detector.currentSpanY - detector.previousSpanY
-        val max = max(dx, dy)
-        dragRect.squareInset(-max)
-        return max != 0f
+        resizeToWidth(dragRect.width() * detector.scaleFactor)
+        return detector.scaleFactor != 1f
       }
     },
   )
@@ -94,8 +99,6 @@ class CropOverlay @JvmOverloads constructor(
       isVisible = false
     }
 
-  private fun minRectSize() = min(bounds.width(), bounds.height()) / 3f
-
   private infix fun Float.inRangeOf(target: Float) = this >= (target - touchOffset) && this <= (target + touchOffset)
 
   private fun MotionEvent.asResizeType(): Resize? {
@@ -112,8 +115,14 @@ class CropOverlay @JvmOverloads constructor(
     }
   }
 
-  private fun RectF.squareInset(value: Float) {
-    inset(value, value)
+  private fun resizeToWidth(width: Float) {
+    if (bounds.isEmpty) return
+    val maxWidth = min(bounds.width(), bounds.height() * aspectRatio)
+    val halfWidth = width.coerceIn(maxWidth / 3f, maxWidth) / 2f
+    val halfHeight = halfWidth / aspectRatio
+    val cx = dragRect.centerX()
+    val cy = dragRect.centerY()
+    dragRect.set(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight)
   }
 
   @SuppressLint("ClickableViewAccessibility")
@@ -162,12 +171,12 @@ class CropOverlay @JvmOverloads constructor(
           } else if (eventType == EventType.RESIZE) {
             // resize depending on which side touched
             val inset = when (resizeType!!) {
-              Resize.TOP -> y - dragRect.top
+              Resize.TOP -> (y - dragRect.top) * aspectRatio
               Resize.RIGHT -> dragRect.right - x
-              Resize.BOTTOM -> dragRect.bottom - y
+              Resize.BOTTOM -> (dragRect.bottom - y) * aspectRatio
               Resize.LEFT -> x - dragRect.left
             }
-            dragRect.squareInset(inset)
+            resizeToWidth(dragRect.width() - 2f * inset)
           }
         }
         MotionEvent.ACTION_UP -> {
@@ -178,7 +187,7 @@ class CropOverlay @JvmOverloads constructor(
     }
 
     // make sure the drag rect sits perfect
-    preserveSize()
+    resizeToWidth(dragRect.width())
     preserveBounds()
     // only invalidate if there are changes
     if (dragRect != dragRectCache) invalidate()
@@ -207,26 +216,6 @@ class CropOverlay @JvmOverloads constructor(
     }
   }
 
-  private fun preserveSize() {
-    val circleSize = bottomCircle.width
-
-    // preserve min size
-    val minSize = minRectSize()
-    val w = dragRect.width()
-    if (w < minSize) {
-      val diff = minSize - w
-      dragRect.squareInset(-diff / 2f)
-    }
-
-    // preserve max size
-    val dragW = dragRect.width()
-    val boundsSize = min(bounds.width(), bounds.height()) - circleSize
-    val diff = dragW - boundsSize
-    if (diff > 0) {
-      dragRect.squareInset(diff / 2f)
-    }
-  }
-
   override fun onSizeChanged(
     w: Int,
     h: Int,
@@ -240,10 +229,14 @@ class CropOverlay @JvmOverloads constructor(
     val wf = w.toFloat()
     val hf = h.toFloat()
     bounds.set(0f, 0f, wf, hf)
-    val dragSize = min(wf, hf)
+    resetSelection()
+  }
 
-    dragRect.set(0f, 0f, dragSize, dragSize)
-    dragRect.offset(bounds.centerX() - dragSize / 2f, bounds.centerY() - dragSize / 2f)
+  private fun resetSelection() {
+    val width = min(bounds.width(), bounds.height() * aspectRatio)
+    val height = width / aspectRatio
+    dragRect.set(0f, 0f, width, height)
+    dragRect.offset(bounds.centerX() - width / 2f, bounds.centerY() - height / 2f)
   }
 
   /**

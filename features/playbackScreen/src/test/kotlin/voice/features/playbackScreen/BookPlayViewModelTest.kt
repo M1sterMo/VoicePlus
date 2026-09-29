@@ -14,11 +14,16 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Test
@@ -37,6 +42,7 @@ import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.playback.CurrentBookResolver
 import voice.core.playback.LivePlaybackState
 import voice.core.playback.PlayerController
+import voice.core.playback.misc.Decibel
 import voice.core.playback.overlay
 import voice.core.playback.playstate.PlayStateManager
 import voice.core.sleeptimer.SleepTimer
@@ -55,6 +61,7 @@ class BookPlayViewModelTest {
   private val sleepTimerDataStore = MemoryDataStore(SleepTimerPreference.Default.copy(duration = 5.minutes))
   private val book = book()
   private val currentBookStoreId = MemoryDataStore<BookId?>(book.id)
+  private val globalVolumeGainStore = MemoryDataStore<Float?>(null)
   private val sleepTimer = mockk<SleepTimer> {
     val stateFlow = MutableStateFlow<SleepTimerState>(SleepTimerState.Disabled)
     every {
@@ -78,6 +85,8 @@ class BookPlayViewModelTest {
 
   private val player = mockk<PlayerController> {
     every { pauseIfCurrentBookDifferentFrom(any()) } just Runs
+    every { setGain(any(), any()) } returns Job().apply { complete() }
+    coEvery { awaitGainChanges() } just Runs
   }
   private val playStateManager = mockk<PlayStateManager> {
     every { flow } returns MutableStateFlow(PlayStateManager.PlayState.Paused)
@@ -104,13 +113,87 @@ class BookPlayViewModelTest {
     chapterNameOverrideRepo = mockk {
       every { overridesForBook(any()) } returns flowOf(emptyList())
     },
-    volumeGainFormatter = mockk(),
+    volumeGainFormatter = VolumeGainFormatter(),
     batteryOptimization = mockk(),
     sleepTimerPreferenceStore = sleepTimerDataStore,
     toolbarActionsStore = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
+    globalVolumeGainStore = globalVolumeGainStore,
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
   )
+
+  @Test
+  fun `volume boost sends global mode and restores saved values across books`() = scope.runTest {
+    viewModel.onVolumeGainIconClick()
+    advanceUntilIdle()
+    viewModel.dialogState.value.shouldBeInstanceOf<BookPlayDialogViewState.VolumeGainDialog>().remember shouldBe false
+    val otherBook = book().let { it.copy(content = it.content.copy(gain = 2F)) }
+    coEvery { currentBookResolver.book(otherBook.id) } returns otherBook
+    for ((gain, remember) in listOf(3F to false, 3F to true, 6F to true, 0F to true, 0F to false)) {
+      viewModel.onVolumeGainChanged(Decibel(gain), remember)
+      viewModel.onVolumeGainChanged(Decibel(gain)) // Slider changes must keep the checkbox state.
+      advanceUntilIdle()
+      val dialog = viewModel.dialogState.value.shouldBeInstanceOf<BookPlayDialogViewState.VolumeGainDialog>()
+      dialog.gain shouldBe Decibel(gain)
+      dialog.remember shouldBe remember
+      verify(exactly = 2) { player.setGain(Decibel(gain), remember) }
+
+      globalVolumeGainStore.updateData { if (remember) gain else null } // Saving is owned by the real player.
+      val reopened = viewModel(book = otherBook)
+      reopened.onVolumeGainIconClick()
+      advanceUntilIdle()
+      val restored = reopened.dialogState.value.shouldBeInstanceOf<BookPlayDialogViewState.VolumeGainDialog>()
+      restored.gain shouldBe Decibel(if (remember) gain else 2F)
+      restored.remember shouldBe remember
+    }
+  }
+
+  @Test
+  fun `same and new playback screens wait for saves still in controller transport`() = scope.runTest {
+    val save = Job()
+    every { player.setGain(Decibel(6F), true) } returns save
+    coEvery { player.awaitGainChanges() } coAnswers { save.join() }
+    viewModel.onVolumeGainIconClick()
+    advanceUntilIdle()
+    viewModel.onVolumeGainChanged(Decibel(6F), remember = true)
+    viewModel.dismissDialog()
+    val screens = listOf(viewModel, viewModel())
+    screens.forEach { it.onVolumeGainIconClick() }
+    runCurrent()
+    screens.forEach { it.dialogState.value shouldBe null }
+
+    globalVolumeGainStore.updateData { 6F }
+    save.complete()
+    advanceUntilIdle()
+    screens.forEach {
+      val dialog = it.dialogState.value.shouldBeInstanceOf<BookPlayDialogViewState.VolumeGainDialog>()
+      dialog.gain shouldBe Decibel(6F)
+      dialog.remember shouldBe true
+    }
+  }
+
+  @Test
+  fun `a new playback screen waits for already queued global saves`() = scope.runTest {
+    val releaseSave = CompletableDeferred<Unit>()
+    val save = backgroundScope.launch {
+      globalVolumeGainStore.updateData {
+        releaseSave.await()
+        6F
+      }
+    }
+    runCurrent()
+    val reopened = viewModel()
+    reopened.onVolumeGainIconClick()
+    runCurrent()
+    reopened.dialogState.value shouldBe null
+
+    releaseSave.complete(Unit)
+    save.join()
+    advanceUntilIdle()
+    val dialog = reopened.dialogState.value.shouldBeInstanceOf<BookPlayDialogViewState.VolumeGainDialog>()
+    dialog.gain shouldBe Decibel(6F)
+    dialog.remember shouldBe true
+  }
 
   @Test
   fun sleepTimerValueChanging() = scope.runTest {
@@ -407,9 +490,8 @@ class BookPlayViewModelTest {
         every { flow(book.id) } returns MutableStateFlow(book)
       },
       currentBookResolver = currentBookResolver,
-      player = mockk {
-        every { pauseIfCurrentBookDifferentFrom(any()) } just Runs
-        every { livePlaybackStateFlow(book.id) } returns livePlaybackFlow
+      player = player.also {
+        every { it.livePlaybackStateFlow(book.id) } returns livePlaybackFlow
       },
       sleepTimer = sleepTimer,
       playStateManager = mockk {
@@ -425,10 +507,11 @@ class BookPlayViewModelTest {
       chapterNameOverrideRepo = mockk {
         every { overridesForBook(any()) } returns flowOf(emptyList())
       },
-      volumeGainFormatter = mockk(),
+      volumeGainFormatter = VolumeGainFormatter(),
       batteryOptimization = mockk(),
       sleepTimerPreferenceStore = sleepTimerDataStore,
       toolbarActionsStore = toolbarActionsStore,
+      globalVolumeGainStore = globalVolumeGainStore,
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
     )

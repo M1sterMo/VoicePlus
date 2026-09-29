@@ -2,7 +2,6 @@ package voice.core.scanner
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.Build
 import androidx.core.graphics.scale
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.Dispatchers
@@ -15,50 +14,61 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.UUID
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 @Inject
 public class CoverSaver
 internal constructor(
   private val repo: BookRepository,
   private val context: Context,
+  private val drafts: BookEditDraftStore,
 ) {
 
+  @IgnorableReturnValue
   public suspend fun save(
     bookId: BookId,
     cover: Bitmap,
-  ) {
-    val newCover = newBookCoverFile()
+    editSession: String? = null,
+  ): Boolean {
+    val newCover = if (editSession == null) newBookCoverFile() else newDraftCoverFile()
 
-    withContext(Dispatchers.IO) {
+    val saved = withContext(Dispatchers.IO) {
       // scale down if bitmap is too large
       val preferredSize = 1920
       val bitmapToSave = if (max(cover.width, cover.height) > preferredSize) {
-        cover.scale(preferredSize, preferredSize)
+        val scale = preferredSize.toFloat() / max(cover.width, cover.height)
+        cover.scale((cover.width * scale).roundToInt().coerceAtLeast(1), (cover.height * scale).roundToInt().coerceAtLeast(1))
       } else {
         cover
       }
 
       try {
         FileOutputStream(newCover).use {
-          val compressFormat = when (newCover.extension) {
-            "png" -> Bitmap.CompressFormat.PNG
-            "webp" -> if (Build.VERSION.SDK_INT >= 30) {
-              Bitmap.CompressFormat.WEBP_LOSSLESS
-            } else {
-              @Suppress("DEPRECATION")
-              Bitmap.CompressFormat.WEBP
-            }
-            else -> error("Unhandled image extension for $newCover")
+          if (!bitmapToSave.compress(Bitmap.CompressFormat.PNG, 70, it)) {
+            throw IOException("Could not encode cover")
           }
-          bitmapToSave.compress(compressFormat, 70, it)
           it.flush()
         }
+        true
       } catch (e: IOException) {
         Logger.w(e, "Error at saving image with destination=$newCover")
+        newCover.delete()
+        false
+      } finally {
+        if (bitmapToSave !== cover) bitmapToSave.recycle()
       }
     }
 
-    setBookCover(newCover, bookId)
+    if (saved) {
+      if (editSession != null) return drafts.stageCover(editSession, newCover)
+      try {
+        withContext(kotlinx.coroutines.NonCancellable) { setBookCover(newCover, bookId) }
+      } catch (error: Exception) {
+        withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { newCover.delete() }
+        throw error
+      }
+    }
+    return saved
   }
 
   internal suspend fun newBookCoverFile(): File {
@@ -69,19 +79,48 @@ internal constructor(
     return File(coversFolder, "${UUID.randomUUID()}.png")
   }
 
+  internal suspend fun newDraftCoverFile(): File {
+    val coversFolder = withContext(Dispatchers.IO) {
+      File(context.filesDir, "draftBookCovers")
+        .also { coverFolder -> coverFolder.mkdirs() }
+    }
+    return File(coversFolder, "${UUID.randomUUID()}.png")
+  }
+
   internal suspend fun setBookCover(
     cover: File,
     bookId: BookId,
   ) {
     val oldCover = repo.get(bookId)?.content?.cover
-    if (oldCover != null) {
+    repo.updateBook(bookId) {
+      it.copy(cover = cover)
+    }
+    if (oldCover != null && oldCover != cover) {
       withContext(Dispatchers.IO) {
         oldCover.delete()
       }
     }
+  }
 
-    repo.updateBook(bookId) {
-      it.copy(cover = cover)
+  /** Scanner-only: adopt [cover] only if a user edit has not supplied a valid cover meanwhile. */
+  internal suspend fun setBookCoverIfMissing(
+    cover: File,
+    bookId: BookId,
+  ): Boolean {
+    var adopted = false
+    var oldCover: File? = null
+    repo.updateBook(bookId) { current ->
+      if (current.cover?.exists() == true) {
+        current
+      } else {
+        adopted = true
+        oldCover = current.cover
+        current.copy(cover = cover)
+      }
     }
+    if (adopted && oldCover != null && oldCover != cover) {
+      withContext(Dispatchers.IO) { oldCover?.delete() }
+    }
+    return adopted
   }
 }

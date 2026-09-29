@@ -65,7 +65,7 @@ class RestoreReKeyerTest {
       lastPlayedAtEpochMillis = lastPlayed, author = "Author", name = "Book", addedAtEpochMillis = 10,
       chapters = chapterRelNames.map { oldCid(relPath, it) }, currentChapter = oldCid(relPath, currentRel),
       positionInChapter = position, coverPath = "/dead/cover.jpg", gain = 2f, genre = "Genre",
-      narrator = "Narrator", series = "Series", part = "Part", chapterNameOffset = 3,
+      narrator = "Narrator", series = "Series", part = "Part", chapterNameOffset = 3, seriesGroup = "My collection", seriesOrder = 2,
     ),
     chapters = chapterRelNames.map { SnapChapter(ChapterId(oldCid(relPath, it)), it, snapDuration) },
     bookmarks = bookmarks,
@@ -128,6 +128,8 @@ class RestoreReKeyerTest {
     )
     m.content.currentChapter shouldBe ChapterId(newCid("primary:Books/Dune", "02.mp3"))
     m.content.positionInChapter shouldBe 400L
+    m.content.seriesGroup shouldBe "My collection"
+    m.content.seriesOrder shouldBe 2
     // carried settings survive
     m.content.playbackSpeed shouldBe 1.5f
     m.content.chapterNameOffset shouldBe 3

@@ -30,6 +30,13 @@ public data class BookContent(
   val part: String?,
   @ColumnInfo(defaultValue = "0")
   val chapterNameOffset: Int = 0,
+  /** User-chosen library grouping, independent of imported series metadata. */
+  val seriesGroup: String? = null,
+  /** User-chosen position in the group; null retains the imported part/title ordering. */
+  val seriesOrder: Int? = null,
+  /** Keeps a title chosen in Edit book from being replaced by a metadata re-scan. */
+  @ColumnInfo(defaultValue = "0")
+  val nameOverridden: Boolean = false,
 ) {
 
   @Ignore

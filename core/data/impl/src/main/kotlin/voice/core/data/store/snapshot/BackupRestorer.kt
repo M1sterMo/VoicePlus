@@ -13,11 +13,13 @@ import voice.core.data.repo.internals.dao.BookContentDao
 import voice.core.data.repo.internals.dao.BookmarkDao
 import voice.core.data.repo.internals.dao.ChapterDao
 import voice.core.data.repo.internals.dao.ChapterNameOverrideDao
+import voice.core.data.repo.internals.dao.LibraryOrganisationDao
 import voice.core.data.repo.internals.dao.ListeningEventDao
 import voice.core.data.repo.internals.dao.ListeningSessionDao
 import voice.core.data.repo.internals.transaction
 import voice.core.data.store.ExcludedBooksStore
 import voice.core.logging.api.Logger
+import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
 @SingleIn(AppScope::class)
@@ -36,6 +38,7 @@ internal class BackupRestorer(
   private val contentRepo: BookContentRepo,
   private val settingsSnapshotter: SettingsSnapshotter,
   private val restoreGate: RestoreGate,
+  private val organisationDao: LibraryOrganisationDao,
 ) {
 
   suspend fun restoreIfNeeded() {
@@ -45,7 +48,7 @@ internal class BackupRestorer(
       // with all books inactive — e.g. the user removed their folders — is intentionally NOT auto-restored;
       // resurrecting it would fight the removal. Explicit Restore covers recovery from a destructive bug.
       if (live.isNotEmpty()) return
-      val candidate = RestoreSelector.select(live.size, ring.readAll()) ?: return
+      val candidate = RestoreSelector.select(live.size, ring.readAll())?.withTitleOverrideCompatibility() ?: return
       // The snapshot's hidden set filters the restore; the stores are only written once the
       // apply has succeeded, so a failed restore leaves settings and the hidden set untouched.
       val excluded = excludedBooksStore.data.first() + candidate.hiddenBooks
@@ -68,13 +71,22 @@ internal class BackupRestorer(
    * as [restoreIfNeeded], stated once so the two paths cannot drift. [OsWipeRestorer] remains the
    * door for dead-URI bundles.
    */
-  suspend fun applyDirect(snapshot: LibrarySnapshot): Int {
+  suspend fun applyDirect(
+    snapshot: LibrarySnapshot,
+    covers: Map<String, File> = emptyMap(),
+  ): Int {
     val restored = restoreGate.withRestoreActive {
       val excludedIds = excludedBooksStore.data.first() + snapshot.hiddenBooks
-      val written = apply(snapshot, excludedIds, bookContentDao.all(), preserveLiveCovers = true)
+      val live = bookContentDao.all()
+      val written = apply(snapshot, excludedIds, live, preserveLiveCovers = true, covers = covers)
       excludedBooksStore.updateData { it + snapshot.hiddenBooks }
       settingsSnapshotter.apply(snapshot.settings)
       contentRepo.invalidateCache()
+      deleteReplacedCovers(
+        oldCovers = live.filter { it.id.value in covers }.map { it.cover },
+        importedCovers = covers.values,
+        referencedCovers = bookContentDao.all().map { it.cover },
+      )
       Logger.i("Directly restored $written books from an external bundle (same-device ids)")
       written
     }
@@ -82,12 +94,14 @@ internal class BackupRestorer(
     return restored
   }
 
-  /** True when every active book in [snapshot] already exists in the live database (same-URI restore). */
+  /** True when active and hidden books can all be restored without translating their ids. */
   suspend fun canApplyDirect(snapshot: LibrarySnapshot): Boolean {
     val active = snapshot.activeIds()
     if (active.isEmpty()) return false
-    val liveIds = bookContentDao.all().mapTo(mutableSetOf()) { it.id.value }
-    return liveIds.containsAll(active)
+    val live = bookContentDao.all()
+    val liveActiveIds = live.filter { it.isActive }.mapTo(mutableSetOf()) { it.id.value }
+    val liveIds = live.mapTo(mutableSetOf()) { it.id.value }
+    return liveActiveIds.containsAll(active) && liveIds.containsAll(snapshot.hiddenBooks)
   }
 
   private suspend fun apply(
@@ -95,20 +109,23 @@ internal class BackupRestorer(
     excludedIds: Set<String>,
     live: List<BookContent>,
     preserveLiveCovers: Boolean = false,
+    covers: Map<String, File> = emptyMap(),
   ): Int {
     val liveById = live.associateBy { it.id.value }
+    fun included(id: String) = id !in excludedIds || id in snapshot.hiddenBooks
     val books = snapshot.books
-      .filter { it.id !in excludedIds }
+      .filter { included(it.id) }
       .mapNotNull { dto ->
         dto.toBookContentOrNull()?.let { restored ->
-          dto.id to if (preserveLiveCovers) restored.copy(cover = liveById[dto.id]?.cover) else restored
+          val withCover = if (preserveLiveCovers) restored.copy(cover = covers[dto.id] ?: liveById[dto.id]?.cover) else restored
+          dto.id to withCover.copy(isActive = withCover.isActive && dto.id !in snapshot.hiddenBooks)
         }
       }
-    val bookmarks = snapshot.bookmarks.filter { it.bookId !in excludedIds }.map { it.toBookmark() }
-    val characters = snapshot.characters.filter { it.bookId !in excludedIds }.map { it.toBookCharacter() }
-    val overrides = snapshot.chapterNameOverrides.filter { it.bookId !in excludedIds }.map { it.toOverride() }
-    val sessions = snapshot.sessions.filter { it.bookId !in excludedIds }.map { it.toListeningSession() }
-    val events = snapshot.events.filter { it.bookId !in excludedIds }.map { it.toListeningEvent() }
+    val bookmarks = snapshot.bookmarks.filter { included(it.bookId) }.map { it.toBookmark() }
+    val characters = snapshot.characters.filter { included(it.bookId) }.map { it.toBookCharacter() }
+    val overrides = snapshot.chapterNameOverrides.filter { included(it.bookId) }.map { it.toOverride() }
+    val sessions = snapshot.sessions.filter { included(it.bookId) }.map { it.toListeningSession() }
+    val events = snapshot.events.filter { included(it.bookId) }.map { it.toListeningEvent() }
     // chapters2 carries no bookId, so restore them all (REPLACE). A chapter with no surviving content2 row is
     // simply invisible; re-inserting is what lets a restored book's BookRepository.book() resolve at all.
     val chapters = snapshot.chapters.map { it.toChapter() }
@@ -120,21 +137,19 @@ internal class BackupRestorer(
       val seenSessionKeys = listeningSessionDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       val seenCharacterKeys = bookCharacterDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       val seenEventKeys = listeningEventDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
-      chapters.forEach { chapterDao.insert(it) }
+      val existingChapterIds = if (chapters.isEmpty()) {
+        emptySet()
+      } else {
+        chapterDao.chapters(chapters.map { it.id }).mapTo(mutableSetOf()) { it.id }
+      }
+      chapters.filter { it.id !in existingChapterIds }.forEach { chapterDao.insert(it) }
+      live.filter { it.id.value in excludedIds && it.isActive }
+        .forEach { bookContentDao.insert(it.copy(isActive = false)) }
       books.forEach { (id, snap) ->
         val liveRow = liveById[id]
-        when {
-          // Missing live row, or the snapshot is at least as fresh -> take the snapshot copy.
-          liveRow == null || snap.lastPlayedAt >= liveRow.lastPlayedAt -> {
-            bookContentDao.insert(snap)
-            written++
-          }
-          // The collapse was only an isActive flip; keep the fresher live progress, just re-activate.
-          !liveRow.isActive && snap.isActive -> {
-            bookContentDao.insert(liveRow.copy(isActive = true))
-            written++
-          }
-        }
+        // Restore user metadata and preferences, but never roll back newer live playback progress.
+        bookContentDao.insert(snap.preserveNewerPlaybackFrom(liveRow))
+        written++
       }
       bookmarks.forEach { bookmarkDao.addBookmark(it) }
       characters.forEach { character ->
@@ -147,9 +162,8 @@ internal class BackupRestorer(
       events.forEach { event ->
         if (seenEventKeys.add(event.naturalKey())) listeningEventDao.insert(event.copy(id = 0))
       }
+      organisationDao.restore(snapshot, bookContentDao.all().associate { it.id.value to it.id.value })
     }
-    // Books whose live progress was NEWER than the snapshot are deliberately untouched; report
-    // only what was actually written so "Restored N books" is never a lie.
     return written
   }
 }

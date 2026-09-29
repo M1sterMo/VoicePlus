@@ -21,6 +21,9 @@ public annotation class SleepTimerPreferenceStore
 public annotation class GridModeStore
 
 @Qualifier
+public annotation class BooksPerRowStore
+
+@Qualifier
 public annotation class DarkThemeStore
 
 @Qualifier
@@ -64,3 +67,6 @@ public annotation class OpenListeningSessionStore
 
 @Qualifier
 public annotation class PlaybackToolbarActionsStore
+
+@Qualifier
+public annotation class GlobalVolumeGainStore

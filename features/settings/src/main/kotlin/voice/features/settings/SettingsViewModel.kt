@@ -23,6 +23,7 @@ import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.AutoRewindAmountStore
+import voice.core.data.store.BooksPerRowStore
 import voice.core.data.store.DarkThemeStore
 import voice.core.data.store.ExperimentalPlaybackPersistenceStore
 import voice.core.data.store.GridModeStore
@@ -37,7 +38,6 @@ import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.FolderPickerInSettingsFeatureFlagQualifier
 import voice.core.scanner.MediaScanTrigger
 import voice.core.ui.DARK_THEME_SETTABLE
-import voice.core.ui.GridCount
 import voice.navigation.Destination
 import voice.navigation.Navigator
 import java.net.URLEncoder
@@ -57,9 +57,10 @@ class SettingsViewModel(
   private val appInfoProvider: AppInfoProvider,
   @GridModeStore
   private val gridModeStore: DataStore<GridMode>,
+  @BooksPerRowStore
+  private val booksPerRowStore: DataStore<Int>,
   @SleepTimerPreferenceStore
   private val sleepTimerPreferenceStore: DataStore<SleepTimerPreference>,
-  private val gridCount: GridCount,
   @FolderPickerInSettingsFeatureFlagQualifier
   private val folderPickerInSettingsFeatureFlag: FeatureFlag<Boolean>,
   @MediaButtonDoubleClickHandlerStore
@@ -88,6 +89,7 @@ class SettingsViewModel(
     val autoRewindAmount by remember { autoRewindAmountStore.data }.collectAsState(initial = 0)
     val seekTime by remember { seekTimeStore.data }.collectAsState(initial = 0)
     val gridMode by remember { gridModeStore.data }.collectAsState(initial = GridMode.GRID)
+    val booksPerRow by remember { booksPerRowStore.data }.collectAsState(initial = 2)
     val autoSleepTimer by remember { sleepTimerPreferenceStore.data }.collectAsState(
       initial = SleepTimerPreference.Default,
     )
@@ -117,10 +119,10 @@ class SettingsViewModel(
       autoRewindInSeconds = autoRewindAmount,
       dialog = dialog.value,
       appVersion = appInfoProvider.versionName,
-      useGrid = when (gridMode) {
-        GridMode.LIST -> false
-        GridMode.GRID -> true
-        GridMode.FOLLOW_DEVICE -> gridCount.useGridAsDefault()
+      booksPerRow = booksPerRow.coerceIn(2, 3),
+      gridMode = when (gridMode) {
+        GridMode.FOLLOW_DEVICE -> GridMode.BOOKS
+        else -> gridMode
       },
       autoSleepTimer = SettingsViewState.AutoSleepTimerViewState(
         enabled = autoSleepTimer.autoSleepTimerEnabled,
@@ -149,20 +151,15 @@ class SettingsViewModel(
     }
   }
 
-  override fun toggleGrid() {
+  override fun setLibraryView(mode: GridMode) {
     scope.launch {
-      gridModeStore.updateData { currentMode ->
-        when (currentMode) {
-          GridMode.LIST -> GridMode.GRID
-          GridMode.GRID -> GridMode.LIST
-          GridMode.FOLLOW_DEVICE -> if (gridCount.useGridAsDefault()) {
-            GridMode.LIST
-          } else {
-            GridMode.GRID
-          }
-        }
-      }
+      gridModeStore.updateData { mode }
     }
+  }
+
+  override fun setBooksPerRow(count: Int) {
+    require(count in 2..3)
+    scope.launch { booksPerRowStore.updateData { count } }
   }
 
   override fun seekAmountChanged(seconds: Int) {
@@ -245,6 +242,10 @@ class SettingsViewModel(
 
   override fun openLicenses() {
     navigator.goTo(Destination.OpenSourceLicenses)
+  }
+
+  override fun openPrivacyPolicy() {
+    navigator.goTo(Destination.Website(PRIVACY_POLICY_URL))
   }
 
   override fun suggestIdea() {
@@ -348,3 +349,4 @@ private fun String.urlEncoded(): String = URLEncoder.encode(this, StandardCharse
 
 private const val IDEAS_URL = "https://github.com/mistermo-vibecode/VoicePlus/discussions/categories/ideas"
 private const val BUG_REPORT_URL = "https://github.com/mistermo-vibecode/VoicePlus/issues/new"
+private const val PRIVACY_POLICY_URL = "https://github.com/mistermo-vibecode/VoicePlus/blob/main/PRIVACY.md"

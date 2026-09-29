@@ -61,8 +61,7 @@ internal class CoverScanner(
             coverFile.outputStream().use { output ->
               input.copyTo(output)
             }
-          }
-          true
+          } != null
         } catch (e: IOException) {
           Logger.w(e, "Error while copying the cover from ${child.uri}")
           false
@@ -72,9 +71,10 @@ internal class CoverScanner(
           false
         }
         if (worked) {
-          coverSaver.setBookCover(coverFile, book.id)
+          if (!coverSaver.setBookCoverIfMissing(coverFile, book.id)) coverFile.delete()
           return@withContext true
         }
+        coverFile.delete()
       }
     }
 
@@ -90,9 +90,10 @@ internal class CoverScanner(
           outputFile = coverFile,
         )
         if (success && coverFile.exists() && coverFile.length() > 0) {
-          coverSaver.setBookCover(coverFile, bookId = book.id)
+          if (!coverSaver.setBookCoverIfMissing(coverFile, book.id)) coverFile.delete()
           return
         }
       }
+    coverFile.delete()
   }
 }

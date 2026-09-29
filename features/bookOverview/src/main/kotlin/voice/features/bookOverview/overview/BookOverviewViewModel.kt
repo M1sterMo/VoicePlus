@@ -9,6 +9,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -28,12 +29,12 @@ import voice.core.data.GridMode
 import voice.core.data.ListeningSessionEndReason
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.BookRepository
+import voice.core.data.repo.LibraryOrganisationRepo
 import voice.core.data.repo.ListeningSessionRepo
 import voice.core.data.repo.internals.dao.RecentBookSearchDao
+import voice.core.data.store.BooksPerRowStore
 import voice.core.data.store.CurrentBookStore
-import voice.core.data.store.FinishedExpandedStore
 import voice.core.data.store.GridModeStore
-import voice.core.data.store.NotStartedExpandedStore
 import voice.core.featureflag.ExperimentalPlaybackPersistenceQualifier
 import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.FolderPickerInSettingsFeatureFlagQualifier
@@ -44,7 +45,6 @@ import voice.core.playback.playstate.PlayStateManager
 import voice.core.scanner.DeviceHasStoragePermissionBug
 import voice.core.scanner.MediaScanTrigger
 import voice.core.search.BookSearch
-import voice.core.ui.GridCount
 import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.search.BookSearchViewState
 import voice.navigation.Destination
@@ -63,7 +63,8 @@ class BookOverviewViewModel(
   private val currentBookStoreDataStore: DataStore<BookId?>,
   @GridModeStore
   private val gridModeStore: DataStore<GridMode>,
-  private val gridCount: GridCount,
+  @BooksPerRowStore
+  private val booksPerRowStore: DataStore<Int>,
   private val navigator: Navigator,
   private val recentBookSearchDao: RecentBookSearchDao,
   private val search: BookSearch,
@@ -72,12 +73,9 @@ class BookOverviewViewModel(
   private val deviceHasStoragePermissionBug: DeviceHasStoragePermissionBug,
   @FolderPickerInSettingsFeatureFlagQualifier
   private val folderPickerInSettingsFeatureFlag: FeatureFlag<Boolean>,
-  @NotStartedExpandedStore
-  private val notStartedExpandedStore: DataStore<Boolean>,
-  @FinishedExpandedStore
-  private val finishedExpandedStore: DataStore<Boolean>,
   @ExperimentalPlaybackPersistenceQualifier
   private val experimentalPlaybackPersistenceFeatureFlag: FeatureFlag<Boolean>,
+  private val organisationRepo: LibraryOrganisationRepo,
 ) : RetainedViewModel() {
   private var searchActive by mutableStateOf(false)
   private var query by mutableStateOf("")
@@ -89,35 +87,13 @@ class BookOverviewViewModel(
   }
 
   @Composable
-  internal fun notStartedExpanded(): Boolean {
-    return remember { notStartedExpandedStore.data }
-      .collectAsState(initial = true).value
-  }
-
-  @Composable
-  internal fun finishedExpanded(): Boolean {
-    return remember { finishedExpandedStore.data }
-      .collectAsState(initial = true).value
-  }
-
-  fun toggleCategoryExpanded(category: BookOverviewCategory) {
-    scope.launch {
-      when (category) {
-        BookOverviewCategory.NOT_STARTED -> notStartedExpandedStore.updateData { !it }
-        BookOverviewCategory.FINISHED -> finishedExpandedStore.updateData { !it }
-        else -> Unit
-      }
-    }
-  }
-
-  @Composable
   internal fun state(): BookOverviewViewState {
     val playState = remember { playStateManager.flow }
       .collectAsState(initial = PlayStateManager.PlayState.Paused).value
     val hasStoragePermissionBug = remember { deviceHasStoragePermissionBug.hasBug }
       .collectAsState().value
     val books = remember { repo.flow() }
-      .collectAsState(initial = emptyList()).value
+      .collectAsState(initial = null).value
     val finishedAt = remember {
       sessionRepo.allSessions().map { sessions ->
         sessions
@@ -132,21 +108,20 @@ class BookOverviewViewModel(
       .collectAsState(initial = false).value
     val gridMode = remember { gridModeStore.data }
       .collectAsState(initial = null).value
-      ?: return BookOverviewViewState.Loading
-
+    val booksPerRow = remember { booksPerRowStore.data }.collectAsState(initial = null).value?.coerceIn(2, 3)
+    val organisation = remember { organisationRepo.flow() }.collectAsState(initial = null).value
+    // Show the saved layout on the first populated frame, without a two-to-three-column shuffle.
+    if (gridMode == null || books == null || booksPerRow == null || organisation == null) return BookOverviewViewState.Loading
     val noBooks = !scannerActive && books.isEmpty()
 
     val layoutMode = when (gridMode) {
       GridMode.LIST -> BookOverviewLayoutMode.List
       GridMode.GRID -> BookOverviewLayoutMode.Grid
-      GridMode.FOLLOW_DEVICE -> if (gridCount.useGridAsDefault()) {
-        BookOverviewLayoutMode.Grid
-      } else {
-        BookOverviewLayoutMode.List
-      }
+      GridMode.BOOKS -> BookOverviewLayoutMode.Books
+      GridMode.FOLLOW_DEVICE -> BookOverviewLayoutMode.Books
     }
 
-    val bookSearchViewState = bookSearchViewState(layoutMode)
+    val bookSearchViewState = bookSearchViewState(layoutMode, booksPerRow)
     val experimentalPlaybackPersistence = experimentalPlaybackPersistenceFeatureFlag.get()
     val livePlaybackState: State<LivePlaybackState?> = if (experimentalPlaybackPersistence && currentBookId != null) {
       remember(currentBookId) {
@@ -158,6 +133,8 @@ class BookOverviewViewModel(
 
     return BookOverviewViewState(
       layoutMode = layoutMode,
+      booksPerRow = booksPerRow,
+      organisation = organisation,
       books = books
         .groupBy {
           it.category
@@ -166,11 +143,13 @@ class BookOverviewViewModel(
           books
             .sortedWith(category.comparator)
             .associate { book ->
-              book.id to book.itemViewState(
-                currentBookId = currentBookId,
-                finishedAt = finishedAt[book.id],
-                livePlaybackState = { livePlaybackState.value },
-              )
+              book.id to key(book.id) {
+                book.itemViewState(
+                  currentBookId = currentBookId,
+                  finishedAt = finishedAt[book.id],
+                  livePlaybackState = { livePlaybackState.value },
+                )
+              }
             }
         }
         .toSortedMap(),
@@ -194,7 +173,10 @@ class BookOverviewViewModel(
   }
 
   @Composable
-  private fun bookSearchViewState(layoutMode: BookOverviewLayoutMode): BookSearchViewState {
+  private fun bookSearchViewState(
+    layoutMode: BookOverviewLayoutMode,
+    booksPerRow: Int,
+  ): BookSearchViewState {
     return if (searchActive) {
       val recentBookSearch = remember {
         recentBookSearchDao.recentBookSearches()
@@ -218,6 +200,7 @@ class BookOverviewViewModel(
           query = query,
           books = searchBooks,
           layoutMode = layoutMode,
+          booksPerRow = booksPerRow,
         )
       } else {
         BookSearchViewState.EmptySearch(
@@ -238,6 +221,13 @@ class BookOverviewViewModel(
 
   fun onSettingsClick() {
     navigator.goTo(Destination.Settings)
+  }
+
+  fun setView(mode: GridMode) {
+    scope.launch { gridModeStore.updateData { mode } }
+  }
+  fun setBooksPerRow(count: Int) {
+    scope.launch { booksPerRowStore.updateData { count.coerceIn(2, 3) } }
   }
 
   fun onBookClick(id: BookId) {

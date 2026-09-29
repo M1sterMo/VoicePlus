@@ -52,18 +52,19 @@ internal class BookParser(
     // metadata derived from tags/file names is refreshed. Playback-related state such as the
     // position, speed and added/last-played timestamps is preserved.
     val content = if (existing != null) {
-      existing.copy(
-        author = parsed.author,
-        name = parsed.name,
-        genre = parsed.genre,
-        narrator = parsed.narrator,
-        series = parsed.series,
-        part = parsed.part,
-      )
+      contentRepo.update(id) { current ->
+        current.copy(
+          author = parsed.author,
+          name = if (current.nameOverridden) current.name else parsed.name,
+          genre = parsed.genre,
+          narrator = parsed.narrator,
+          series = parsed.series,
+          part = parsed.part,
+        )
+      } ?: parsed.also { contentRepo.put(it) }
     } else {
-      parsed
+      parsed.also { contentRepo.put(it) }
     }
-    contentRepo.put(content)
     return content
   }
 

@@ -1,0 +1,11 @@
+Browse a book-inspired library with two- or three-column covers, personal shelves, series stacks, and direct organisation.
+
+Edit audiobook titles and covers while preserving those changes through rescans and portable backups.
+
+Keep chapter-number corrections stable when moving backward through books with irregular chapter markers.
+
+Harden post-sleep playback and improve Android Auto, lock-screen, widget, headset, and search controls.
+
+Optionally remember volume boost across all books.
+
+Update core libraries and refresh the app's screenshots.

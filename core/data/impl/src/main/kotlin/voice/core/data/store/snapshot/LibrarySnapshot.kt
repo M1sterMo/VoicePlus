@@ -8,6 +8,7 @@ import voice.core.data.Bookmark
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
 import voice.core.data.ChapterNameOverride
+import voice.core.data.LibraryOrganisation
 import voice.core.data.ListeningEvent
 import voice.core.data.ListeningSession
 import voice.core.data.MarkData
@@ -37,6 +38,7 @@ internal data class LibrarySnapshot(
   val hiddenBooks: Set<String> = emptySet(),
   // App settings worth carrying across a wipe, each JSON-encoded by SettingsSnapshotter.
   val settings: Map<String, String> = emptyMap(),
+  val organisation: LibraryOrganisation? = null,
 ) {
   fun activeIds(): Set<String> = books.filter { it.isActive }.map { it.id }.toSet()
 
@@ -47,7 +49,20 @@ internal data class LibrarySnapshot(
     // chapter relNames, character notes on the OS-wipe path. v3 added: session endReason, listening
     // events, hidden books, settings — and dropped the stored per-book identity stamp
     // (it is derived from the URIs already in the bundle; old bundles' `identity` keys are ignored).
-    const val SCHEMA_VERSION = 3
+    // v4 adds manual series groups, separate from imported series tags.
+    // v5 adds the user-chosen order within a manual series group.
+    // v6 adds home shelves, stable series identity and independent manual/shelf ordering.
+    // v7 preserves whether the user explicitly edited a book title.
+    const val SCHEMA_VERSION = 7
+  }
+}
+
+/** Pre-v7 backups cannot identify edited titles, so preserve every saved title rather than lose one. */
+internal fun LibrarySnapshot.withTitleOverrideCompatibility(): LibrarySnapshot {
+  return if (schemaVersion < 7) {
+    copy(books = books.map { it.copy(nameOverridden = true) })
+  } else {
+    this
   }
 }
 
@@ -71,6 +86,9 @@ internal data class BookContentDto(
   val series: String?,
   val part: String?,
   val chapterNameOffset: Int = 0,
+  val seriesGroup: String? = null,
+  val seriesOrder: Int? = null,
+  val nameOverridden: Boolean = false,
 )
 
 @Serializable
@@ -160,6 +178,9 @@ internal fun BookContent.toDto() = BookContentDto(
   series = series,
   part = part,
   chapterNameOffset = chapterNameOffset,
+  seriesGroup = seriesGroup,
+  seriesOrder = seriesOrder,
+  nameOverridden = nameOverridden,
 )
 
 // Reconstruction runs BookContent.init{ require(...) }; wrap so one bad row is dropped, not fatal.
@@ -183,6 +204,9 @@ internal fun BookContentDto.toBookContentOrNull(): BookContent? = runCatching {
     series = series,
     part = part,
     chapterNameOffset = chapterNameOffset,
+    seriesGroup = seriesGroup,
+    seriesOrder = seriesOrder,
+    nameOverridden = nameOverridden,
   )
 }.getOrNull()
 

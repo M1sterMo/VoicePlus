@@ -1,16 +1,16 @@
 # Privacy Policy — VoicePlus
 
-**Effective date:** 2026-08-04
+**Effective date:** 2026-10-04
 
-VoicePlus is an open-source Android audiobook player maintained by Mistermo. This policy describes what data the app handles, what (almost nothing) leaves your device, and what permissions the app uses and why.
+VoicePlus is an open-source Android audiobook player maintained by Mistermo. This policy describes what data the app handles, when data can leave your device, and what permissions the app uses and why.
 
 ---
 
 ## What data we collect
 
-**Almost none.** VoicePlus is designed as a fully offline, local-first app. It does not have an account system or app-operated cloud sync, and it does not send usage data anywhere.
+VoicePlus is designed as a local-first app that plays audiobooks offline. It does not have an account system or app-operated cloud sync, and it does not send usage data to VoicePlus servers.
 
-The only data the app stores is what you put into it:
+The app stores these records on your device:
 
 - Your audiobook library (titles, authors, chapter positions, cover art)
 - Listening history (when you started and stopped listening, and for how long — stored locally for the in-app Statistics screen)
@@ -30,6 +30,8 @@ Cloud backup is permitted only when Android reports client-side encryption capab
 
 Android controls scheduling, retention, and provider, so backup is not immediate or guaranteed. After reinstall, you must grant audiobook-folder access again. VoicePlus external folder backup remains the portable/manual recovery option.
 
+External folder backups include edited book titles and cover images, alongside library data and settings. These ZIP archives are not encrypted by VoicePlus; store them in a trusted location. Older JSON-only backups remain readable but do not contain cover images. Editing a book in VoicePlus does not modify the original audiobook files.
+
 ---
 
 ## Other data that leaves your device
@@ -42,9 +44,9 @@ Apart from the encrypted Android system backup described above, the only data Vo
 - The search query is the book's title and author as you have them stored in the app — for example, `"Harry Potter by J.K. Rowling audiobook cover"`.
 - The query is sent to DuckDuckGo's image search API (`https://duckduckgo.com/`).
 - When you tap a result, the selected image is downloaded directly from the image host serving that result.
-- DuckDuckGo does not track searches, does not build user profiles, and does not share queries with advertisers. Their privacy policy is at https://duckduckgo.com/privacy.
+- DuckDuckGo receives the query and your IP address and handles them under its privacy policy at https://duckduckgo.com/privacy. Opening an image result also makes a request to the site hosting that image.
 
-No device identifiers, account tokens, or persistent identifiers are attached to these requests beyond what any standard HTTPS request carries (your IP address as seen by DuckDuckGo's servers).
+VoicePlus does not attach device identifiers, account tokens, or persistent identifiers to these requests. DuckDuckGo and the selected image host can see your IP address through the HTTPS connection.
 
 **VoicePlus sends no other data itself.** It still has no telemetry, no crash reporting, no analytics, and no advertising network.
 
@@ -84,7 +86,7 @@ Except for the Android system backup described above or a backup you manually ex
 
 ## Third-party services
 
-The only external service VoicePlus communicates with is **DuckDuckGo**, used exclusively for the optional cover art image search feature described above. DuckDuckGo's privacy policy is at https://duckduckgo.com/privacy.
+For optional cover art search, VoicePlus communicates with **DuckDuckGo** and, when you choose a result, the site hosting that image. Android system backup may transfer the eligible app data described above to your configured backup provider.
 
 There are no analytics SDKs, no crash-reporting services, no advertising networks, and no Google/Firebase services included in this app.
 
@@ -102,9 +104,15 @@ VoicePlus does not knowingly collect personal information from anyone, including
 
 ---
 
+## Retention and deletion
+
+VoicePlus keeps its local library records, listening history, notes, bookmarks, and settings until you delete them in the app or remove the app's data. Uninstalling the app removes local data, subject to any Android system backup or external backup you have enabled. You control external backup copies in the folder you selected. Android and its configured backup provider control the retention and deletion of system backup copies; VoicePlus does not operate that service.
+
+---
+
 ## Changes to this policy
 
-If this policy changes in a future version of VoicePlus, the updated policy will be committed to the public repository alongside the source code that motivated the change. The effective date at the top of this document will be updated. Continued use of the app after a policy update constitutes acceptance of the revised policy.
+If this policy changes in a future version of VoicePlus, the updated policy will be committed to the public repository alongside the source code that motivated the change. The effective date at the top of this document will be updated.
 
 You can always view the current policy at:
 https://github.com/mistermo-vibecode/VoicePlus/blob/main/PRIVACY.md
@@ -115,8 +123,6 @@ https://github.com/mistermo-vibecode/VoicePlus/blob/main/PRIVACY.md
 
 If you have questions about this privacy policy, please open an issue on the public repository:
 https://github.com/mistermo-vibecode/VoicePlus/issues
-
-*(Placeholder — replace with `https://github.com/mistermo-vibecode/VoicePlus/issues` or your preferred contact method before Phase 3 publish.)*
 
 ---
 

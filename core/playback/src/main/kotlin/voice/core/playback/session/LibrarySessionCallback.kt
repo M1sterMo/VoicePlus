@@ -246,7 +246,10 @@ class LibrarySessionCallback(
         player.setSkipSilenceEnabled(command.skipSilence)
       }
       is CustomCommand.SetGain -> {
-        player.setGain(command.gain)
+        return scope.future {
+          player.setGain(command.gain, command.remember)
+          SessionResult(SessionResult.RESULT_SUCCESS)
+        }
       }
       is CustomCommand.PauseWithRewind -> {
         pauseWithRewind(player, intentHolder, command.rewindMs)

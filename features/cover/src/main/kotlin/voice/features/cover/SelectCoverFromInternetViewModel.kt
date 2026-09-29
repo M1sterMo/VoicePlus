@@ -21,6 +21,7 @@ import dev.zacsweers.metro.ContributesTo
 import kotlinx.coroutines.flow.Flow
 import voice.core.data.BookId
 import voice.core.data.repo.BookRepository
+import voice.core.scanner.BookEditDraftStore
 import voice.features.cover.api.CoverApi
 import voice.features.cover.api.ImageSearchPagingSource
 import voice.features.cover.api.SearchResponse
@@ -35,7 +36,9 @@ class SelectCoverFromInternetViewModel(
   private val navigator: Navigator,
   private val context: Context,
   private val coverDownloader: CoverDownloader,
+  private val drafts: BookEditDraftStore,
   @Assisted private val bookId: BookId,
+  @Assisted private val editSession: String?,
 ) {
 
   @Composable
@@ -44,7 +47,7 @@ class SelectCoverFromInternetViewModel(
     LaunchedEffect(Unit) {
       val content = bookRepository.get(bookId)?.content
       bookNameWithAuthor = BookNameWithAuthor(
-        bookName = content?.name ?: "",
+        bookName = drafts.draft.value?.takeIf { it.token == editSession && it.bookId == bookId }?.title ?: content?.name.orEmpty(),
         author = content?.author ?: "",
       )
     }
@@ -83,7 +86,7 @@ class SelectCoverFromInternetViewModel(
               ?: coverDownloader.download(event.cover.thumbnail)
             if (downloaded != null) {
               navigator.goBack()
-              navigator.goTo(Destination.EditCover(bookId, downloaded.toUri()))
+              navigator.goTo(Destination.EditCover(bookId, downloaded.toUri(), editSession))
             }
           }
           is Events.QueryChange -> {
@@ -126,7 +129,10 @@ class SelectCoverFromInternetViewModel(
 
   @AssistedFactory
   interface Factory {
-    fun create(bookId: BookId): SelectCoverFromInternetViewModel
+    fun create(
+      bookId: BookId,
+      editSession: String?,
+    ): SelectCoverFromInternetViewModel
 
     @ContributesTo(AppScope::class)
     interface Provider {

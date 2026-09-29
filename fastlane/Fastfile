@@ -34,16 +34,15 @@ platform :android do
     version_name, version_code = parse_version_option!(options)
 
     gradle(
-      task: ":app:bundlePlayRelease",
+      task: ":app:bundleLibreRelease",
       properties: {
-        "voice.versionName" => version_name,
-        "voice.versionCode" => version_code,
-        "voice.includeProprietaryLibraries" => "true"
+        "voice.releaseVersionName" => version_name,
+        "voice.releaseVersionCode" => version_code
       }
     )
 
     copy_artifacts(
-      artifacts: ["app/build/outputs/bundle/playRelease/app-play-release.aab"]
+      artifacts: ["app/build/outputs/bundle/libreRelease/app-libre-release.aab"]
     )
   end
 
@@ -69,14 +68,13 @@ platform :android do
     )
   end
 
-  lane :promote do |options|
+  lane :promote_first_release do |options|
     _version_name, version_code = parse_version_option!(options)
 
     supply(
       track: 'internal',
       track_promote_to: 'production',
-      track_promote_release_status: 'inProgress',
-      rollout: "0.001", # 0.1%
+      track_promote_release_status: 'completed',
       version_code: version_code,
       skip_upload_metadata: true,
       skip_upload_changelogs: true,

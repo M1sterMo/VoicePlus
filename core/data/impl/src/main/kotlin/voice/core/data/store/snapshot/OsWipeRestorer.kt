@@ -21,6 +21,7 @@ import voice.core.data.repo.internals.dao.BookContentDao
 import voice.core.data.repo.internals.dao.BookmarkDao
 import voice.core.data.repo.internals.dao.ChapterDao
 import voice.core.data.repo.internals.dao.ChapterNameOverrideDao
+import voice.core.data.repo.internals.dao.LibraryOrganisationDao
 import voice.core.data.repo.internals.dao.ListeningSessionDao
 import voice.core.data.repo.internals.transaction
 import voice.core.data.store.ExcludedBooksStore
@@ -62,11 +63,15 @@ internal class OsWipeRestorer(
   @ExcludedBooksStore private val excludedBooksStore: DataStore<Set<String>>,
   private val appDb: RoomDatabase,
   private val restoreGate: RestoreGate,
+  private val organisationDao: LibraryOrganisationDao,
 ) {
 
   @IgnorableReturnValue
-  suspend fun run(snapshot: LibrarySnapshot): ReKeyResult {
-    val outcome = doRestore(snapshot)
+  suspend fun run(
+    snapshot: LibrarySnapshot,
+    covers: Map<String, java.io.File> = emptyMap(),
+  ): ReKeyResult {
+    val outcome = doRestore(snapshot, covers)
     // A clean, complete restore: flush the re-keyed state to the ring + external bundle now (the gate has
     // cleared) rather than waiting on the debounce. On a PARTIAL restore (some books surfaced as unmatched)
     // we deliberately do NOT flush — the external bundle still holds those books' data for a re-grant-and-retry,
@@ -77,7 +82,10 @@ internal class OsWipeRestorer(
     return outcome
   }
 
-  private suspend fun doRestore(snapshot: LibrarySnapshot): ReKeyResult = restoreGate.withRestoreActive {
+  private suspend fun doRestore(
+    snapshot: LibrarySnapshot,
+    covers: Map<String, java.io.File>,
+  ): ReKeyResult = restoreGate.withRestoreActive {
     // 1. Make the freshly-scanned, new-URI books exist AND the scan's setAllInactiveExcept reconcile complete
     // before we read them. scanAndAwait joins the actual scan job (not the racy scannerActive flag).
     scanWaiter.scanAndAwait()
@@ -111,6 +119,7 @@ internal class OsWipeRestorer(
     // 5. Persist the matched books, keyed entirely to the new ids. Atomic; additive; freshness-aware.
     val liveById = liveBooks.associateBy { it.id.value }
     appDb.transaction {
+      organisationDao.restore(snapshot, result.matched.associate { it.sourceId to it.content.id.value })
       // A previous partial run may have kept a then-unmatched book's sessions under its dead old id
       // (see the unmatched block below). Those raw rows carry dead chapter ids and unclamped
       // positions; the snapshot's matched copies are strictly better (re-keyed chapters, clamped
@@ -133,15 +142,14 @@ internal class OsWipeRestorer(
       val seenCharacterKeys = bookCharacterDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       result.matched.forEach { matched ->
         val live = liveById[matched.content.id.value]
-        // Never overwrite a position the user has since advanced past the snapshot; just re-activate and
-        // additively re-apply the user-authored data below.
-        val content = if (live != null && live.lastPlayedAt > matched.sourceLastPlayedAt) {
-          live.copy(isActive = true)
-        } else {
-          // The re-keyer nulls the snapshot's cover (its app-private path died with the wipe); the scan
-          // that just ran extracted a fresh one onto the live row — keep it instead of clobbering it.
-          matched.content.copy(cover = live?.cover)
-        }
+        // Portable artwork wins; legacy JSON bundles retain the freshly scanned cover. Newer
+        // playback progress is merged into the restored metadata instead of blocking it.
+        val content = matched.content
+          .copy(
+            cover = covers[matched.sourceId] ?: live?.cover,
+            isActive = matched.sourceId !in snapshot.hiddenBooks,
+          )
+          .preserveNewerPlaybackFrom(live)
         bookContentDao.insert(content)
         // chapters2 rows already exist from the scan (matched.content.chapters are the scanned ids), so
         // BookRepository.book() resolves without re-inserting anything.
@@ -195,6 +203,13 @@ internal class OsWipeRestorer(
 
     // 6. Refresh the fill-once content cache so the restored books render this session, not after a restart.
     contentRepo.invalidateCache()
+    deleteReplacedCovers(
+      oldCovers = result.matched
+        .filter { it.sourceId in covers }
+        .map { liveById[it.content.id.value]?.cover },
+      importedCovers = covers.values,
+      referencedCovers = bookContentDao.all().map { it.cover },
+    )
     Logger.i("OS-wipe restore: ${result.matched.size} re-keyed, ${result.unmatched.size} surfaced")
     result
   }

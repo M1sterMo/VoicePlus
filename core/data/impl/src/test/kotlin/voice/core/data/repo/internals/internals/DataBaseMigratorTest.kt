@@ -31,6 +31,75 @@ class DataBaseMigratorTest {
   )
 
   @Test
+  fun shelvesMigrateReleasedAndLocalVersionsWithoutChangingBookData() {
+    for (version in listOf(66, 67, 68)) {
+      val name = "shelves-from-$version"
+      val before = helper.createDatabase(name, version).use { db ->
+        listOf("Book 10", "Book 2").forEachIndexed { index, title ->
+          db.execSQL(
+            """INSERT INTO content2 (id, playbackSpeed, skipSilence, isActive, lastPlayedAt,
+            author, name, addedAt, chapters, currentChapter, positionInChapter, cover, gain,
+            genre, narrator, series, part, chapterNameOffset)
+            VALUES (?, 1.5, 1, ?, 123, 'Author', ?, 45, '["chapter"]', 'chapter',
+            4567, '/cover.jpg', 2, 'Fantasy', 'Narrator', 'Imported', ?, -9)""",
+            arrayOf<Any>("book$index", index, title, index.toString()),
+          )
+          if (version >= 67) db.execSQL("UPDATE content2 SET seriesGroup = 'Chrysalis' WHERE id = ?", arrayOf("book$index"))
+          if (version >= 68) db.execSQL("UPDATE content2 SET seriesOrder = ? WHERE id = ?", arrayOf<Any>(1 - index, "book$index"))
+        }
+        db.query("SELECT * FROM content2 ORDER BY id").use { cursor ->
+          buildList { while (cursor.moveToNext()) add((0 until cursor.columnCount).map { cursor.getString(it) }) }
+        }
+      }
+      helper.runMigrationsAndValidate(name, AppDb.VERSION, true, *allMigrations()).use { db ->
+        db.query("SELECT * FROM content2 ORDER BY id").use { cursor ->
+          var index = 0
+          while (cursor.moveToNext()) {
+            (0 until before[index].size).map { cursor.getString(it) } shouldBe before[index++]
+          }
+          index shouldBe 2
+        }
+        db.query("SELECT bookId, shelfId, seriesId, seriesPosition FROM libraryPlacement ORDER BY seriesPosition, bookId").use { cursor ->
+          cursor.count shouldBe 2
+          cursor.moveToFirst() shouldBe true
+          cursor.getString(1) shouldBe "other"
+          if (version >= 67) {
+            val seriesId = cursor.getString(2)
+            (seriesId.isNotBlank()) shouldBe true
+            cursor.getString(0) shouldBe if (version == 68) "book1" else "book0"
+            cursor.moveToNext() shouldBe true
+            cursor.getString(2) shouldBe seriesId
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  fun seriesGroupingMigrationPreservesExistingPlaybackAndMetadata() {
+    val dbName = "series-migration"
+    helper.createDatabase(dbName, 66).use { db ->
+      db.execSQL(
+        """INSERT INTO content2 (id, playbackSpeed, skipSilence, isActive, lastPlayedAt,
+          author, name, addedAt, chapters, currentChapter, positionInChapter, cover, gain,
+          genre, narrator, series, part, chapterNameOffset)
+          VALUES ('book', 1.5, 1, 1, 123, 'Author', 'Book', 45, '["chapter"]', 'chapter',
+          4567, NULL, 2, NULL, NULL, 'Tagged series', '3', -9)""",
+      )
+    }
+    helper.runMigrationsAndValidate(dbName, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT * FROM content2 WHERE id = 'book'").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        cursor.getStringOrNull("seriesGroup") shouldBe null
+        cursor.getString("series") shouldBe "Tagged series"
+        cursor.getInt("positionInChapter") shouldBe 4567
+        cursor.getInt("chapterNameOffset") shouldBe -9
+        cursor.getFloat("playbackSpeed") shouldBe 1.5f
+      }
+    }
+  }
+
+  @Test
   fun emptyTableLeadsToCorrectSchema() {
     val dbName = "testDb"
     val db = helper.createDatabase(dbName, 43)
@@ -44,6 +113,52 @@ class DataBaseMigratorTest {
       true,
       *allMigrations(),
     )
+  }
+
+  @Test
+  fun seriesOrderMigrationKeepsExistingGroupsAndPlayback() {
+    val dbName = "series-order-migration"
+    helper.createDatabase(dbName, 67).use { db ->
+      db.execSQL(
+        """INSERT INTO content2 (id, playbackSpeed, skipSilence, isActive, lastPlayedAt,
+          author, name, addedAt, chapters, currentChapter, positionInChapter, cover, gain,
+          genre, narrator, series, part, chapterNameOffset, seriesGroup)
+          VALUES ('book', 1.5, 1, 1, 123, 'Author', 'Book', 45, '["chapter"]', 'chapter',
+          4567, NULL, 2, NULL, NULL, 'Tagged series', '3', -9, 'My series')""",
+      )
+    }
+    helper.runMigrationsAndValidate(dbName, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT * FROM content2 WHERE id = 'book'").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        cursor.getString("seriesGroup") shouldBe "My series"
+        cursor.isNull(cursor.getColumnIndexOrThrow("seriesOrder")) shouldBe true
+        cursor.getString("part") shouldBe "3"
+        cursor.getInt("positionInChapter") shouldBe 4567
+        cursor.getInt("chapterNameOffset") shouldBe -9
+      }
+    }
+  }
+
+  @Test
+  fun titleOverrideMigrationProtectsExistingUserTitles() {
+    val dbName = "title-override-migration"
+    helper.createDatabase(dbName, 69).use { db ->
+      db.execSQL(
+        """INSERT INTO content2 (id, playbackSpeed, skipSilence, isActive, lastPlayedAt,
+          author, name, addedAt, chapters, currentChapter, positionInChapter, cover, gain,
+          genre, narrator, series, part, chapterNameOffset, seriesGroup, seriesOrder)
+          VALUES ('book', 1, 0, 1, 0, NULL, 'My custom title', 0, '["chapter"]',
+          'chapter', 0, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL)""",
+      )
+    }
+
+    helper.runMigrationsAndValidate(dbName, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT name, nameOverridden FROM content2 WHERE id = 'book'").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        cursor.getString(0) shouldBe "My custom title"
+        cursor.getInt(1) shouldBe 1
+      }
+    }
   }
 
   @Test

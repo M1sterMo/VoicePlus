@@ -23,6 +23,11 @@ data class BookOverviewItemViewState(
   val finished: Boolean = false,
   /** Localized finish date; null while in progress, or when a finished book has no usable date. */
   val finishedOn: String? = null,
+  val seriesGroup: String? = null,
+  val seriesOrder: Int? = null,
+  val seriesPart: String? = null,
+  val importedSeries: String? = null,
+  val addedAt: Long = 0L,
 )
 
 /**
@@ -41,6 +46,11 @@ internal fun Book.toItemViewState(finishedAt: Instant? = null): BookOverviewItem
     remainingTime = formatTime(realTimeRemainingMs()),
     finished = finished,
     finishedOn = if (finished) finishedOnLabel(finishedAt) else null,
+    seriesGroup = content.seriesGroup,
+    seriesOrder = content.seriesOrder,
+    seriesPart = content.part,
+    importedSeries = content.series,
+    addedAt = content.addedAt.toEpochMilli(),
   )
 }
 

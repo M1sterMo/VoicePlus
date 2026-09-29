@@ -120,24 +120,22 @@ internal class MediaScanner(
     )
 
     val chapterIds = chapters.map { it.id }
-    val currentChapterGone = content.currentChapter !in chapterIds
-    val currentChapter = if (currentChapterGone) chapterIds.first() else content.currentChapter
-    val positionInChapter = if (currentChapterGone) 0 else content.positionInChapter
     // Gate activation on the LIVE folder set rather than blindly forcing isActive=true. This scan may have
     // snapshotted its folder list (in MediaScanTrigger) before the user removed the folder; without this
     // check, the slow per-book loop would re-activate the removed folder's books AFTER remove() already
     // deactivated them, leaving zombies the empty-scan reconcile guard never clears. Consulting live
     // membership here makes a re-activation unable to outlive the removal under any interleaving.
     val isManaged = audiobookFolders.isManaged(BookId(file.uri))
-    val updated = content.copy(
-      chapters = chapterIds,
-      currentChapter = currentChapter,
-      positionInChapter = positionInChapter,
-      isActive = isManaged,
-    )
-    if (content != updated) {
+    contentRepo.update(content.id) { current ->
+      val currentChapterGone = current.currentChapter !in chapterIds
+      val updated = current.copy(
+        chapters = chapterIds,
+        currentChapter = if (currentChapterGone) chapterIds.first() else current.currentChapter,
+        positionInChapter = if (currentChapterGone) 0 else current.positionInChapter,
+        isActive = isManaged,
+      )
       validateIntegrity(updated, chapters)
-      contentRepo.put(updated)
+      updated
     }
   }
 }

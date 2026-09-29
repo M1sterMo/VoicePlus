@@ -21,11 +21,16 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -34,6 +39,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows
 import voice.core.data.Book
+import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
@@ -49,6 +55,8 @@ import voice.core.playback.ChapterMarkChangeNotifier
 import voice.core.playback.LivePlaybackState
 import voice.core.playback.MemoryDataStore
 import voice.core.playback.history.PlaybackIntentHolder
+import voice.core.playback.misc.Decibel
+import voice.core.playback.misc.VolumeGain
 import voice.core.playback.session.LockscreenPlayer
 import voice.core.playback.session.MediaId
 import voice.core.playback.session.MediaItemProvider
@@ -77,7 +85,32 @@ class VoicePlayerTest {
     )
   }
 
+  @Test
+  fun `accepted gain saves survive playback scope cancellation`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.setGain(Decibel(6F), remember = true)
+    val releaseBookWrite = CompletableDeferred<Unit>()
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      releaseBookWrite.await()
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+    val save = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { player.setGain(Decibel(3F)) }
+    runCurrent()
+    save.cancel()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 6F
+    releaseBookWrite.complete(Unit)
+    save.join()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe null
+    currentBook.content.gain shouldBe 3F
+  }
+
   private val seekTimeStore = MemoryDataStore(2)
+  private val globalVolumeGainStore = MemoryDataStore<Float?>(null)
+  private val volumeGain = VolumeGain(mockk(relaxed = true))
+  private val bookFlow = MutableStateFlow<Book?>(null)
   private var periodCount = 1
 
   private val internalPlayer = TestExoPlayerBuilder(ApplicationProvider.getApplicationContext())
@@ -115,8 +148,10 @@ class VoicePlayerTest {
     mockk(),
   )
   private val bookId = BookId(UUID.randomUUID().toString())
+  private val currentBookStoreId = MemoryDataStore<BookId?>(bookId)
   private lateinit var currentBook: Book
   private val bookRepository = mockk<BookRepository> {
+    every { flow(any()) } returns bookFlow
     coEvery { get(bookId) } answers { currentBook }
     coEvery { updateBook(any(), any()) } just Runs
   }
@@ -125,19 +160,18 @@ class VoicePlayerTest {
   private val player = VoicePlayer(
     player = internalPlayer,
     repo = bookRepository,
-    currentBookStoreId = mockk {
-      every { data } returns flowOf(bookId)
-    },
+    currentBookStoreId = currentBookStoreId,
     seekTimeStore = seekTimeStore,
     autoRewindAmountStore = mockk(),
-    scope = scope,
+    scope = CoroutineScope(scope.backgroundScope.coroutineContext + UnconfinedTestDispatcher(scope.testScheduler)),
     chapterRepo = mockk {
       coEvery { this@mockk.get(any()) } answers {
         currentBook.chapters.single { it.id == firstArg() }
       }
     },
     mediaItemProvider = mediaItemProvider,
-    volumeGain = mockk(relaxed = true),
+    volumeGain = volumeGain,
+    globalVolumeGainStore = globalVolumeGainStore,
     sleepTimer = mockk(relaxed = true),
     intentHolder = playbackIntentHolder,
     listeningEventRecorder = mockk(relaxed = true),
@@ -148,6 +182,105 @@ class VoicePlayerTest {
   fun tearDown() {
     internalPlayer.release()
     playbackIntentHolder.clearSleepResumeConfirmation()
+  }
+
+  @Test
+  fun `loading books uses remembered boost including zero or falls back to per book gain`() = scope.runTest {
+    val chapters = listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null)))
+    currentBook = book(chapters, bookId).let { it.copy(content = it.content.copy(gain = 2F)) }
+    bookFlow.value = currentBook
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(2F)
+
+    globalVolumeGainStore.updateData { 6F }
+    setMediaItems(chapters)
+    volumeGain.gain shouldBe Decibel(6F)
+
+    val otherBookId = BookId(UUID.randomUUID().toString())
+    currentBook = currentBook.copy(content = currentBook.content.copy(id = otherBookId, gain = 4F))
+    bookFlow.value = currentBook
+    coEvery { bookRepository.get(otherBookId) } answers { currentBook }
+    currentBookStoreId.updateData { otherBookId }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(6F)
+
+    globalVolumeGainStore.updateData { 0F }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(0F)
+
+    globalVolumeGainStore.updateData { null }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(4F)
+  }
+
+  @Test
+  fun `global edits preserve book gains and restored settings refresh loaded audio`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    currentBook = currentBook.copy(content = currentBook.content.copy(gain = 4F))
+    bookFlow.value = currentBook
+    runCurrent()
+    volumeGain.gain shouldBe Decibel(4F)
+
+    player.setGain(Decibel(6F), remember = true)
+    volumeGain.gain shouldBe Decibel(6F)
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 6F
+    coVerify(exactly = 0) { bookRepository.updateBook(any(), match { it(currentBook.content).gain == 6F }) }
+
+    currentBook = currentBook.copy(content = currentBook.content.copy(gain = 2F))
+    bookFlow.value = currentBook
+    for (restored in listOf(null, 0F, 6F, null)) {
+      globalVolumeGainStore.updateData { restored }
+      runCurrent()
+      volumeGain.gain shouldBe Decibel(restored ?: 2F)
+      player.playWhenReady shouldBe false
+      player.currentMediaItemIndex shouldBe 0
+    }
+
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+    player.setGain(Decibel(3F))
+    volumeGain.gain shouldBe Decibel(3F)
+    runCurrent()
+    coVerify { bookRepository.updateBook(bookId, match { it(currentBook.content).gain == 3F }) }
+    globalVolumeGainStore.data.first() shouldBe null
+    currentBook.content.gain shouldBe 3F
+  }
+
+  @Test
+  fun `slow book writes cannot undo newer global mode or audio previews`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.setGain(Decibel(6F), remember = true)
+    val releaseBookWrite = CompletableDeferred<Unit>()
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      releaseBookWrite.await()
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+
+    val writes = listOf(3F to false, 8F to true, 9F to true).map { (gain, remember) ->
+      backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { player.setGain(Decibel(gain), remember) }
+    }
+    runCurrent()
+    volumeGain.gain shouldBe Decibel(9F)
+    globalVolumeGainStore.data.first() shouldBe 6F
+
+    val nextBook = book(currentBook.chapters, BookId(UUID.randomUUID().toString()))
+      .let { it.copy(content = it.content.copy(gain = 2F)) }
+    coEvery { bookRepository.get(nextBook.id) } returns nextBook
+    every { bookRepository.flow(nextBook.id) } returns flowOf(nextBook)
+    currentBookStoreId.updateData { nextBook.id }
+    player.setMediaItem(mediaItemProvider.mediaItem(nextBook))
+    volumeGain.gain shouldBe Decibel(9F)
+
+    releaseBookWrite.complete(Unit)
+    writes.joinAll()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 9F
+    volumeGain.gain shouldBe Decibel(9F)
+    currentBook.content.gain shouldBe 3F
   }
 
   @Test
@@ -334,6 +467,7 @@ class VoicePlayerTest {
 
   private fun TestScope.setMediaItems(chapters: List<Chapter>) {
     currentBook = book(chapters, bookId)
+    bookFlow.value = currentBook
     player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
     runCurrent()
   }

@@ -11,7 +11,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -135,6 +138,176 @@ class MediaScannerTest {
     updated.author shouldBe null
     updated.playbackSpeed shouldBe 1.5F
     updated.positionInChapter shouldBe 500L
+  }
+
+  @Test
+  fun forceReParsePreservesAUserEditedBookTitle() = test {
+    val audiobookFolder = folder("audiobooks")
+    val book = File(audiobookFolder, "book1")
+    val id = BookId(book.toUri())
+    audioFile(book, "1.mp3")
+
+    scan(FolderType.Root, audiobookFolder)
+    bookContentRepo.put(bookContentRepo.get(id)!!.copy(name = "My title", nameOverridden = true))
+    ignoreFileTags.value = true
+
+    scan(FolderType.Root, audiobookFolder, forceReParse = true)
+
+    bookContentRepo.get(id)!!.name shouldBe "My title"
+  }
+
+  @Test
+  fun editedTitleAndCoverSurviveRemovalRestoreAndRescan() = test {
+    val audiobookFolder = folder("audiobooks")
+    val book = File(audiobookFolder, "book1")
+    val id = BookId(book.toUri())
+    audioFile(book, "1.mp3")
+    scan(FolderType.Root, audiobookFolder)
+    val played = bookContentRepo.get(id)!!.copy(playbackSpeed = 1.75F, positionInChapter = 321L)
+    bookContentRepo.put(played)
+
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    val editor = BookEditDraftStore(bookRepo, context, mockk())
+    editor.begin(id)
+    editor.titleChanged("My edited title")
+    val expectedCover = byteArrayOf(1, 2, 3, 4)
+    val draftCover = File.createTempFile("edited-cover-", ".png", context.cacheDir).apply {
+      writeBytes(expectedCover)
+    }
+    editor.stageCover(editor.draft.value!!.token, draftCover) shouldBe true
+    editor.save() shouldBe true
+
+    val edited = bookContentRepo.get(id)!!
+    val savedCover = edited.cover!!
+    try {
+      edited.name shouldBe "My edited title"
+      edited.nameOverridden shouldBe true
+      savedCover.exists() shouldBe true
+      savedCover.readBytes().toList() shouldBe expectedCover.toList()
+
+      // Removing a book keeps its content row and excludes it from subsequent scans.
+      excludedBooks.value = setOf(id.value)
+      bookContentRepo.put(edited.copy(isActive = false))
+      scan(FolderType.Root, audiobookFolder, forceReParse = true)
+      bookContentRepo.get(id)!!.isActive shouldBe false
+
+      // Restoring the same book reactivates that row before scanning it again.
+      excludedBooks.value = emptySet()
+      bookContentRepo.put(bookContentRepo.get(id)!!.copy(isActive = true))
+      scan(FolderType.Root, audiobookFolder, forceReParse = true)
+
+      val restored = bookContentRepo.get(id)!!
+      restored.name shouldBe "My edited title"
+      restored.nameOverridden shouldBe true
+      restored.cover shouldBe savedCover
+      restored.cover!!.exists() shouldBe true
+      restored.cover!!.readBytes().toList() shouldBe expectedCover.toList()
+      restored.playbackSpeed shouldBe played.playbackSpeed
+      restored.currentChapter shouldBe played.currentChapter
+      restored.positionInChapter shouldBe played.positionInChapter
+    } finally {
+      savedCover.delete()
+    }
+  }
+
+  @Test
+  fun editedTitleAndCoverSurviveFilesDisappearingAndReturning() = test {
+    val audiobookFolder = folder("audiobooks")
+    val editedBook = File(audiobookFolder, "edited")
+    val otherBook = File(audiobookFolder, "other")
+    val id = BookId(editedBook.toUri())
+    audioFile(editedBook, "1.mp3")
+    audioFile(otherBook, "1.mp3")
+    scan(FolderType.Root, audiobookFolder)
+
+    val expectedCover = byteArrayOf(5, 6, 7, 8)
+    val cover = File.createTempFile("saved-cover-", ".png").apply { writeBytes(expectedCover) }
+    try {
+      val edited = bookContentRepo.get(id)!!.copy(
+        name = "My edited title",
+        nameOverridden = true,
+        cover = cover,
+      )
+      bookContentRepo.put(edited)
+
+      editedBook.deleteRecursively() shouldBe true
+      scan(FolderType.Root, audiobookFolder)
+      bookContentRepo.get(id) shouldBe edited.copy(isActive = false)
+
+      audioFile(editedBook, "1.mp3")
+      scan(FolderType.Root, audiobookFolder, forceReParse = true)
+
+      val restored = bookContentRepo.get(id)!!
+      restored.isActive shouldBe true
+      restored.name shouldBe "My edited title"
+      restored.nameOverridden shouldBe true
+      restored.cover shouldBe cover
+      restored.cover!!.exists() shouldBe true
+      restored.cover!!.readBytes().toList() shouldBe expectedCover.toList()
+    } finally {
+      cover.delete()
+    }
+  }
+
+  @Test
+  fun forceReParseDoesNotOverwriteAnEditSavedWhileMetadataIsBeingRead() = test {
+    val audiobookFolder = folder("audiobooks")
+    val book = File(audiobookFolder, "book1")
+    val id = BookId(book.toUri())
+    audioFile(book, "1.mp3")
+    scan(FolderType.Root, audiobookFolder)
+
+    val analysisStarted = CompletableDeferred<Unit>()
+    val finishAnalysis = CompletableDeferred<Unit>()
+    coEvery { mediaAnalyzer.analyze(any()) } coAnswers {
+      analysisStarted.complete(Unit)
+      finishAnalysis.await()
+      Metadata(
+        duration = 1000L,
+        artist = "Rescanned author",
+        album = "Rescanned title",
+        fileName = "Chapter",
+        chapters = emptyList(),
+        title = "Title",
+        genre = "Genre",
+        narrator = "Narrator",
+        series = "Series",
+        part = "Part",
+      )
+    }
+
+    coroutineScope {
+      val scanning = launch { scan(FolderType.Root, audiobookFolder, forceReParse = true) }
+      analysisStarted.await()
+
+      val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+      val editor = BookEditDraftStore(bookRepo, context, mockk())
+      editor.begin(id)
+      editor.titleChanged("Saved during scan")
+      val expectedCover = byteArrayOf(4, 3, 2, 1)
+      val draftCover = File.createTempFile("concurrent-edit-", ".png", context.cacheDir).apply {
+        writeBytes(expectedCover)
+      }
+      editor.stageCover(editor.draft.value!!.token, draftCover) shouldBe true
+      editor.save() shouldBe true
+      val savedCover = bookContentRepo.get(id)!!.cover!!
+
+      try {
+        finishAnalysis.complete(Unit)
+        scanning.join()
+
+        val restored = bookContentRepo.get(id)!!
+        restored.name shouldBe "Saved during scan"
+        restored.nameOverridden shouldBe true
+        restored.cover shouldBe savedCover
+        restored.cover!!.readBytes().toList() shouldBe expectedCover.toList()
+        restored.author shouldBe "Rescanned author"
+      } finally {
+        finishAnalysis.complete(Unit)
+        scanning.cancel()
+        savedCover.delete()
+      }
+    }
   }
 
   @Test
@@ -324,6 +497,7 @@ class MediaScannerTest {
     val bookContentRepo = BookContentRepoImpl(db.bookContentDao())
     val chapterRepo = ChapterRepoImpl(db.chapterDao())
     val ignoreFileTags = MutableStateFlow(false)
+    val excludedBooks = MutableStateFlow<Set<String>>(emptySet())
     val mediaAnalyzer = mockk<MediaAnalyzer>()
 
     // The scanner now gates activation on the LIVE folder set via AudiobookFolders.isManaged. These tests drive
@@ -346,7 +520,7 @@ class MediaScannerTest {
       ),
       deviceHasPermissionBug = mockk(),
       audiobookFolders = configuredFolders,
-      excludedBooksStore = mockk { every { data } returns kotlinx.coroutines.flow.MutableStateFlow(emptySet()) },
+      excludedBooksStore = mockk { every { data } returns excludedBooks },
     )
 
     val bookRepo = BookRepositoryImpl(chapterRepo, bookContentRepo)

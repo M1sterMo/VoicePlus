@@ -24,9 +24,6 @@ enum class BookOverviewCategory(
   ),
 }
 
-val BookOverviewCategory.isCollapsible: Boolean
-  get() = this == BookOverviewCategory.NOT_STARTED || this == BookOverviewCategory.FINISHED
-
 val Book.category: BookOverviewCategory
   get() {
     return if (position == 0L) {

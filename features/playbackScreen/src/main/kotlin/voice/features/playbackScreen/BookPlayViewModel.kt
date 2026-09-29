@@ -32,6 +32,7 @@ import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.CurrentBookStore
+import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.PlaybackToolbarActionsStore
 import voice.core.data.store.SleepTimerPreferenceStore
 import voice.core.logging.api.Logger
@@ -75,6 +76,8 @@ class BookPlayViewModel(
   private val sleepTimerPreferenceStore: DataStore<SleepTimerPreference>,
   @PlaybackToolbarActionsStore
   private val toolbarActionsStore: DataStore<Set<PlaybackToolbarAction>>,
+  @GlobalVolumeGainStore
+  private val globalVolumeGainStore: DataStore<Float?>,
   @Assisted
   private val bookId: BookId,
 ) : RetainedViewModel(MainScope(dispatcherProvider)) {
@@ -258,11 +261,12 @@ class BookPlayViewModel(
     }
   }
 
-  fun onVolumeGainChanged(gain: Decibel) {
-    _dialogState.value = volumeGainDialogViewState(gain)
-    scope.launch {
-      player.setGain(gain)
-    }
+  fun onVolumeGainChanged(
+    gain: Decibel,
+    remember: Boolean = (_dialogState.value as? BookPlayDialogViewState.VolumeGainDialog)?.remember == true,
+  ) {
+    _dialogState.value = volumeGainDialogViewState(gain, remember)
+    player.setGain(gain, remember)
   }
 
   fun next() {
@@ -364,16 +368,23 @@ class BookPlayViewModel(
 
   fun onVolumeGainIconClick() {
     scope.launch {
+      player.awaitGainChanges()
+      // Wait behind queued saves, including those from another playback screen.
+      val globalGain = globalVolumeGainStore.updateData { it }
       val content = currentBook()?.content ?: return@launch
-      _dialogState.value = volumeGainDialogViewState(Decibel(content.gain))
+      _dialogState.value = volumeGainDialogViewState(Decibel(globalGain ?: content.gain), globalGain != null)
     }
   }
 
-  private fun volumeGainDialogViewState(gain: Decibel): BookPlayDialogViewState.VolumeGainDialog {
+  private fun volumeGainDialogViewState(
+    gain: Decibel,
+    remember: Boolean,
+  ): BookPlayDialogViewState.VolumeGainDialog {
     return BookPlayDialogViewState.VolumeGainDialog(
       gain = gain,
       maxGain = VolumeGain.MAX_GAIN,
       valueFormatted = volumeGainFormatter.format(gain),
+      remember = remember,
     )
   }
 

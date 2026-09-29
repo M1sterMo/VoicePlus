@@ -3,6 +3,8 @@ package voice.core.playback.session
 import android.os.Bundle
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import voice.core.playback.misc.Decibel
@@ -26,7 +28,10 @@ internal sealed interface CustomCommand {
   data class SetSkipSilence(val skipSilence: Boolean) : CustomCommand
 
   @Serializable
-  data class SetGain(val gain: Decibel) : CustomCommand
+  data class SetGain(
+    val gain: Decibel,
+    val remember: Boolean = false,
+  ) : CustomCommand
 
   @Serializable
   data class PauseWithRewind(val rewindMs: Long) : CustomCommand
@@ -65,9 +70,10 @@ internal fun CustomCommand.toSessionCommand(): SessionCommand {
   )
 }
 
-internal fun MediaController.sendCustomCommand(command: CustomCommand) {
+@IgnorableReturnValue
+internal fun MediaController.sendCustomCommand(command: CustomCommand): ListenableFuture<SessionResult> {
   val json = Json.encodeToString(CustomCommand.serializer(), command)
-  sendCustomCommand(
+  return sendCustomCommand(
     SessionCommand(CustomCommand.CUSTOM_COMMAND_ACTION, Bundle.EMPTY),
     Bundle().apply {
       putString(CustomCommand.CUSTOM_COMMAND_EXTRA, json)

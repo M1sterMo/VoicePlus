@@ -102,6 +102,11 @@ public interface StoreModule {
 
   @Provides
   @SingleIn(AppScope::class)
+  @BooksPerRowStore
+  private fun booksPerRow(factory: VoiceDataStoreFactory): DataStore<Int> = factory.int(fileName = "booksPerRow", defaultValue = 2)
+
+  @Provides
+  @SingleIn(AppScope::class)
   @GridModeStore
   private fun gridMode(
     factory: VoiceDataStoreFactory,
@@ -214,6 +219,17 @@ public interface StoreModule {
       serializer = SetSerializer(PlaybackToolbarAction.serializer()),
       defaultValue = PlaybackToolbarAction.DEFAULT,
       fileName = "playbackToolbarActions",
+    )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @GlobalVolumeGainStore
+  private fun globalVolumeGainStore(factory: VoiceDataStoreFactory): DataStore<Float?> {
+    return factory.create(
+      serializer = Float.serializer().nullable,
+      defaultValue = null,
+      fileName = "globalVolumeGain",
     )
   }
 

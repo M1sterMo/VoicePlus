@@ -59,6 +59,7 @@ class OsWipeRestorerTest {
   fun teardown() = db.close()
 
   private fun restorer() = OsWipeRestorer(
+    organisationDao = db.libraryOrganisationDao(),
     scanWaiter = scanWaiter,
     contentRepo = contentRepo,
     bookContentDao = db.bookContentDao(),
@@ -298,7 +299,10 @@ class OsWipeRestorerTest {
     result.matched.map { it.sourceId } shouldContainExactlyInAnyOrder listOf(hiddenOldId)
     val newId = newUri("primary:Books/Dune")
     // The book's data was restored under the new id...
-    db.bookContentDao().all().single { it.id.value == newId }.positionInChapter shouldBe 400L
+    db.bookContentDao().all().single { it.id.value == newId }.let {
+      it.positionInChapter shouldBe 400L
+      it.isActive shouldBe false
+    }
     // ...and the hidden set now covers the NEW id, so it does not resurface visible.
     excluded.data.first().contains(newId) shouldBe true
   }
@@ -447,6 +451,43 @@ class OsWipeRestorerTest {
     restorer().run(snapshotOf(listOf(dune), duneChapters))
 
     db.bookContentDao().all().single().cover shouldBe scannedCover
+  }
+
+  @Test
+  fun `portable custom cover and title follow a matched book onto its new URI`() = runTest {
+    val (book, chapters) = snapshotBookOf("primary:Books/Dune", listOf("01.mp3"), "01.mp3", position = 400, lastPlayed = 5_000)
+    val image = java.io.File("restored-custom.png").absoluteFile
+    onScan = { scanInBook("primary:Books/Dune", listOf("01.mp3")) }
+    restorer().run(snapshotOf(listOf(book.copy(name = "My title")), chapters), mapOf(book.id to image))
+    val restored = db.bookContentDao().all().single()
+    restored.id.value shouldBe newUri("primary:Books/Dune")
+    restored.name shouldBe "My title"
+    restored.cover shouldBe image
+    restored.positionInChapter shouldBe 400
+  }
+
+  @Test
+  fun `portable metadata wins while newer scanned playback survives`() = runTest {
+    val (book, chapters) = snapshotBookOf(
+      "primary:Books/Dune",
+      listOf("01.mp3"),
+      "01.mp3",
+      position = 400,
+      lastPlayed = 5_000,
+    )
+    val image = java.io.File("restored-custom.png").absoluteFile
+    onScan = {
+      scanInBook("primary:Books/Dune", listOf("01.mp3"), lastPlayed = 9_999, position = 700)
+    }
+    restorer().run(
+      snapshotOf(listOf(book.copy(name = "Restored title")), chapters),
+      mapOf(book.id to image),
+    )
+    val restored = db.bookContentDao().all().single()
+    restored.name shouldBe "Restored title"
+    restored.cover shouldBe image
+    restored.positionInChapter shouldBe 700
+    restored.lastPlayedAt shouldBe Instant.ofEpochMilli(9_999)
   }
 
   @Test

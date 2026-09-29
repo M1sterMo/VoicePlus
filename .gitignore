@@ -14,6 +14,7 @@ build
 .gradle/
 *~
 *.log
+__pycache__/
 local.properties
 MaterialAudiobookPlayer.iml
 .kobalt
@@ -40,6 +41,13 @@ docs/fdroid-release-howto.md
 docs/superpowers/
 docs/storage-resilience-analysis.md
 docs/SABP storage.md
+docs/google-play-release-howto.md
+docs/library-shelves-plan.md
+docs/library-shelves-review.md
+docs/library-shelves-verification.md
+
+# Generated store exports; source captures are in docs/screenshots/
+play-store-assets/
 
 # IDE / editor config
 .vscode/

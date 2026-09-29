@@ -6,19 +6,21 @@ import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.GraphExtension
 import voice.features.bookOverview.bottomSheet.BottomSheetViewModel
 import voice.features.bookOverview.deleteBook.DeleteBookViewModel
-import voice.features.bookOverview.editTitle.EditBookTitleViewModel
-import voice.features.bookOverview.fileCover.FileCoverViewModel
+import voice.features.bookOverview.editBook.EditBookViewModel
 import voice.features.bookOverview.overview.BookOverviewViewModel
+import voice.features.bookOverview.series.SeriesViewModel
+import voice.features.bookOverview.shelves.ShelfViewModel
 
 abstract class BookOverviewScope private constructor()
 
 @GraphExtension(scope = BookOverviewScope::class)
 interface BookOverviewGraph : RetainObserver {
   val bookOverviewViewModel: BookOverviewViewModel
-  val editBookTitleViewModel: EditBookTitleViewModel
+  val editBookViewModel: EditBookViewModel
   val bottomSheetViewModel: BottomSheetViewModel
   val deleteBookViewModel: DeleteBookViewModel
-  val fileCoverViewModel: FileCoverViewModel
+  val seriesViewModel: SeriesViewModel
+  val shelfViewModel: ShelfViewModel
 
   override fun onRetained() = Unit
 
@@ -28,16 +30,20 @@ interface BookOverviewGraph : RetainObserver {
 
   override fun onRetired() {
     bookOverviewViewModel.onRetired()
-    editBookTitleViewModel.onRetired()
+    editBookViewModel.onRetired()
     bottomSheetViewModel.onRetired()
     deleteBookViewModel.onRetired()
+    seriesViewModel.onRetired()
+    shelfViewModel.onRetired()
   }
 
   override fun onUnused() {
     bookOverviewViewModel.onUnused()
-    editBookTitleViewModel.onUnused()
+    editBookViewModel.onUnused()
     bottomSheetViewModel.onUnused()
     deleteBookViewModel.onUnused()
+    seriesViewModel.onUnused()
+    shelfViewModel.onUnused()
   }
 
   @GraphExtension.Factory
