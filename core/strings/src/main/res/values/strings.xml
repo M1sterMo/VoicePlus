@@ -186,6 +186,7 @@
     <string name="bookmark_added">Bookmark added</string>
     <string name="bookmark_deleted">Bookmark deleted</string>
     <string name="bookmark_unavailable">Bookmark unavailable</string>
+    <string name="sleep_resume_confirmation">Press play again to resume after sleep</string>
     <string name="bookmark_type_manual">Manual</string>
     <string name="bookmark_type_quick">Quick bookmark</string>
     <string name="bookmark_add_named">Add bookmark with name</string>

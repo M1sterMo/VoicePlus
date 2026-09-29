@@ -1,7 +1,7 @@
 package voice.core.data
 
 import io.kotest.assertions.withClue
-import io.kotest.matchers.collections.shouldContainInOrder
+import io.kotest.matchers.collections.shouldContainExactly
 import org.junit.Test
 import java.time.Instant
 
@@ -146,7 +146,7 @@ class ChapterTest {
 
     val actualPositions = Chapter(
       duration = duration,
-      fileLastModified = Instant.now(),
+      fileLastModified = Instant.EPOCH,
       id = ChapterId(""),
       markData = marks,
       name = "Chapter",
@@ -163,7 +163,7 @@ class ChapterTest {
       Duration: $duration
       """.trimIndent(),
     ) {
-      actualPositions.shouldContainInOrder(expectedPositions)
+      actualPositions.shouldContainExactly(expectedPositions)
     }
   }
 

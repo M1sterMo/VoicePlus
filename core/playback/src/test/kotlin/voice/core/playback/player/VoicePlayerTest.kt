@@ -4,6 +4,7 @@ import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.session.MediaSession
 import androidx.media3.test.utils.FakeMediaSource
 import androidx.media3.test.utils.FakeTimeline
 import androidx.media3.test.utils.TestExoPlayerBuilder
@@ -28,6 +29,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows
@@ -119,6 +121,7 @@ class VoicePlayerTest {
     coEvery { updateBook(any(), any()) } just Runs
   }
   private val chapterMarkChangeNotifier = ChapterMarkChangeNotifier()
+  private val playbackIntentHolder = PlaybackIntentHolder(ApplicationProvider.getApplicationContext())
   private val player = VoicePlayer(
     player = internalPlayer,
     repo = bookRepository,
@@ -136,10 +139,16 @@ class VoicePlayerTest {
     mediaItemProvider = mediaItemProvider,
     volumeGain = mockk(relaxed = true),
     sleepTimer = mockk(relaxed = true),
-    intentHolder = PlaybackIntentHolder(),
+    intentHolder = playbackIntentHolder,
     listeningEventRecorder = mockk(relaxed = true),
     chapterMarkChangeNotifier = chapterMarkChangeNotifier,
   )
+
+  @After
+  fun tearDown() {
+    internalPlayer.release()
+    playbackIntentHolder.clearSleepResumeConfirmation()
+  }
 
   @Test
   fun `playback parameters persist speed`() = scope.runTest {
@@ -346,6 +355,8 @@ class VoicePlayerTest {
     val modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = modeStore,
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -388,6 +399,8 @@ class VoicePlayerTest {
     val secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = secondaryTextModeStore,
       chapterMarkChangeNotifier = chapterMarkChangeNotifier,
@@ -422,6 +435,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -465,6 +480,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -495,6 +512,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -520,6 +539,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -555,6 +576,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -589,6 +612,8 @@ class VoicePlayerTest {
     val lockscreenScope = CoroutineScope(backgroundScope.coroutineContext + Dispatchers.Main.immediate)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = chapterMarkChangeNotifier,
@@ -685,6 +710,132 @@ class VoicePlayerTest {
     player.seekTo(1, 5_000)
     player.forceSeekToPrevious()
     player.shouldHavePosition(1, 0)
+  }
+
+  @Test
+  fun `external lockscreen play must be repeated after sleep timer stops playback`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = mockk<MediaSession.ControllerInfo> {
+      every { packageName } returns "com.android.systemui"
+    }
+    lockscreenPlayer.attachTo(
+      mockk {
+        every { getControllerForCurrentRequest() } returns controller
+      },
+    )
+    runCurrent()
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+    player.playWhenReady shouldBe false
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+    player.playWhenReady shouldBe true
+  }
+
+  @Test
+  fun `notification controller using our package still requires sleep confirmation`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = context,
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = MediaSession.ControllerInfo.createTestOnlyControllerInfo(
+      context.packageName,
+      android.os.Process.myPid(),
+      android.os.Process.myUid(),
+      1,
+      1,
+      true,
+      android.os.Bundle().apply {
+        putBoolean(androidx.media3.session.MediaController.KEY_MEDIA_NOTIFICATION_CONTROLLER_FLAG, true)
+      },
+      true,
+    )
+    val session = MediaSession.Builder(context, lockscreenPlayer).build()
+    try {
+      session.isMediaNotificationController(controller) shouldBe true
+      lockscreenPlayer.attachTo(
+        mockk {
+          every { getControllerForCurrentRequest() } returns controller
+          every { isMediaNotificationController(controller) } answers { session.isMediaNotificationController(controller) }
+        },
+      )
+      runCurrent()
+
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe false
+
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe true
+
+      lockscreenPlayer.pause()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe false
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe true
+    } finally {
+      session.release()
+    }
+  }
+
+  @Test
+  fun `VoicePlus play resumes immediately after sleep timer stops playback`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = context,
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = mockk<MediaSession.ControllerInfo> {
+      every { packageName } returns context.packageName
+    }
+    lockscreenPlayer.attachTo(
+      mockk {
+        every { getControllerForCurrentRequest() } returns controller
+        every { isMediaNotificationController(controller) } returns false
+      },
+    )
+    runCurrent()
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+    player.playWhenReady shouldBe true
+    playbackIntentHolder.confirmExternalResume(nowMs = 1_000L) shouldBe true
   }
 
   private fun chapter(vararg marks: ChapterMark): Chapter {

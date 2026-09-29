@@ -399,6 +399,7 @@ class VoicePlayer(
             // Flags first: stash where listening actually stopped BEFORE the boundary seek moves the
             // position, and suppress that seek so it doesn't log as a user SetPosition.
             intentHolder.stoppedBySleepTimer = true
+            intentHolder.requireSleepResumeConfirmation()
             intentHolder.pendingPauseEndPositionMs = player.currentPosition.takeUnless { it == C.TIME_UNSET }
             intentHolder.suppressNextSeek = true
             player.seekTo(payload.chapterIndex, payload.positionMs)

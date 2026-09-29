@@ -124,5 +124,6 @@ interface PlaybackModule {
         ),
       )
       .build()
+      .also(player::attachTo)
   }
 }

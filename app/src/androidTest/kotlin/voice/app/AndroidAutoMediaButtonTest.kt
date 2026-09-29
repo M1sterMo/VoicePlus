@@ -32,6 +32,7 @@ import voice.core.data.store.MediaButtonTripleClickHandlerStore
 import voice.core.data.store.SeekTimeStore
 import voice.core.playback.di.PlaybackScope
 import voice.core.playback.history.ListeningEventRecorder
+import voice.core.playback.history.PlaybackIntentHolder
 import voice.core.playback.playstate.PositionUpdater
 import voice.core.playback.session.LibrarySessionCallback
 import java.io.File
@@ -64,6 +65,7 @@ class AndroidAutoMediaButtonTest {
     // Use production dependencies and real playback, but synthetic controller identities: this
     // covers the car callback boundary, not Android Auto's head-unit UI or controller attribution.
     val graph = withContext(Dispatchers.Main) { root.mediaButtonTestGraphFactory.create() }
+    val intentHolder = graph.intentHolder
     var session: MediaSession? = null
     try {
       doubleClickStore.updateData { MediaButtonClickAction.SKIP_BACKWARD }
@@ -119,8 +121,40 @@ class AndroidAutoMediaButtonTest {
           withContext(Dispatchers.Main) { graph.player.currentPosition shouldBe expected }
         }
       }
+
+      val headsetController = MediaSession.ControllerInfo.createTestOnlyControllerInfo(
+        "com.android.bluetooth",
+        Process.myPid(),
+        Process.myUid(),
+        0,
+        0,
+        true,
+        Bundle.EMPTY,
+        true,
+      )
+      withContext(Dispatchers.Main) {
+        intentHolder.requireSleepResumeConfirmation()
+        graph.callback.onMediaButtonEvent(
+          activeSession,
+          headsetController,
+          mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE),
+        ) shouldBe true
+      }
+      delay(500)
+      withContext(Dispatchers.Main) { graph.player.playWhenReady shouldBe false }
+
+      withContext(Dispatchers.Main) {
+        graph.callback.onMediaButtonEvent(
+          activeSession,
+          headsetController,
+          mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE),
+        ) shouldBe true
+      }
+      delay(500)
+      withContext(Dispatchers.Main) { graph.player.playWhenReady shouldBe true }
     } finally {
       withContext(Dispatchers.Main) {
+        intentHolder.clearSleepResumeConfirmation()
         graph.positionUpdater.release()
         graph.listeningEventRecorder.release()
         session?.release()
@@ -132,6 +166,7 @@ class AndroidAutoMediaButtonTest {
       seekTimeStore.updateData { previousSeek }
       audio.delete()
     }
+    Unit
   }
 
   private suspend fun awaitPosition(
@@ -158,6 +193,7 @@ interface MediaButtonTestGraph {
   val scope: CoroutineScope
   val positionUpdater: PositionUpdater
   val listeningEventRecorder: ListeningEventRecorder
+  val intentHolder: PlaybackIntentHolder
 
   @GraphExtension.Factory
   interface Factory {
