@@ -2,8 +2,13 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_call: { }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   screenshots:
@@ -47,6 +52,7 @@ jobs:
         with:
           report_paths: '**/test-results/**/TEST-*.xml'
           check_name: "Unit Tests"
+          annotate_only: true
 
   instrumentation:
     runs-on: ubuntu-latest
@@ -68,5 +74,6 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: always()
         with:
-          report_paths: '**/test-results/**/TEST-*.xml'
+          report_paths: 'app/build/outputs/androidTest-results/**/TEST-*.xml'
           check_name: "Instrumentation Tests"
+          annotate_only: true

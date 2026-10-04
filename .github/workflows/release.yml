@@ -60,6 +60,8 @@ jobs:
           # Apply the prebuild steps from the official F-Droid recipe.
           sed -i -e '/review/d' "$repro_source/features/review/play/build.gradle.kts"
           sed -i -e '/foojay/d' "$repro_source/settings.gradle.kts" "$repro_source/plugins/settings.gradle.kts"
+          # F-Droid's scanner removes vendor-specific daemon provisioning.
+          mv "$repro_source/gradle/gradle-daemon-jvm.properties" "$RUNNER_TEMP/fdroid-daemon-jvm.properties"
           (
             cd "$repro_source"
             ./gradlew :app:assembleLibreRelease --no-build-cache --no-configuration-cache
