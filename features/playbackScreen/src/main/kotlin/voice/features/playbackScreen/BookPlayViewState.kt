@@ -52,6 +52,7 @@ internal sealed interface BookPlayDialogViewState {
     val gain: Decibel,
     val valueFormatted: String,
     val maxGain: Decibel,
+    val remember: Boolean,
   ) : BookPlayDialogViewState
 
   data class SelectChapterDialog(val items: List<ItemViewState>) : BookPlayDialogViewState {

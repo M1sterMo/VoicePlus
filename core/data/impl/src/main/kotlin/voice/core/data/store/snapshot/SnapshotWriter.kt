@@ -32,6 +32,7 @@ import voice.core.data.repo.internals.dao.ListeningSessionDao
 import voice.core.data.store.ExcludedBooksStore
 import voice.core.data.store.snapshot.identity.DeviceRelativePath
 import voice.core.logging.api.Logger
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicBoolean
@@ -54,6 +55,8 @@ internal class SnapshotWriter(
   private val settingsSnapshotter: SettingsSnapshotter,
   private val backupRepository: BackupRepository,
   private val restoreGate: RestoreGate,
+  private val clock: Clock,
+  private val appDb: AppDb,
 ) {
 
   private val dirty = AtomicBoolean(false)
@@ -75,6 +78,7 @@ internal class SnapshotWriter(
       listeningEventDao.count().map { },
       excludedBooksStore.data.drop(1).map { },
       settingsSnapshotter.changes(),
+      appDb.libraryOrganisationDao().changes().map { },
     )
       .onEach { dirty.set(true) }
       .debounce(DEBOUNCE)
@@ -156,7 +160,7 @@ internal class SnapshotWriter(
           schemaVersion = LibrarySnapshot.SCHEMA_VERSION,
           dbVersion = AppDb.VERSION,
           sequence = 0L, // assigned by the ring
-          savedAtEpochMillis = System.currentTimeMillis(),
+          savedAtEpochMillis = clock.millis(),
           totalCount = books.size,
           activeCount = books.count { it.isActive },
           books = bookDtos,
@@ -168,6 +172,7 @@ internal class SnapshotWriter(
           events = events.map { it.toDto() },
           hiddenBooks = excludedIds,
           settings = settingsSnapshotter.capture(),
+          organisation = appDb.libraryOrganisationDao().get(),
         )
         if (RotationGuard.isSuspiciousShrink(ring.best(), snapshot, excludedIds)) {
           Logger.w(
@@ -198,7 +203,7 @@ internal class SnapshotWriter(
   private suspend fun dueDaily(): Boolean {
     val last = backupRepository.lastBackupAt.first() ?: return true
     val lastDay = last.atZone(ZoneOffset.UTC).toLocalDate()
-    val today = Instant.now().atZone(ZoneOffset.UTC).toLocalDate()
+    val today = Instant.now(clock).atZone(ZoneOffset.UTC).toLocalDate()
     return lastDay != today
   }
 

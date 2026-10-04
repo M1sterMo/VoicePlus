@@ -2,17 +2,36 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_call: { }
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install Pillow==12.3.0
+      - name: Check screenshot slots and prevent duplicate captures
+        run: |
+          python -m unittest discover -s docs/screenshots -p 'test_*.py'
+          python docs/screenshots/validate.py
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/build_setup
-      - name: Run Unit Tests + Lint
+      - name: Run Android lint
         run: ./gradlew :app:lintLibreDebug
       - uses: actions/upload-artifact@v6
         if: always()
@@ -33,6 +52,7 @@ jobs:
         with:
           report_paths: '**/test-results/**/TEST-*.xml'
           check_name: "Unit Tests"
+          annotate_only: true
 
   instrumentation:
     runs-on: ubuntu-latest
@@ -54,5 +74,21 @@ jobs:
         uses: mikepenz/action-junit-report@v6
         if: always()
         with:
-          report_paths: '**/test-results/**/TEST-*.xml'
+          report_paths: 'app/build/outputs/androidTest-results/**/TEST-*.xml'
           check_name: "Instrumentation Tests"
+          annotate_only: true
+      - name: Retain emulator failure reports
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: instrumentation-reports
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+            app/build/outputs/managed_device_android_test_additional_output/**
+      - name: Report runner memory on failure
+        if: failure()
+        run: |
+          free -h
+          ps -eo comm,rss --sort=-rss | head -n 12
+          sudo dmesg | tail -n 40

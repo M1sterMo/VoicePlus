@@ -33,6 +33,10 @@ jobs:
             echo "Missing release notes: $notes" >&2
             exit 1
           fi
+          if [[ $(wc -m < "$notes") -gt 500 ]]; then
+            echo "Release notes exceed F-Droid's 500-character limit" >&2
+            exit 1
+          fi
           echo "RELEASE_NOTES_PATH=$notes" >> "$GITHUB_ENV"
 
       - name: Decode Keystore
@@ -47,6 +51,31 @@ jobs:
       - name: Build Signed Release APK
         run: ./gradlew :app:assembleLibreRelease --no-configuration-cache
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Verify F-Droid reproducibility
+        run: |
+          python -m pip install apksigcopier==1.1.1
+          ./gradlew --stop
+          repro_source="$RUNNER_TEMP/fdroid-rebuild"
+          git clone --shared --no-checkout "$GITHUB_WORKSPACE" "$repro_source"
+          git -C "$repro_source" checkout --detach "$GITHUB_SHA"
+          # Apply the prebuild steps from the official F-Droid recipe.
+          sed -i -e '/review/d' "$repro_source/features/review/play/build.gradle.kts"
+          sed -i -e '/foojay/d' "$repro_source/settings.gradle.kts" "$repro_source/plugins/settings.gradle.kts"
+          # F-Droid's scanner removes vendor-specific daemon provisioning.
+          mv "$repro_source/gradle/gradle-daemon-jvm.properties" "$RUNNER_TEMP/fdroid-daemon-jvm.properties"
+          (
+            cd "$repro_source"
+            ./gradlew :app:assembleLibreRelease --no-build-cache --no-configuration-cache
+          )
+          apksigcopier compare --unsigned \
+            --verify-cmd "$ANDROID_HOME/build-tools/36.0.0/apksigner verify" \
+            "$GITHUB_WORKSPACE/app/build/outputs/apk/libre/release/app-libre-release.apk" \
+            "$repro_source/app/build/outputs/apk/libre/release/app-libre-release-unsigned.apk"
+
       - name: Rename APK for F-Droid Binaries URL
         run: mv app/build/outputs/apk/libre/release/app-libre-release.apk app/build/outputs/apk/libre/release/app-libre-release-signed.apk
 
@@ -59,6 +88,6 @@ jobs:
           fail_on_unmatched_files: true
           overwrite_files: false
           generate_release_notes: false
-          draft: false
+          draft: true
           prerelease: false
           make_latest: true

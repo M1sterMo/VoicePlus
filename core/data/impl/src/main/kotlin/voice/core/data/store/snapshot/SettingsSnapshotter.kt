@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import voice.core.data.GridMode
@@ -18,9 +19,11 @@ import voice.core.data.MediaButtonClickAction
 import voice.core.data.PlaybackToolbarAction
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.AutoRewindAmountStore
+import voice.core.data.store.BooksPerRowStore
 import voice.core.data.store.DarkThemeStore
 import voice.core.data.store.ExperimentalPlaybackPersistenceStore
 import voice.core.data.store.FadeOutStore
+import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.GridModeStore
 import voice.core.data.store.IgnoreFileTagsStore
 import voice.core.data.store.MediaButtonDoubleClickHandlerStore
@@ -35,9 +38,7 @@ import kotlin.time.Duration
  * applies them back on restore. Each value is JSON-encoded with its own serializer, keyed by a
  * stable name — unknown keys in an old bundle are simply skipped, missing keys keep defaults.
  *
- * A whole-DB or whole-snapshot restore that skips DataStore is how backups silently lose the
- * "everything around the library" state (learned the hard way in crawlfit); this is the small
- * companion that closes that gap.
+ * Database-only restore does not include DataStore preferences; capture them separately here.
  */
 @SingleIn(AppScope::class)
 @Inject
@@ -48,9 +49,11 @@ internal class SettingsSnapshotter(
   @FadeOutStore fadeOut: DataStore<Duration>,
   @SleepTimerPreferenceStore sleepTimer: DataStore<SleepTimerPreference>,
   @GridModeStore gridMode: DataStore<GridMode>,
+  @BooksPerRowStore booksPerRow: DataStore<Int>,
   @MediaButtonDoubleClickHandlerStore mediaDoubleClick: DataStore<MediaButtonClickAction>,
   @MediaButtonTripleClickHandlerStore mediaTripleClick: DataStore<MediaButtonClickAction>,
   @PlaybackToolbarActionsStore playbackToolbarActions: DataStore<Set<PlaybackToolbarAction>>,
+  @GlobalVolumeGainStore globalVolumeGain: DataStore<Float?>,
   @ExperimentalPlaybackPersistenceStore experimentalPersistence: DataStore<Boolean>,
   @IgnoreFileTagsStore ignoreFileTags: DataStore<Boolean>,
   @SnapshotJson private val json: Json,
@@ -64,7 +67,7 @@ internal class SettingsSnapshotter(
     suspend fun capture(): Pair<String, String> = key to json.encodeToString(serializer, store.data.first())
 
     suspend fun apply(encoded: String) {
-      val value = runCatching { json.decodeFromString(serializer, encoded) }.getOrNull() ?: return
+      val value = runCatching { json.decodeFromString(serializer, encoded) }.getOrElse { return }
       store.updateData { value }
     }
   }
@@ -76,9 +79,11 @@ internal class SettingsSnapshotter(
     Entry("fadeOut", fadeOut, Duration.serializer()),
     Entry("sleepTimerPreference", sleepTimer, SleepTimerPreference.serializer()),
     Entry("gridMode", gridMode, GridMode.serializer()),
+    Entry("booksPerRow", booksPerRow, Int.serializer()),
     Entry("mediaButtonDoubleClick", mediaDoubleClick, MediaButtonClickAction.serializer()),
     Entry("mediaButtonTripleClick", mediaTripleClick, MediaButtonClickAction.serializer()),
     Entry("playbackToolbarActions", playbackToolbarActions, SetSerializer(PlaybackToolbarAction.serializer())),
+    Entry("globalVolumeGain", globalVolumeGain, Float.serializer().nullable),
     Entry("experimentalPlaybackPersistence", experimentalPersistence, Boolean.serializer()),
     Entry("ignoreFileTags", ignoreFileTags, Boolean.serializer()),
   )

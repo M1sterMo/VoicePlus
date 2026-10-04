@@ -16,6 +16,18 @@ public interface BookContentRepo {
 
   public suspend fun put(content: BookContent)
 
+  /** Atomically updates the latest row so scanners and user edits cannot overwrite each other. */
+  @IgnorableReturnValue
+  public suspend fun update(
+    id: BookId,
+    transform: (BookContent) -> BookContent,
+  ): BookContent? {
+    val current = get(id) ?: return null
+    val updated = transform(current)
+    if (updated != current) put(updated)
+    return updated
+  }
+
   /** Re-read the backing store into the in-memory cache (used after an out-of-band restore). */
   public suspend fun invalidateCache()
 }

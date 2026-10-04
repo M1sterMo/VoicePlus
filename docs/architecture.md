@@ -85,7 +85,7 @@ data and services:
 This ensures **unidirectional dependency flow**:
 
 ```
-Infrastructure → Core → Features
+Infrastructure → Features → Core
 ```
 
 ## Diagram
@@ -120,7 +120,7 @@ flowchart LR
 * **Room** – Persistent storage
 * **Kotlin Serialization** – JSON parsing and object serialization
 * **Coil** – Efficient image loading
-* **Fully offline** – No analytics, crash reporting, or remote config; VoicePlus makes no outbound network calls
+* **Local-first** – No analytics, crash reporting, or remote config; network requests are limited to user-initiated cover search and image downloads. Android system backup is controlled by the user's device settings.
 
 ## Module Lifecycle
 

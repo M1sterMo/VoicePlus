@@ -26,7 +26,6 @@ import voice.core.data.MediaButtonClickAction
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.featureflag.MemoryFeatureFlag
 import voice.core.scanner.MediaScanTrigger
-import voice.core.ui.GridCount
 import voice.navigation.Destination
 import voice.navigation.Navigator
 
@@ -37,15 +36,13 @@ class SettingsViewModelTest {
   private val autoRewindAmountStore = MemoryDataStore(10)
   private val seekTimeStore = MemoryDataStore(30)
   private val gridModeStore = MemoryDataStore(GridMode.GRID)
+  private val booksPerRowStore = MemoryDataStore(2)
   private val sleepTimerPreferenceStore = MemoryDataStore(SleepTimerPreference.Default)
   private val navigator = mockk<Navigator> {
     every { goTo(any()) } just Runs
   }
   private val appInfoProvider = mockk<AppInfoProvider> {
     every { versionName } returns "1.2.3"
-  }
-  private val gridCount = mockk<GridCount> {
-    every { useGridAsDefault() } returns true
   }
   private val folderPickerFeatureFlag = MemoryFeatureFlag(false)
   private val mediaButtonDoubleClickHandlerStore = MemoryDataStore(MediaButtonClickAction.SKIP_FORWARD)
@@ -63,8 +60,8 @@ class SettingsViewModelTest {
     navigator = navigator,
     appInfoProvider = appInfoProvider,
     gridModeStore = gridModeStore,
+    booksPerRowStore = booksPerRowStore,
     sleepTimerPreferenceStore = sleepTimerPreferenceStore,
-    gridCount = gridCount,
     folderPickerInSettingsFeatureFlag = folderPickerFeatureFlag,
     mediaButtonDoubleClickHandlerStore = mediaButtonDoubleClickHandlerStore,
     mediaButtonTripleClickHandlerStore = mediaButtonTripleClickHandlerStore,
@@ -77,15 +74,42 @@ class SettingsViewModelTest {
   )
 
   @Test
-  fun `grid toggle switches between list and grid`() = scope.runTest {
+  fun `books per row persists independently of library view`() = scope.runTest {
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) { viewModel.viewState() }.test {
+      awaitItem().booksPerRow shouldBe 2
+      viewModel.setBooksPerRow(3)
+      awaitItem().booksPerRow shouldBe 3
+      viewModel.setLibraryView(GridMode.BOOKS)
+      awaitItem().booksPerRow shouldBe 3
+      viewModel.setBooksPerRow(2)
+      awaitItem().booksPerRow shouldBe 2
+    }
+  }
+
+  @Test
+  fun `library view persists books and can return to list and grid`() = scope.runTest {
     backgroundScope.launchMolecule(RecompositionMode.Immediate) {
       viewModel.viewState()
     }.test {
-      awaitItem().useGrid shouldBe true
+      awaitItem().gridMode shouldBe GridMode.GRID
 
-      viewModel.toggleGrid()
+      viewModel.setLibraryView(GridMode.BOOKS)
+      awaitItem().gridMode shouldBe GridMode.BOOKS
+      viewModel.setLibraryView(GridMode.LIST)
+      awaitItem().gridMode shouldBe GridMode.LIST
+      viewModel.setLibraryView(GridMode.GRID)
+      awaitItem().gridMode shouldBe GridMode.GRID
+    }
+  }
 
-      awaitItem().useGrid shouldBe false
+  @Test
+  fun `library view changes inline without opening a dialog`() = scope.runTest {
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) { viewModel.viewState() }.test {
+      awaitItem().dialog shouldBe null
+      viewModel.setLibraryView(GridMode.BOOKS)
+      val changed = awaitItem()
+      changed.gridMode shouldBe GridMode.BOOKS
+      changed.dialog shouldBe null
     }
   }
 

@@ -2,57 +2,74 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VoicePlus · v1.28 screenshot preview</title>
+<title>VoicePlus · Screenshot preview</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; background: #0a0d13; color: #e8ebf3; font: 16px/1.6 system-ui, sans-serif; }
+  body { margin: 0; background: #121212; color: #ededed; font: 16px/1.6 system-ui, sans-serif; }
   main { max-width: 1120px; margin: auto; padding: 64px 28px; }
-  .eyebrow { color: #aebff4; letter-spacing: .16em; font-size: 12px; text-transform: uppercase; }
+  .eyebrow { color: #bcbcbc; letter-spacing: .16em; font-size: 12px; text-transform: uppercase; }
   h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.15; font-weight: 600; letter-spacing: -.04em; margin: 12px 0; }
-  .intro { color: #939cad; max-width: 660px; margin-bottom: 48px; }
+  .intro { color: #aaa; max-width: 660px; margin-bottom: 48px; }
   .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px 32px; }
   figure { margin: 0; min-width: 0; }
-  .phone { display: block; position: relative; width: 100%; max-width: 285px; margin: auto; padding: 7px; border: 1px solid #5a5f6b; border-radius: 34px; background: linear-gradient(135deg, #3a3e47, #0c0e12 45%, #333741); box-shadow: 0 18px 35px #0008, inset 0 0 0 2px #14161c; }
-  .phone img { width: 100%; display: block; border-radius: 27px; }
-  .phone::after { content: ''; position: absolute; width: 9px; height: 9px; border-radius: 50%; top: 13px; left: calc(50% - 4.5px); background: #050608; box-shadow: 0 0 0 1px #22252b; }
-  figcaption { max-width: 285px; margin: 16px auto 0; }
-  figcaption strong { display: block; font-size: 17px; font-weight: 550; }
-  figcaption span { color: #939cad; font-size: 13px; }
+  .gallery figure, .tablets figure { container-type: inline-size; aspect-ratio: 1 / 2; display: flex; flex-direction: column; align-items: center; background: #242424; overflow: hidden; }
+  .phone, .tablet { order: 2; display: block; flex-shrink: 0; width: 72cqw; margin: 7cqw auto 0; padding: 1.6cqw; border: .3cqw solid #676767; border-radius: 8cqw; background: linear-gradient(135deg, #404040, #101010 40%, #2e2e2e); box-shadow: 0 4cqw 7cqw #0006, inset 0 0 0 .4cqw #191919; }
+  .phone img, .tablet img { width: 100%; display: block; border-radius: 6.4cqw; }
+  figcaption { order: 1; width: 100%; height: 28cqw; padding: 10cqw 5cqw 0; text-align: center; }
+  figcaption strong { display: block; font-size: 7.2cqw; line-height: 1.18; font-weight: 650; letter-spacing: -.035em; color: #f4f4f4; }
+  figcaption span { display: none; }
   h2 { margin-top: 72px; font-size: 24px; font-weight: 550; }
-  .tablets { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-  .tablet { display: block; background: #22252d; padding: 10px; border: 1px solid #525865; border-radius: 22px; }
-  .tablet img { display: block; width: 100%; border-radius: 13px; }
-  .tablets figcaption { max-width: none; }
-  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid #222936; color: #939cad; font-size: 12px; }
-  a { color: #b2c5ff; }
-  @media (max-width: 720px) { .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 18px; } main { padding: 36px 18px; } .phone { border-radius: 25px; padding: 5px; } .phone img { border-radius: 20px; } }
+  .tablets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px 32px; }
+  .tablet { width: 86cqw; padding: 2cqw; border-radius: 5cqw; margin-top: 12cqw; }
+  .tablet img { border-radius: 3cqw; }
+  footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid #2a2a2a; color: #aaa; font-size: 12px; }
+  a { color: #cecece; }
+  @media (max-width: 720px) { .gallery, .tablets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 18px; } main { padding: 36px 18px; } }
   @media (max-width: 430px) { .gallery, .tablets { grid-template-columns: 1fr; } }
 </style>
 <main>
-  <div class="eyebrow">VoicePlus / v1.28 / screenshot preview</div>
+  <div class="eyebrow">VoicePlus / screenshot preview</div>
   <h1>Your books. Your listening.</h1>
-  <p class="intro">Real app captures in dark mode, with a fictional demo library. The frames below are presentation-only; open any screen to view the untouched PNG.</p>
+  <p class="intro">Real v1.29 app captures with public-domain covers and fictional listening data. The library uses two-column Books view. Open any screen to view the untouched PNG.</p>
   <section class="gallery" aria-label="Phone screenshots">
-    <figure><a class="phone" href="phone/playback.png"><img src="phone/playback.png" alt="Dark-mode playback with Alice in Wonderland cover art and chapter controls"></a><figcaption><strong>Playback</strong><span>Your book, front and centre.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/listening-log.png"><img src="phone/listening-log.png" alt="Listening log with play, pause, seek and sleep-timer events"></a><figcaption><strong>Listening log</strong><span>See exactly where you left off.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/bookmarks.png"><img src="phone/bookmarks.png" alt="Named bookmarks with chapter and book positions"></a><figcaption><strong>Bookmarks</strong><span>Keep the moments worth returning to.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/listening-statistics.png"><img src="phone/listening-statistics.png" alt="Listening statistics showing totals, recent activity and a monthly chart"></a><figcaption><strong>Listening statistics</strong><span>Your listening, over time.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/library.png"><img src="phone/library.png" alt="Demo audiobook library with cover art and completed-book badges"></a><figcaption><strong>Your library</strong><span>Current, next and completed.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/characters.png"><img src="phone/characters.png" alt="Character list with fictional notes for Alice in Wonderland"></a><figcaption><strong>Character lists</strong><span>Keep track of who's who.</span></figcaption></figure>
+    <figure><a class="phone" href="phone/library.png"><img src="phone/library.png" alt="Two-column Books view with personal shelves and series stacks"></a><figcaption><strong>Your books.<br>Your bookshelf.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/series.png"><img src="phone/series.png" alt="Opened Sherlock Holmes series in reading order"></a><figcaption><strong>Keep every series<br>together.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/playback.png"><img src="phone/playback.png" alt="Dark-mode playback with Alice in Wonderland cover art and chapter controls"></a><figcaption><strong>Pick up right<br>where you left off.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/listening-log.png"><img src="phone/listening-log.png" alt="Listening log with play, pause, seek and sleep-timer events"></a><figcaption><strong>Every session.<br>One clear history.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/bookmarks.png"><img src="phone/bookmarks.png" alt="Named bookmarks with chapter and book positions"></a><figcaption><strong>Save the moments<br>worth returning to.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/listening-statistics.png"><img src="phone/listening-statistics.png" alt="Listening statistics showing totals, recent activity and a monthly chart"></a><figcaption><strong>See your listening<br>over time.</strong></figcaption></figure>
   </section>
   <h2>Make it yours</h2>
-  <p class="intro">Choose your playback shortcuts, media-button actions and sleep-timer behaviour.</p>
+  <p class="intro">Choose your library layout, edit titles and covers, and tailor your playback controls.</p>
   <section class="gallery" aria-label="Customization screenshots">
-    <figure><a class="phone" href="phone/playback-toolbar.png"><img src="phone/playback-toolbar.png" alt="Customize toolbar dialog showing selectable playback shortcuts"></a><figcaption><strong>Your playback shortcuts</strong><span>Keep your favourite actions within reach.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/playback-settings.png"><img src="phone/playback-settings.png" alt="Playback settings with skip amount, auto rewind, double and triple-click media actions, lock-screen options and sleep timer"></a><figcaption><strong>Your controls</strong><span>Set media-button actions and lock-screen options.</span></figcaption></figure>
-    <figure><a class="phone" href="phone/sleep-timer.png"><img src="phone/sleep-timer.png" alt="Sleep timer with minute presets and end-of-chapter option"></a><figcaption><strong>Sleep timer</strong><span>Wind down at your own pace.</span></figcaption></figure>
+    <figure><a class="phone" href="phone/appearance.png"><img src="phone/appearance.png" alt="Compact Appearance editor with layout and column choices"></a><figcaption><strong>A library that<br>feels like yours.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/edit-book.png"><img src="phone/edit-book.png" alt="Edit book title and cover dialog"></a><figcaption><strong>Your titles.<br>Your cover art.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/playback-settings.png"><img src="phone/playback-settings.png" alt="Settings with skip amount, auto rewind, and double and triple-click media actions"></a><figcaption><strong>Your buttons.<br>Your way to listen.</strong></figcaption></figure>
   </section>
-  <h2>Tablet previews</h2>
+  <h2>More to explore</h2>
+  <section class="gallery" aria-label="More screenshots">
+    <figure><a class="phone" href="phone/characters.png"><img src="phone/characters.png" alt="Character notes for Alice in Wonderland"></a><figcaption><strong>Keep track<br>of who's who.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/playback-toolbar.png"><img src="phone/playback-toolbar.png" alt="Customizable playback shortcuts"></a><figcaption><strong>Your favourite actions,<br>within reach.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/sleep-timer.png"><img src="phone/sleep-timer.png" alt="Sleep timer presets and end-of-chapter options"></a><figcaption><strong>Drift off.<br>We'll pause here.</strong></figcaption></figure>
+    <figure><a class="phone" href="phone/library-light.png"><img src="phone/library-light.png" alt="The same Books layout in light mode"></a><figcaption><strong>A brighter view<br>of your bookshelf.</strong></figcaption></figure>
+  </section>
+  <h2>7-inch tablet · dark</h2>
   <p class="intro">Captured at tablet display sizes—not resized phone images.</p>
   <section class="tablets" aria-label="Tablet screenshots">
-    <figure><a class="tablet" href="tablet-7/library.png"><img src="tablet-7/library.png" alt="7-inch-class tablet library layout"></a><figcaption><strong>7-inch class</strong><span>800 × 1280 · full demo library</span></figcaption></figure>
-    <figure><a class="tablet" href="tablet-10/listening-statistics.png"><img src="tablet-10/listening-statistics.png" alt="10-inch-class tablet statistics including records and finished books"></a><figcaption><strong>10-inch class</strong><span>1600 × 2560 · statistics and finished books</span></figcaption></figure>
+    <figure><a class="tablet" href="tablet-7/library.png"><img src="tablet-7/library.png" alt="Dark 7-inch tablet library"></a><figcaption><strong>More room<br>for your books.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-7/series.png"><img src="tablet-7/series.png" alt="Dark 7-inch tablet series"></a><figcaption><strong>Keep every series<br>together.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-7/playback.png"><img src="tablet-7/playback.png" alt="Dark 7-inch tablet playback"></a><figcaption><strong>Your book,<br>front and centre.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-7/listening-log.png"><img src="tablet-7/listening-log.png" alt="Dark 7-inch tablet listening log"></a><figcaption><strong>Every session.<br>One clear history.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-7/listening-statistics.png"><img src="tablet-7/listening-statistics.png" alt="Dark 7-inch tablet listening statistics"></a><figcaption><strong>See your listening<br>over time.</strong></figcaption></figure>
   </section>
-  <footer>Approved screenshot set. Matching framed PNGs are exported for the README, and plain captures populate the local F-Droid metadata. Nothing has been tagged or published. Cover sources and export details are in <a href="README.md">the screenshot notes</a>.</footer>
+  <h2>10-inch tablet · light</h2>
+  <section class="tablets" aria-label="Light tablet screenshots">
+    <figure><a class="tablet" href="tablet-10/library.png"><img src="tablet-10/library.png" alt="Light 10-inch tablet library"></a><figcaption><strong>More room<br>for your books.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-10/series.png"><img src="tablet-10/series.png" alt="Light 10-inch tablet series"></a><figcaption><strong>Keep every series<br>together.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-10/playback.png"><img src="tablet-10/playback.png" alt="Light 10-inch tablet playback"></a><figcaption><strong>Your book,<br>front and centre.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-10/listening-log.png"><img src="tablet-10/listening-log.png" alt="Light 10-inch tablet listening log"></a><figcaption><strong>Every session.<br>One clear history.</strong></figcaption></figure>
+    <figure><a class="tablet" href="tablet-10/listening-statistics.png"><img src="tablet-10/listening-statistics.png" alt="Light 10-inch tablet listening statistics"></a><figcaption><strong>See your listening<br>over time.</strong></figcaption></figure>
+  </section>
+  <footer>README and F-Droid use these captioned device frames. Untouched captures remain available by opening each device. F-Droid keeps its existing filenames and order; see <a href="fdroid-preview.html">the publication-order preview</a> and <a href="README.md">screenshot notes</a>.</footer>
 </main>
 </html>

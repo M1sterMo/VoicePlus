@@ -1,12 +1,15 @@
-"""Export the approved HTML phone frames and populate existing F-Droid slots.
+"""Export captioned phone/tablet frames and populate existing F-Droid slots.
 
 Requires agent-browser and its installed Chromium. Run from any directory.
 Only documentation and promotional images are written; no app/device data changes.
 """
 import base64
+import json
 from pathlib import Path
 import shutil
 import subprocess
+from PIL import Image, PngImagePlugin
+from validate import FRAME_SIZE, FRAMED_DIRS, SETS, pixels, validate
 
 root = Path(__file__).resolve().parent
 repo = root.parents[1]
@@ -20,48 +23,49 @@ def run(*args):
     return subprocess.check_output(browser + list(args), text=True)
 
 def evaluate(script):
-    return run('eval', '-b', base64.b64encode(script.encode()).decode())
+    return run('eval', '-b', base64.b64encode(f'(() => {{ {script} }})()'.encode()).decode())
 
-names = ['playback', 'listening-log', 'bookmarks', 'listening-statistics',
-         'library', 'characters', 'playback-toolbar', 'playback-settings', 'sleep-timer']
-output = root / 'framed'
-output.mkdir(exist_ok=True)
 try:
     run('--allow-file-access', 'open', (root / 'preview.html').as_uri())
-    run('set', 'viewport', '1120', '900', '2')
+    run('set', 'viewport', '1120', '900', '3')
     run('wait', '--fn', 'Array.from(document.images).every(i => i.complete && i.naturalWidth > 0)')
     evaluate('''
-      window.exportFigures = Array.from(document.querySelectorAll('.gallery figure'));
+      window.exportFigures = Array.from(document.querySelectorAll('main figure'));
       document.querySelector('main').style.display = 'none';
       const box = document.createElement('div'); box.id = 'export';
-      box.style.cssText = 'width:349px;height:772px;padding:32px;background:#0a0d13;';
+      box.style.cssText = 'width:360px;height:720px;display:block;';
       document.body.append(box);
     ''')
-    for index, name in enumerate(names):
-        evaluate(f"document.querySelector('#export').replaceChildren(window.exportFigures[{index}].cloneNode(true))")
-        run('wait', '--fn', "document.querySelector('#export img').complete")
-        run('screenshot', '#export', str(output / (name + '.png')))
-        print('Exported', name, flush=True)
+    for source, _, size, slots in SETS:
+        output = root / FRAMED_DIRS[source]
+        output.mkdir(exist_ok=True)
+        names = [*slots.values(), 'playback-toolbar'] if source == 'phone' else slots.values()
+        for name in names:
+            path = f'{source}/{name}.png'
+            evaluate(f"""
+              const box = document.querySelector('#export');
+              box.className = {'"gallery"' if source == 'phone' else '"tablets"'};
+              box.replaceChildren(window.exportFigures.find(f => f.querySelector('img').getAttribute('src') === {json.dumps(path)}).cloneNode(true));
+            """)
+            run('wait', '--fn', "document.querySelector('#export img').complete && document.querySelector('#export img').naturalWidth > 0")
+            destination = output / (name + '.png')
+            run('screenshot', '#export', str(destination))
+            # Preserve a source fingerprint so CI also detects stale frames.
+            info = PngImagePlugin.PngInfo()
+            info.add_text('source_sha256', pixels(root / path, size))
+            with Image.open(destination) as capture:
+                if capture.size != FRAME_SIZE:
+                    raise ValueError(f'Unexpected exported dimensions: {capture.size}')
+                capture.convert('RGB').save(destination, pnginfo=info, optimize=True)
+            print('Exported', path, flush=True)
 finally:
     run('close')
 
-# Preserve legacy paths because removal alone previously left orphaned F-Droid images.
-# Historical filenames are slot identifiers; two now showcase newer features.
-phone_slots = {
-    '1_en-US.png': 'library', '1_library.png': 'library',
-    '2_en-US.png': 'playback', '2_playback.png': 'playback',
-    '3_en-US.png': 'bookmarks', '3_sleep_timer.png': 'sleep-timer',
-    '4_en-US.png': 'playback-toolbar', '4_character_list.png': 'characters',
-    '5_edit_book.png': 'playback-toolbar', '6_settings.png': 'playback-settings',
-    '7_listening_log.png': 'listening-log', '8_listening_stats.png': 'listening-statistics',
-}
 metadata = repo / 'fastlane/metadata/android/en-US/images'
-for target, source in phone_slots.items():
-    shutil.copyfile(root / 'phone' / (source + '.png'), metadata / 'phoneScreenshots' / target)
-tablet_slots = ['library', 'playback', 'listening-log', 'listening-statistics', 'bookmarks']
-for source_dir, target_dir in [('tablet-7', 'sevenInchScreenshots'), ('tablet-10', 'tenInchScreenshots')]:
+for source_dir, target_dir, size, slots in SETS:
     destination = metadata / target_dir
     destination.mkdir(exist_ok=True)
-    for number, name in enumerate(tablet_slots, 1):
-        shutil.copyfile(root / source_dir / (name + '.png'), destination / f'{number}_en-US.png')
-print('Updated 12 phone slots and 10 tablet slots with plain captures.')
+    for filename, name in slots.items():
+        shutil.copyfile(root / FRAMED_DIRS[source_dir] / (name + '.png'), destination / filename)
+validate()
+print('Updated 12 phone slots and 10 tablet slots with captioned frames.')

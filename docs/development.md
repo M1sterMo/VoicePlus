@@ -27,6 +27,9 @@ To run the unit tests, run the following command:
 ./gradlew voiceUnitTest
 ```
 
+Run `clean` separately from tests; use `--no-configuration-cache` on the following
+test command to recreate the generated Robolectric SDK configuration.
+
 ### Instrumentation tests
 
 To run the instrumentation tests, run the following command:
@@ -58,13 +61,40 @@ echo "./gradlew lintKotlin" > .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
+## Dependency updates
+
+Run Renovate locally from the repository root:
+
+```sh
+./scripts/renovate_local.sh
+```
+
+The script uses pinned Renovate and Node versions, validates `renovate.json`, and
+runs Renovate's local lookup-only mode for Gradle dependencies. Local mode does
+not edit files or create branches. Apply reviewed updates in small batches, then
+run the unit, lint, build, and relevant emulator tests before committing them.
+
 ## Releasing
 
-To release a new version, push a `vMAJOR.MINOR` tag, or dispatch the
-[Release Workflow](https://github.com/Mistermo-vibecode/VoicePlus/actions/workflows/release.yml) manually.
+Before tagging, refresh the README, F-Droid description and version-code changelog.
+Follow [the screenshot checklist](screenshots/README.md): retain the published image
+filenames, export current captures, and run `python3 docs/screenshots/validate.py`.
+CI checks dimensions, slot coverage, matching captioned frames, stale exports and
+duplicate decoded pixels in both source captures and final images.
+Deleting or renaming a published image can leave an old screenshot on F-Droid.
 
-The workflow builds a signed `libre` release APK and publishes it as a draft GitHub release. F-Droid picks up the binary
-from the release a few days later.
+Follow the [release checklist](release-checklist.md) before merging or tagging.
+Pushing a `vMAJOR.MINOR` tag starts the
+[Release Workflow](https://github.com/Mistermo-vibecode/VoicePlus/actions/workflows/release.yml).
+Manual runs must also use that version's matching tag.
+
+The workflow builds a signed `libre` release APK, independently rebuilds it with
+F-Droid's prebuild adjustments, and checks reproducibility by copying and verifying
+the APK signature. A mismatch stops the release before draft creation.
+It then publishes a draft GitHub release. F-Droid picks up the binary
+from the published release later; the draft must first be published. Verify the
+live F-Droid screenshot listing after its metadata refresh. Local validation is
+not evidence that the public listing has already changed.
 
 CI signs the APK from base64-encoded keystore secrets. The release requires these secrets:
 

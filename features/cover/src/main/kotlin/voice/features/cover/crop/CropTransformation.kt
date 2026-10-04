@@ -6,14 +6,14 @@ import coil.size.Size
 import coil.transform.Transformation
 
 class CropTransformation(
-  cropOverlay: CropOverlay,
+  rect: Rect,
   private val sourceWidth: Int,
   private val sourceHeight: Int,
 ) : Transformation {
 
-  private val rect = cropOverlay.selectedRect
+  private val rect = Rect(rect)
 
-  override val cacheKey: String = "cropTransformation"
+  override val cacheKey: String = "crop:$sourceWidth:$sourceHeight:${rect.flattenToString()}"
 
   override suspend fun transform(
     input: Bitmap,

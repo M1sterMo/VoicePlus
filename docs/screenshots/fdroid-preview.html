@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoicePlus · F-Droid gallery</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #121212; color: #ededed; font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 1200px; padding: 48px 24px; margin: auto; }
+  h1 { font-size: 36px; letter-spacing: -.04em; margin: 0 0 12px; }
+  h2 { font-size: 22px; margin: 48px 0 20px; }
+  p, figcaption { color: #aaa; }
+  .gallery { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 16px; }
+  figure { margin: 0; min-width: 0; }
+  img { width: 100%; height: auto; display: block; }
+  figcaption { margin-top: 10px; font-size: 13px; }
+  a { color: inherit; }
+  @media (max-width: 850px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { main { padding: 28px 16px; } .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 12px; } h1 { font-size: 28px; } }
+</style>
+<main>
+  <h1>Your books. Your listening.</h1>
+  <p>New captioned screenshots, in the current F-Droid website order. Preview only—not published yet. Open a card for its full-resolution PNG.</p>
+  <h2>Phone · 1–12</h2>
+  <section class="gallery" id="phone" aria-label="Phone publication order"></section>
+  <h2>7-inch tablet · 13–17 · dark</h2>
+  <section class="gallery" id="seven-inch" aria-label="Dark tablet publication order"></section>
+  <h2>10-inch tablet · 18–22 · light</h2>
+  <section class="gallery" id="ten-inch" aria-label="Light tablet publication order"></section>
+  <p>Every existing filename is retained. Device framing and captions are baked into the exported PNGs.</p>
+</main>
+<script>
+  const phone = [
+    ['1_en-US.png', 'Your bookshelf'], ['1_library.png', 'Light library'],
+    ['2_en-US.png', 'Series'], ['2_playback.png', 'Playback'],
+    ['3_en-US.png', 'Appearance'], ['3_sleep_timer.png', 'Sleep timer'],
+    ['4_character_list.png', 'Characters'], ['4_en-US.png', 'Bookmarks'],
+    ['5_edit_book.png', 'Title and cover editor'], ['6_settings.png', 'Playback settings'],
+    ['7_listening_log.png', 'Listening log'], ['8_listening_stats.png', 'Listening statistics']
+  ];
+  const tablets = ['Library', 'Series', 'Playback', 'Listening log', 'Listening statistics'].map((scene, index) => [`${index + 1}_en-US.png`, scene]);
+  let order = 0;
+  for (const [id, folder, captures] of [['phone', 'phoneScreenshots', phone], ['seven-inch', 'sevenInchScreenshots', tablets], ['ten-inch', 'tenInchScreenshots', tablets]]) {
+    for (const [filename, scene] of captures) {
+      const figure = document.createElement('figure');
+      const link = document.createElement('a');
+      link.href = `../../fastlane/metadata/android/en-US/images/${folder}/${filename}`;
+      const image = document.createElement('img');
+      image.src = link.href;
+      image.alt = `${++order}. ${scene} — ${folder}`;
+      image.width = 1080;
+      image.height = 2160;
+      const caption = document.createElement('figcaption');
+      caption.textContent = `${String(order).padStart(2, '0')} · ${scene}`;
+      link.append(image);
+      figure.append(link, caption);
+      document.getElementById(id).append(figure);
+    }
+  }
+</script>
+</html>

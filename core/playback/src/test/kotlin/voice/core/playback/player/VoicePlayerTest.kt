@@ -4,6 +4,7 @@ import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.session.MediaSession
 import androidx.media3.test.utils.FakeMediaSource
 import androidx.media3.test.utils.FakeTimeline
 import androidx.media3.test.utils.TestExoPlayerBuilder
@@ -20,18 +21,25 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Shadows
 import voice.core.data.Book
+import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
@@ -47,6 +55,8 @@ import voice.core.playback.ChapterMarkChangeNotifier
 import voice.core.playback.LivePlaybackState
 import voice.core.playback.MemoryDataStore
 import voice.core.playback.history.PlaybackIntentHolder
+import voice.core.playback.misc.Decibel
+import voice.core.playback.misc.VolumeGain
 import voice.core.playback.session.LockscreenPlayer
 import voice.core.playback.session.MediaId
 import voice.core.playback.session.MediaItemProvider
@@ -75,7 +85,32 @@ class VoicePlayerTest {
     )
   }
 
+  @Test
+  fun `accepted gain saves survive playback scope cancellation`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.setGain(Decibel(6F), remember = true)
+    val releaseBookWrite = CompletableDeferred<Unit>()
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      releaseBookWrite.await()
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+    val save = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { player.setGain(Decibel(3F)) }
+    runCurrent()
+    save.cancel()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 6F
+    releaseBookWrite.complete(Unit)
+    save.join()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe null
+    currentBook.content.gain shouldBe 3F
+  }
+
   private val seekTimeStore = MemoryDataStore(2)
+  private val globalVolumeGainStore = MemoryDataStore<Float?>(null)
+  private val volumeGain = VolumeGain(mockk(relaxed = true))
+  private val bookFlow = MutableStateFlow<Book?>(null)
   private var periodCount = 1
 
   private val internalPlayer = TestExoPlayerBuilder(ApplicationProvider.getApplicationContext())
@@ -113,33 +148,140 @@ class VoicePlayerTest {
     mockk(),
   )
   private val bookId = BookId(UUID.randomUUID().toString())
+  private val currentBookStoreId = MemoryDataStore<BookId?>(bookId)
   private lateinit var currentBook: Book
   private val bookRepository = mockk<BookRepository> {
+    every { flow(any()) } returns bookFlow
     coEvery { get(bookId) } answers { currentBook }
     coEvery { updateBook(any(), any()) } just Runs
   }
   private val chapterMarkChangeNotifier = ChapterMarkChangeNotifier()
+  private val playbackIntentHolder = PlaybackIntentHolder(ApplicationProvider.getApplicationContext())
   private val player = VoicePlayer(
     player = internalPlayer,
     repo = bookRepository,
-    currentBookStoreId = mockk {
-      every { data } returns flowOf(bookId)
-    },
+    currentBookStoreId = currentBookStoreId,
     seekTimeStore = seekTimeStore,
-    autoRewindAmountStore = mockk(),
-    scope = scope,
+    autoRewindAmountStore = MemoryDataStore(0),
+    scope = CoroutineScope(scope.backgroundScope.coroutineContext + UnconfinedTestDispatcher(scope.testScheduler)),
     chapterRepo = mockk {
       coEvery { this@mockk.get(any()) } answers {
         currentBook.chapters.single { it.id == firstArg() }
       }
     },
     mediaItemProvider = mediaItemProvider,
-    volumeGain = mockk(relaxed = true),
+    volumeGain = volumeGain,
+    globalVolumeGainStore = globalVolumeGainStore,
     sleepTimer = mockk(relaxed = true),
-    intentHolder = PlaybackIntentHolder(),
+    intentHolder = playbackIntentHolder,
     listeningEventRecorder = mockk(relaxed = true),
     chapterMarkChangeNotifier = chapterMarkChangeNotifier,
   )
+
+  @After
+  fun tearDown() {
+    internalPlayer.release()
+    playbackIntentHolder.clearSleepResumeConfirmation()
+  }
+
+  @Test
+  fun `loading books uses remembered boost including zero or falls back to per book gain`() = scope.runTest {
+    val chapters = listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null)))
+    currentBook = book(chapters, bookId).let { it.copy(content = it.content.copy(gain = 2F)) }
+    bookFlow.value = currentBook
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(2F)
+
+    globalVolumeGainStore.updateData { 6F }
+    setMediaItems(chapters)
+    volumeGain.gain shouldBe Decibel(6F)
+
+    val otherBookId = BookId(UUID.randomUUID().toString())
+    currentBook = currentBook.copy(content = currentBook.content.copy(id = otherBookId, gain = 4F))
+    bookFlow.value = currentBook
+    coEvery { bookRepository.get(otherBookId) } answers { currentBook }
+    currentBookStoreId.updateData { otherBookId }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(6F)
+
+    globalVolumeGainStore.updateData { 0F }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(0F)
+
+    globalVolumeGainStore.updateData { null }
+    player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
+    volumeGain.gain shouldBe Decibel(4F)
+  }
+
+  @Test
+  fun `global edits preserve book gains and restored settings refresh loaded audio`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    currentBook = currentBook.copy(content = currentBook.content.copy(gain = 4F))
+    bookFlow.value = currentBook
+    runCurrent()
+    volumeGain.gain shouldBe Decibel(4F)
+
+    player.setGain(Decibel(6F), remember = true)
+    volumeGain.gain shouldBe Decibel(6F)
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 6F
+    coVerify(exactly = 0) { bookRepository.updateBook(any(), match { it(currentBook.content).gain == 6F }) }
+
+    currentBook = currentBook.copy(content = currentBook.content.copy(gain = 2F))
+    bookFlow.value = currentBook
+    for (restored in listOf(null, 0F, 6F, null)) {
+      globalVolumeGainStore.updateData { restored }
+      runCurrent()
+      volumeGain.gain shouldBe Decibel(restored ?: 2F)
+      player.playWhenReady shouldBe false
+      player.currentMediaItemIndex shouldBe 0
+    }
+
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+    player.setGain(Decibel(3F))
+    volumeGain.gain shouldBe Decibel(3F)
+    runCurrent()
+    coVerify { bookRepository.updateBook(bookId, match { it(currentBook.content).gain == 3F }) }
+    globalVolumeGainStore.data.first() shouldBe null
+    currentBook.content.gain shouldBe 3F
+  }
+
+  @Test
+  fun `slow book writes cannot undo newer global mode or audio previews`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.setGain(Decibel(6F), remember = true)
+    val releaseBookWrite = CompletableDeferred<Unit>()
+    coEvery { bookRepository.updateBook(bookId, any()) } coAnswers {
+      releaseBookWrite.await()
+      currentBook = currentBook.copy(content = secondArg<(BookContent) -> BookContent>()(currentBook.content))
+      bookFlow.value = currentBook
+    }
+
+    val writes = listOf(3F to false, 8F to true, 9F to true).map { (gain, remember) ->
+      backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { player.setGain(Decibel(gain), remember) }
+    }
+    runCurrent()
+    volumeGain.gain shouldBe Decibel(9F)
+    globalVolumeGainStore.data.first() shouldBe 6F
+
+    val nextBook = book(currentBook.chapters, BookId(UUID.randomUUID().toString()))
+      .let { it.copy(content = it.content.copy(gain = 2F)) }
+    coEvery { bookRepository.get(nextBook.id) } returns nextBook
+    every { bookRepository.flow(nextBook.id) } returns flowOf(nextBook)
+    currentBookStoreId.updateData { nextBook.id }
+    player.setMediaItem(mediaItemProvider.mediaItem(nextBook))
+    volumeGain.gain shouldBe Decibel(9F)
+
+    releaseBookWrite.complete(Unit)
+    writes.joinAll()
+    runCurrent()
+    globalVolumeGainStore.data.first() shouldBe 9F
+    volumeGain.gain shouldBe Decibel(9F)
+    currentBook.content.gain shouldBe 3F
+  }
 
   @Test
   fun `playback parameters persist speed`() = scope.runTest {
@@ -325,6 +467,7 @@ class VoicePlayerTest {
 
   private fun TestScope.setMediaItems(chapters: List<Chapter>) {
     currentBook = book(chapters, bookId)
+    bookFlow.value = currentBook
     player.setMediaItem(mediaItemProvider.mediaItem(currentBook))
     runCurrent()
   }
@@ -346,6 +489,8 @@ class VoicePlayerTest {
     val modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = modeStore,
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -388,6 +533,8 @@ class VoicePlayerTest {
     val secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = secondaryTextModeStore,
       chapterMarkChangeNotifier = chapterMarkChangeNotifier,
@@ -422,6 +569,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -465,6 +614,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -495,6 +646,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -520,6 +673,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.AUDIOBOOK),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -555,6 +710,8 @@ class VoicePlayerTest {
 
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = ChapterMarkChangeNotifier(),
@@ -589,6 +746,8 @@ class VoicePlayerTest {
     val lockscreenScope = CoroutineScope(backgroundScope.coroutineContext + Dispatchers.Main.immediate)
     val lockscreenPlayer = LockscreenPlayer(
       voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
       modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
       secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
       chapterMarkChangeNotifier = chapterMarkChangeNotifier,
@@ -685,6 +844,134 @@ class VoicePlayerTest {
     player.seekTo(1, 5_000)
     player.forceSeekToPrevious()
     player.shouldHavePosition(1, 0)
+  }
+
+  @Test
+  fun `external lockscreen play must be repeated after sleep timer stops playback`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = ApplicationProvider.getApplicationContext(),
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = mockk<MediaSession.ControllerInfo> {
+      every { packageName } returns "com.android.systemui"
+    }
+    lockscreenPlayer.attachTo(
+      mockk {
+        every { getControllerForCurrentRequest() } returns controller
+      },
+    )
+    runCurrent()
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+    player.playWhenReady shouldBe false
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+    player.playWhenReady shouldBe true
+  }
+
+  @Test
+  fun `notification controller using our package still requires sleep confirmation`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = context,
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = MediaSession.ControllerInfo.createTestOnlyControllerInfo(
+      context.packageName,
+      android.os.Process.myPid(),
+      android.os.Process.myUid(),
+      1,
+      1,
+      true,
+      android.os.Bundle().apply {
+        putBoolean(androidx.media3.session.MediaController.KEY_MEDIA_NOTIFICATION_CONTROLLER_FLAG, true)
+      },
+      true,
+    )
+    val session = MediaSession.Builder(context, lockscreenPlayer).build()
+    try {
+      session.isMediaNotificationController(controller) shouldBe true
+      lockscreenPlayer.attachTo(
+        mockk {
+          every { getControllerForCurrentRequest() } returns controller
+          every { isMediaNotificationController(controller) } answers { session.isMediaNotificationController(controller) }
+        },
+      )
+      runCurrent()
+
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe false
+
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe true
+
+      player.seekTo(1_000)
+      player.shouldHavePosition(0, 1_000)
+      lockscreenPlayer.pause()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe false
+      lockscreenPlayer.play()
+      Shadows.shadowOf(Looper.getMainLooper()).idle()
+      player.playWhenReady shouldBe true
+    } finally {
+      session.release()
+    }
+  }
+
+  @Test
+  fun `VoicePlus play resumes immediately after sleep timer stops playback`() = scope.runTest {
+    setMediaItems(listOf(chapter(ChapterMark(startMs = 0, endMs = 10_000, name = null))))
+    player.prepare()
+    awaitReady()
+    playbackIntentHolder.requireSleepResumeConfirmation()
+    val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    val lockscreenPlayer = LockscreenPlayer(
+      voicePlayer = player,
+      intentHolder = playbackIntentHolder,
+      context = context,
+      modeStore = MemoryDataStore(LockscreenSliderMode.CHAPTER),
+      secondaryTextModeStore = MemoryDataStore(LockscreenSecondaryTextMode.AUTHOR),
+      chapterMarkChangeNotifier = chapterMarkChangeNotifier,
+      scope = backgroundScope,
+    )
+    val controller = mockk<MediaSession.ControllerInfo> {
+      every { packageName } returns context.packageName
+    }
+    lockscreenPlayer.attachTo(
+      mockk {
+        every { getControllerForCurrentRequest() } returns controller
+        every { isMediaNotificationController(controller) } returns false
+      },
+    )
+    runCurrent()
+
+    lockscreenPlayer.play()
+    Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+    player.playWhenReady shouldBe true
+    playbackIntentHolder.confirmExternalResume(nowMs = 1_000L) shouldBe true
   }
 
   private fun chapter(vararg marks: ChapterMark): Chapter {

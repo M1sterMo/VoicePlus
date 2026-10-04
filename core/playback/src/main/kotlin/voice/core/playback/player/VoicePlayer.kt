@@ -11,9 +11,17 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.PlayerMessage
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import voice.core.common.resolveChapterName
 import voice.core.data.Book
 import voice.core.data.BookContent
@@ -26,6 +34,7 @@ import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ChapterRepo
 import voice.core.data.store.AutoRewindAmountStore
 import voice.core.data.store.CurrentBookStore
+import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.SeekTimeStore
 import voice.core.logging.api.Logger
 import voice.core.playback.ChapterMarkChangeNotifier
@@ -57,6 +66,8 @@ class VoicePlayer(
   private val scope: CoroutineScope,
   private val chapterRepo: ChapterRepo,
   private val volumeGain: VolumeGain,
+  @GlobalVolumeGainStore
+  private val globalVolumeGainStore: DataStore<Float?>,
   private val sleepTimer: SleepTimer,
   private val intentHolder: PlaybackIntentHolder,
   private val listeningEventRecorder: ListeningEventRecorder,
@@ -64,6 +75,9 @@ class VoicePlayer(
 ) : ForwardingPlayer(player) {
 
   private var currentBook: Book? = null
+  private var volumeGainJob: Job? = null
+  private var pendingGainChanges = 0
+  private var latestGainChange: Triple<BookId, Decibel, Boolean>? = null
   private var currentChapterNameOverrides = emptyMap<Pair<String, Long>, String>()
 
   init {
@@ -359,14 +373,27 @@ class VoicePlayer(
         val bookWithChapters = runBlocking {
           val book = repo.get(mediaId.id) ?: return@runBlocking null
           currentChapterNameOverrides = mediaItemProvider.overrideMapFor(book.id)
-          book to mediaItemProvider.chapters(book, currentChapterNameOverrides)
+          val pending = latestGainChange.takeIf { pendingGainChanges > 0 }
+          Triple(
+            book,
+            mediaItemProvider.chapters(book, currentChapterNameOverrides),
+            pending?.let { (id, gain, remember) ->
+              if (remember || id == book.id) gain.value else book.content.gain
+            } ?: globalVolumeGainStore.data.first() ?: book.content.gain,
+          )
         }
         if (bookWithChapters != null) {
-          val (book, chapters) = bookWithChapters
+          val (book, chapters, gain) = bookWithChapters
           currentBook = book
           player.setPlaybackSpeed(book.content.playbackSpeed)
           setSkipSilenceEnabled(book.content.skipSilence)
-          volumeGain.gain = Decibel(book.content.gain)
+          volumeGain.gain = Decibel(gain)
+          volumeGainJob?.cancel()
+          volumeGainJob = scope.launch {
+            combine(repo.flow(book.id), globalVolumeGainStore.data) { savedBook, globalGain ->
+              Decibel(globalGain ?: savedBook?.content?.gain ?: book.content.gain)
+            }.distinctUntilChanged().collectLatest { refreshVolumeGain() }
+          }
           player.setMediaItems(
             chapters,
             book.content.currentChapterIndex,
@@ -399,6 +426,7 @@ class VoicePlayer(
             // Flags first: stash where listening actually stopped BEFORE the boundary seek moves the
             // position, and suppress that seek so it doesn't log as a user SetPosition.
             intentHolder.stoppedBySleepTimer = true
+            intentHolder.requireSleepResumeConfirmation()
             intentHolder.pendingPauseEndPositionMs = player.currentPosition.takeUnless { it == C.TIME_UNSET }
             intentHolder.suppressNextSeek = true
             player.seekTo(payload.chapterIndex, payload.positionMs)
@@ -444,11 +472,33 @@ class VoicePlayer(
     }
   }
 
-  fun setGain(gain: Decibel) {
+  suspend fun setGain(
+    gain: Decibel,
+    remember: Boolean = false,
+  ) {
     volumeGain.gain = gain
-    scope.launch {
-      updateBook { it.copy(gain = gain.value) }
+    val bookId = currentBook?.id ?: return
+    latestGainChange = Triple(bookId, gain, remember)
+    pendingGainChanges++
+    try {
+      // Finish an accepted save even when swipe-away cancels the playback scope.
+      withContext(NonCancellable) {
+        globalVolumeGainStore.updateData {
+          if (!remember) repo.updateBook(bookId) { it.copy(gain = gain.value) }
+          if (remember) gain.value else null
+        }
+      }
+    } finally {
+      pendingGainChanges--
+      if (currentCoroutineContext().isActive) refreshVolumeGain()
     }
+  }
+
+  private suspend fun refreshVolumeGain() {
+    val book = currentBook ?: return
+    if (pendingGainChanges != 0) return
+    val gain = globalVolumeGainStore.data.first() ?: repo.get(book.id)?.content?.gain ?: book.content.gain
+    if (pendingGainChanges == 0 && currentBook?.id == book.id) volumeGain.gain = Decibel(gain)
   }
 
   private suspend fun updateBook(update: (BookContent) -> BookContent) {

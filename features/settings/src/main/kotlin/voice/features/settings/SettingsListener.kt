@@ -1,5 +1,6 @@
 package voice.features.settings
 
+import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
@@ -8,7 +9,8 @@ import java.time.LocalTime
 interface SettingsListener {
   fun close()
   fun toggleDarkTheme()
-  fun toggleGrid()
+  fun setLibraryView(mode: GridMode)
+  fun setBooksPerRow(count: Int)
   fun seekAmountChanged(seconds: Int)
   fun onSeekAmountRowClick()
   fun autoRewindAmountChang(seconds: Int)
@@ -26,6 +28,7 @@ interface SettingsListener {
   fun openHiddenBooks()
   fun openBackup()
   fun openLicenses()
+  fun openPrivacyPolicy()
   fun suggestIdea()
   fun reportProblem()
 
@@ -53,7 +56,8 @@ interface SettingsListener {
     fun noop() = object : SettingsListener {
       override fun close() {}
       override fun toggleDarkTheme() {}
-      override fun toggleGrid() {}
+      override fun setLibraryView(mode: GridMode) {}
+      override fun setBooksPerRow(count: Int) {}
       override fun seekAmountChanged(seconds: Int) {}
       override fun onSeekAmountRowClick() {}
       override fun autoRewindAmountChang(seconds: Int) {}
@@ -70,6 +74,7 @@ interface SettingsListener {
       override fun openHiddenBooks() {}
       override fun openBackup() {}
       override fun openLicenses() {}
+      override fun openPrivacyPolicy() {}
       override fun suggestIdea() {}
       override fun reportProblem() {}
 

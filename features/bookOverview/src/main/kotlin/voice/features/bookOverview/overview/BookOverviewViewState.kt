@@ -3,6 +3,7 @@ package voice.features.bookOverview.overview
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
 import voice.core.data.BookId
+import voice.core.data.LibraryOrganisation
 import voice.features.bookOverview.search.BookSearchViewState
 
 @Immutable
@@ -17,6 +18,8 @@ data class BookOverviewViewState(
   val searchViewState: BookSearchViewState,
   val showStoragePermissionBugCard: Boolean,
   val showFolderPickerIcon: Boolean,
+  val booksPerRow: Int = 2,
+  val organisation: LibraryOrganisation? = null,
 ) {
 
   companion object {

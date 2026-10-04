@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -18,7 +19,9 @@ import voice.core.data.ChapterId
 import voice.core.data.repo.BookContentRepoImpl
 import voice.core.data.repo.internals.AppDb
 import voice.core.data.repo.internals.MemoryDataStore
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 
 @RunWith(RobolectricTestRunner::class)
 class SnapshotWriterTest {
@@ -30,6 +33,7 @@ class SnapshotWriterTest {
   private val slot2 = MemoryDataStore<LibrarySnapshot?>(null)
   private val excluded = MemoryDataStore<Set<String>>(emptySet())
   private val ring = SnapshotRing(listOf(slot0, slot1, slot2))
+  private val clock = Clock.fixed(Instant.parse("2026-09-27T00:00:01Z"), ZoneId.of("America/Los_Angeles"))
 
   @Before
   fun setup() {
@@ -54,6 +58,8 @@ class SnapshotWriterTest {
     settingsSnapshotter = testSettingsSnapshotter(),
     backupRepository = backup,
     restoreGate = RestoreGate(),
+    clock = clock,
+    appDb = db,
   )
 
   private fun book(
@@ -67,6 +73,28 @@ class SnapshotWriterTest {
   )
 
   @Test
+  fun `empty shelf changes trigger backups without a playback or book update`(): Unit = kotlinx.coroutines.runBlocking {
+    val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    try {
+      contentRepo.put(book("unchanged", active = true))
+      writer().start(scope)
+      val organisation = voice.core.data.repo.LibraryOrganisationRepoImpl(db)
+      val created = organisation.createShelf("Empty shelf")
+      val id = created.after.shelves.single { it.name == "Empty shelf" }.id
+      kotlinx.coroutines.withTimeout(10_000) {
+        while (ring.best()?.organisation?.shelves?.none { it.id == id } != false) kotlinx.coroutines.delay(50)
+      }
+      organisation.renameShelf(id, "Renamed empty shelf")
+      kotlinx.coroutines.withTimeout(10_000) {
+        while (ring.best()?.organisation?.shelves?.none { it.name == "Renamed empty shelf" } != false) kotlinx.coroutines.delay(50)
+      }
+      ring.best()!!.books.map { it.id } shouldBe listOf("unchanged")
+    } finally {
+      scope.coroutineContext[kotlinx.coroutines.Job]!!.cancelAndJoin()
+    }
+  }
+
+  @Test
   fun `writes a snapshot of the current library`() = runTest {
     contentRepo.put(book("b1", active = true))
     writer().writeSnapshot(contentRepo.all())
@@ -74,6 +102,7 @@ class SnapshotWriterTest {
     val written = ring.best()
     written.shouldNotBeNull()
     written.activeIds() shouldBe setOf("b1")
+    written.savedAtEpochMillis shouldBe clock.millis()
   }
 
   @Test
@@ -128,12 +157,13 @@ class SnapshotWriterTest {
 
   @Test
   fun `automatic external export runs at most once per UTC day`() = runTest {
-    val exportedToday = RecordingBackup(lastBackup = Instant.now())
+    val exportedToday = RecordingBackup(lastBackup = clock.instant().minusSeconds(1))
     contentRepo.put(book("b1", active = true))
     writer(backup = exportedToday).writeSnapshot(contentRepo.all())
     exportedToday.exportCalls shouldBe 0
 
-    val exportedYesterday = RecordingBackup(lastBackup = Instant.now().minusSeconds(24 * 60 * 60 + 60))
+    // Only two seconds ago, but across UTC midnight (still the same local date).
+    val exportedYesterday = RecordingBackup(lastBackup = clock.instant().minusSeconds(2))
     writer(backup = exportedYesterday).writeSnapshot(contentRepo.all())
     exportedYesterday.exportCalls shouldBe 1
 
@@ -144,7 +174,7 @@ class SnapshotWriterTest {
 
   @Test
   fun `a forced flush exports regardless of the daily gate`() = runTest {
-    val exportedToday = RecordingBackup(lastBackup = Instant.now())
+    val exportedToday = RecordingBackup(lastBackup = clock.instant())
     contentRepo.put(book("b1", active = true))
     writer(backup = exportedToday).writeSnapshot(contentRepo.all(), forceExternalBackup = true)
     exportedToday.exportCalls shouldBe 1

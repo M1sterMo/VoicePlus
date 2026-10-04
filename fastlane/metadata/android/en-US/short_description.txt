@@ -1,1 +1,1 @@
-Offline audiobook player with some quality of life features.
+Play local audiobooks with a smart sleep timer and listening stats.

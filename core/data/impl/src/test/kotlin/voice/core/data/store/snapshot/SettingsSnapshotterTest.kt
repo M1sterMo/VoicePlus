@@ -28,9 +28,11 @@ class SettingsSnapshotterTest {
     val fadeOut = MemoryDataStore(10.seconds)
     val sleepTimer = MemoryDataStore(SleepTimerPreference.Default)
     val gridMode = MemoryDataStore(GridMode.FOLLOW_DEVICE)
+    val booksPerRow = MemoryDataStore(2)
     val mediaDoubleClick = MemoryDataStore(MediaButtonClickAction.NONE)
     val mediaTripleClick = MemoryDataStore(MediaButtonClickAction.NONE)
     val playbackToolbarActions = MemoryDataStore(PlaybackToolbarAction.DEFAULT)
+    val globalVolumeGain = MemoryDataStore<Float?>(null)
     val experimentalPersistence = MemoryDataStore(false)
     val ignoreFileTags = MemoryDataStore(false)
 
@@ -41,9 +43,11 @@ class SettingsSnapshotterTest {
       fadeOut = fadeOut,
       sleepTimer = sleepTimer,
       gridMode = gridMode,
+      booksPerRow = booksPerRow,
       mediaDoubleClick = mediaDoubleClick,
       mediaTripleClick = mediaTripleClick,
       playbackToolbarActions = playbackToolbarActions,
+      globalVolumeGain = globalVolumeGain,
       experimentalPersistence = experimentalPersistence,
       ignoreFileTags = ignoreFileTags,
       json = snapshotTestJson,
@@ -56,9 +60,11 @@ class SettingsSnapshotterTest {
     source.darkTheme.updateData { true }
     source.seekTime.updateData { 45 }
     source.gridMode.updateData { GridMode.GRID }
+    source.booksPerRow.updateData { 3 }
     source.mediaDoubleClick.updateData { MediaButtonClickAction.QUICK_BOOKMARK }
     source.ignoreFileTags.updateData { true }
     source.playbackToolbarActions.updateData { setOf(PlaybackToolbarAction.LISTENING_LOG) }
+    source.globalVolumeGain.updateData { 6F }
 
     val captured = source.snapshotter().capture()
     val target = Stores()
@@ -67,11 +73,32 @@ class SettingsSnapshotterTest {
     target.darkTheme.data.first() shouldBe true
     target.seekTime.data.first() shouldBe 45
     target.gridMode.data.first() shouldBe GridMode.GRID
+    target.booksPerRow.data.first() shouldBe 3
     target.mediaDoubleClick.data.first() shouldBe MediaButtonClickAction.QUICK_BOOKMARK
     target.ignoreFileTags.data.first() shouldBe true
     target.playbackToolbarActions.data.first() shouldBe setOf(PlaybackToolbarAction.LISTENING_LOG)
+    target.globalVolumeGain.data.first() shouldBe 6F
     // Untouched settings keep their defaults.
     target.autoRewind.data.first() shouldBe 2
+  }
+
+  @Test
+  fun `disabled global volume boost restores over an enabled setting`() = runTest {
+    val target = Stores()
+    target.globalVolumeGain.updateData { 6F }
+    target.snapshotter().apply(Stores().snapshotter().capture())
+    target.globalVolumeGain.data.first() shouldBe null
+  }
+
+  @Test
+  fun `all library layouts survive a settings backup and restore`() = runTest {
+    GridMode.entries.forEach { mode ->
+      val source = Stores()
+      source.gridMode.updateData { mode }
+      val target = Stores()
+      target.snapshotter().apply(source.snapshotter().capture())
+      target.gridMode.data.first() shouldBe mode
+    }
   }
 
   @Test
@@ -81,6 +108,7 @@ class SettingsSnapshotterTest {
 
     target.seekTime.data.first() shouldBe 20
     target.darkTheme.data.first() shouldBe true
+    target.booksPerRow.data.first() shouldBe 2
   }
 
   /**

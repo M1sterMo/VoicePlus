@@ -13,6 +13,26 @@ import java.time.Instant
 
 class LibrarySnapshotCodecTest {
 
+  @Test
+  fun `legacy backup titles are protected as user overrides`() {
+    val legacy = LibrarySnapshot(
+      schemaVersion = 6,
+      sequence = 1,
+      savedAtEpochMillis = 0,
+      totalCount = 1,
+      activeCount = 1,
+      books = listOf(book("b1", true).copy(name = "Saved title").toDto().copy(nameOverridden = false)),
+      bookmarks = emptyList(),
+      characters = emptyList(),
+      chapterNameOverrides = emptyList(),
+    )
+
+    val compatible = legacy.withTitleOverrideCompatibility()
+
+    compatible.books.single().name shouldBe "Saved title"
+    compatible.books.single().nameOverridden shouldBe true
+  }
+
   private val json = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
@@ -31,7 +51,7 @@ class LibrarySnapshotCodecTest {
 
   @Test
   fun `BookContent round-trips through dto`() {
-    val original = book("b1", active = true)
+    val original = book("b1", active = true).copy(seriesGroup = "My series", seriesOrder = 3, series = "Imported metadata")
     val restored = original.toDto().toBookContentOrNull()
     restored shouldBe original
   }
@@ -41,7 +61,7 @@ class LibrarySnapshotCodecTest {
     val snap = LibrarySnapshot(
       schemaVersion = LibrarySnapshot.SCHEMA_VERSION, sequence = 3, savedAtEpochMillis = 99,
       totalCount = 1, activeCount = 1,
-      books = listOf(book("b1", true).toDto()),
+      books = listOf(book("b1", true).copy(seriesGroup = "Manual series", seriesOrder = 3).toDto()),
       bookmarks = emptyList(), characters = emptyList(), chapterNameOverrides = emptyList(),
     )
     val text = json.encodeToString(LibrarySnapshot.serializer(), snap)
@@ -119,6 +139,8 @@ class LibrarySnapshotCodecTest {
       "bookmarks":[],"characters":[],"chapterNameOverrides":[]}"""
     val decoded = json.decodeFromString(LibrarySnapshot.serializer(), v2)
     decoded.books.single().id shouldBe "b1"
+    decoded.books.single().seriesGroup shouldBe null
+    decoded.books.single().seriesOrder shouldBe null
     decoded.sessions shouldBe emptyList()
     decoded.hiddenBooks shouldBe emptySet()
     decoded.settings shouldBe emptyMap()

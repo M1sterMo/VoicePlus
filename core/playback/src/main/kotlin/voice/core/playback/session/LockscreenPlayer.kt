@@ -1,6 +1,8 @@
 package voice.core.playback.session
 
+import android.content.Context
 import android.os.Bundle
+import android.widget.Toast
 import androidx.datastore.core.DataStore
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingSimpleBasePlayer
@@ -8,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.SimpleBasePlayer.MediaItemData
 import androidx.media3.common.SimpleBasePlayer.PositionSupplier
 import androidx.media3.common.SimpleBasePlayer.State
+import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.zacsweers.metro.Inject
@@ -19,7 +22,9 @@ import voice.core.data.durationMs
 import voice.core.data.store.LockscreenSecondaryTextModeStore
 import voice.core.data.store.LockscreenSliderModeStore
 import voice.core.playback.ChapterMarkChangeNotifier
+import voice.core.playback.history.PlaybackIntentHolder
 import voice.core.playback.player.VoicePlayer
+import voice.core.strings.R as StringsR
 
 @Inject
 class LockscreenPlayer(
@@ -27,9 +32,12 @@ class LockscreenPlayer(
   @LockscreenSliderModeStore modeStore: DataStore<LockscreenSliderMode>,
   @LockscreenSecondaryTextModeStore secondaryTextModeStore: DataStore<LockscreenSecondaryTextMode>,
   chapterMarkChangeNotifier: ChapterMarkChangeNotifier,
+  private val intentHolder: PlaybackIntentHolder,
+  private val context: Context,
   scope: CoroutineScope,
 ) : ForwardingSimpleBasePlayer(voicePlayer) {
 
+  private var mediaSession: MediaSession? = null
   private var mode = LockscreenSliderMode.CHAPTER
   private var secondaryTextMode = LockscreenSecondaryTextMode.CHAPTER
 
@@ -51,6 +59,29 @@ class LockscreenPlayer(
         invalidateState()
       }
     }
+  }
+
+  internal fun attachTo(mediaSession: MediaSession) {
+    this.mediaSession = mediaSession
+  }
+
+  override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
+    if (!playWhenReady) return super.handleSetPlayWhenReady(false)
+
+    val controller = mediaSession?.getControllerForCurrentRequest()
+    // Media3's notification controller also uses our package, including relayed System UI requests.
+    if (controller == null ||
+      (controller.packageName == context.packageName && mediaSession?.isMediaNotificationController(controller) != true)
+    ) {
+      intentHolder.clearSleepResumeConfirmation()
+      return super.handleSetPlayWhenReady(true)
+    }
+    if (intentHolder.confirmExternalResume()) {
+      return super.handleSetPlayWhenReady(true)
+    }
+
+    Toast.makeText(context, StringsR.string.sleep_resume_confirmation, Toast.LENGTH_SHORT).show()
+    return Futures.immediateVoidFuture()
   }
 
   override fun getState(): State {

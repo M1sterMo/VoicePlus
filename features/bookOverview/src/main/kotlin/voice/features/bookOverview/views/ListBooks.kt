@@ -4,6 +4,7 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -23,12 +25,17 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.intl.LocaleList
@@ -39,9 +46,11 @@ import coil.compose.AsyncImage
 import voice.core.data.BookId
 import voice.core.ui.ImmutableFile
 import voice.core.ui.sharedBookCover
-import voice.features.bookOverview.overview.BookOverviewCategory
 import voice.features.bookOverview.overview.BookOverviewItemViewState
-import voice.features.bookOverview.overview.isCollapsible
+import voice.features.bookOverview.overview.BookOverviewLayoutMode
+import voice.features.bookOverview.shelves.LibraryEntryTile
+import voice.features.bookOverview.shelves.LibrarySection
+import voice.features.bookOverview.shelves.LibraryShelfDragState
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
@@ -49,63 +58,104 @@ import voice.core.ui.R as UiR
 internal fun ListBooks(
   sharedTransitionScope: SharedTransitionScope?,
   state: LazyListState,
-  books: Map<BookOverviewCategory, Map<BookId, State<BookOverviewItemViewState>>>,
-  categoryExpanded: (BookOverviewCategory) -> Boolean,
-  onCategoryToggle: (BookOverviewCategory) -> Unit,
+  sections: List<LibrarySection>,
+  onShelfToggle: (LibrarySection) -> Unit,
+  onShelfMenu: (String) -> Unit,
+  onShelfAdd: (String) -> Unit,
   onBookClick: (BookId) -> Unit,
-  onBookLongClick: (BookId) -> Unit,
+  onBookLongClick: ((BookId) -> Unit)?,
   showPermissionBugCard: Boolean,
   onPermissionBugCardClick: () -> Unit,
+  onSeriesClick: (String, Rect) -> Unit = { _, _ -> },
+  onSeriesLongClick: (BookId) -> Unit = {},
+  openSeriesKey: String? = null,
+  onCoverOrigin: (String) -> Unit = {},
+  activeCoverKey: String? = null,
+  selecting: Boolean = false,
+  selected: Set<BookId> = emptySet(),
+  onSelect: (Set<BookId>) -> Unit = {},
+  organising: Boolean = false,
+  dragState: LibraryShelfDragState? = null,
+  onOrganise: (Set<BookId>) -> Unit = {},
 ) {
-  LazyColumn(
-    state = state,
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-    contentPadding = PaddingValues(top = 24.dp, start = 8.dp, end = 8.dp, bottom = 16.dp),
-  ) {
-    if (showPermissionBugCard) {
-      item {
-        PermissionBugCard(onPermissionBugCardClick)
-      }
-    }
-    books.forEach { (category, sectionBooks) ->
-      if (sectionBooks.isEmpty()) return@forEach
-      val expanded = categoryExpanded(category)
-      stickyHeader(
-        key = category,
-        contentType = "header",
-      ) {
-        Header(
-          modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(vertical = 8.dp, horizontal = 8.dp),
-          category = category,
-          bookCount = sectionBooks.size,
-          expanded = expanded,
-          onToggle = if (category.isCollapsible) {
-            { onCategoryToggle(category) }
-          } else {
-            null
-          },
-        )
-      }
-      if (expanded) {
-        items(
-          items = sectionBooks.toList(),
-          key = { (bookId, _) -> bookId.value },
-          contentType = { "item" },
-        ) { (_, bookState) ->
-          ListBookRow(
-            sharedTransitionScope = sharedTransitionScope,
-            book = bookState.value,
-            onBookClick = onBookClick,
-            onBookLongClick = onBookLongClick,
-          )
+  Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+    LazyColumn(
+      modifier = Modifier.widthIn(max = 840.dp),
+      state = state,
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+      contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 16.dp),
+    ) {
+      if (showPermissionBugCard) {
+        item(key = "permission") {
+          PermissionBugCard(onPermissionBugCardClick)
         }
       }
-    }
-    item {
-      Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+      sections.filter { (!selecting && !organising) || !it.current }.forEachIndexed { index, section ->
+        val expanded = section.expanded
+        item(
+          key = "header:${section.id}",
+          contentType = "header",
+        ) {
+          DisposableEffect(dragState, section.id) {
+            onDispose { dragState?.unregisterShelf(section.id) }
+          }
+          ShelfHeader(
+            modifier = Modifier
+              .fillMaxWidth()
+              .background(MaterialTheme.colorScheme.surface)
+              .testTag("shelf-header:${section.id}")
+              .padding(top = if (index == 0) 0.dp else 8.dp, start = 8.dp)
+              .onGloballyPositioned { dragState?.registerShelf(section.id, it.boundsInRoot()) },
+            title = section.title(),
+            count = section.count.takeUnless { section.current },
+            expanded = expanded,
+            onToggle = if (section.current) null else ({ onShelfToggle(section) }),
+            onMenu = if (section.current || selecting) null else ({ onShelfMenu(section.id) }),
+            dropActive = dragState?.hoveredShelf == section.id,
+          )
+        }
+        if (expanded) {
+          if (section.entries.isEmpty()) {
+            item(key = "empty:${section.id}") {
+              if (section.totalCount > 0 || selecting) {
+                Text(
+                  stringResource(if (selecting) StringsR.string.library_empty_shelf else StringsR.string.library_no_matching_books),
+                  Modifier.padding(16.dp),
+                )
+              } else {
+                TextButton(onClick = { onShelfAdd(section.id) }) { Text(stringResource(StringsR.string.series_add_books)) }
+              }
+            }
+          }
+          items(
+            items = section.entries,
+            key = { it.key },
+            contentType = { "item" },
+          ) { entry ->
+            LibraryEntryTile(
+              entry = entry,
+              layout = BookOverviewLayoutMode.List,
+              onBookClick = onBookClick,
+              onBookLongClick = onBookLongClick,
+              onSeriesClick = onSeriesClick,
+              onSeriesLongClick = onSeriesLongClick,
+              onCoverOrigin = onCoverOrigin,
+              activeCoverKey = activeCoverKey,
+              sharedTransitionScope = sharedTransitionScope,
+              openSeriesKey = openSeriesKey,
+              selecting = selecting && !section.current,
+              selected = selected,
+              onSelect = onSelect,
+              modifier = Modifier.animateItem(),
+              dragState = dragState.takeIf { organising },
+              onOrganise = if (organising) onOrganise else null,
+            )
+          }
+        }
+      }
+      item {
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+      }
     }
   }
 }
@@ -114,7 +164,7 @@ internal fun ListBooks(
 internal fun ListBookRow(
   book: BookOverviewItemViewState,
   onBookClick: (BookId) -> Unit,
-  onBookLongClick: (BookId) -> Unit,
+  onBookLongClick: ((BookId) -> Unit)?,
   sharedTransitionScope: SharedTransitionScope?,
   modifier: Modifier = Modifier,
 ) {
@@ -124,7 +174,7 @@ internal fun ListBookRow(
       .fillMaxWidth()
       .combinedClickable(
         onClick = { onBookClick(book.id) },
-        onLongClick = { onBookLongClick(book.id) },
+        onLongClick = onBookLongClick?.let { { it(book.id) } },
       ),
   ) {
     Column(Modifier.padding()) {

@@ -5,42 +5,45 @@
 [![Downloads](https://img.shields.io/github/downloads/Mistermo-vibecode/VoicePlus/total.svg)](https://github.com/Mistermo-vibecode/VoicePlus/releases)
 [![CI](https://github.com/Mistermo-vibecode/VoicePlus/actions/workflows/ci.yml/badge.svg)](https://github.com/Mistermo-vibecode/VoicePlus/actions/workflows/ci.yml)
 
-A fork of [Voice](https://github.com/PaulWoitaschek/Voice) by Paul Woitaschek — a genuinely great audiobook app that I enjoyed but wanted something a bit different for myself. 
+An open-source audiobook player for Android, with personal shelves, series grouping, listening history and flexible playback controls. No accounts, ads or analytics.
 
-This started as a personal learning project by someone who had no idea what they were doing (and still isn't entirely sure). If you find it useful, great. Updates may happen. No promises.
+Built on [Voice](https://github.com/PaulWoitaschek/Voice) by Paul Woitaschek and contributors.
 
 ## Screenshots
 
 <p align="center">
+  <a href="docs/screenshots/phone/library.png"><img src="docs/screenshots/framed/library.png" width="32%" alt="Two-column Books view with personal shelves and series stacks"></a>
+  <a href="docs/screenshots/phone/series.png"><img src="docs/screenshots/framed/series.png" width="32%" alt="An opened Sherlock Holmes series with books in reading order"></a>
   <a href="docs/screenshots/phone/playback.png"><img src="docs/screenshots/framed/playback.png" width="32%" alt="Playback with cover art and chapter controls"></a>
-  <a href="docs/screenshots/phone/listening-log.png"><img src="docs/screenshots/framed/listening-log.png" width="32%" alt="Listening log with playback events and chapter positions"></a>
-  <a href="docs/screenshots/phone/bookmarks.png"><img src="docs/screenshots/framed/bookmarks.png" width="32%" alt="Named bookmarks with chapter and book positions"></a>
 </p>
 <p align="center">
+  <a href="docs/screenshots/phone/listening-log.png"><img src="docs/screenshots/framed/listening-log.png" width="32%" alt="Listening log with playback events and chapter positions"></a>
+  <a href="docs/screenshots/phone/bookmarks.png"><img src="docs/screenshots/framed/bookmarks.png" width="32%" alt="Named bookmarks with chapter and book positions"></a>
   <a href="docs/screenshots/phone/listening-statistics.png"><img src="docs/screenshots/framed/listening-statistics.png" width="32%" alt="Listening statistics, activity chart and records"></a>
-  <a href="docs/screenshots/phone/library.png"><img src="docs/screenshots/framed/library.png" width="32%" alt="Audiobook library with completed-book badges"></a>
-  <a href="docs/screenshots/phone/characters.png"><img src="docs/screenshots/framed/characters.png" width="32%" alt="Per-book character notes"></a>
 </p>
 
 ### Make it yours
 
 <p align="center">
-  <a href="docs/screenshots/phone/playback-toolbar.png"><img src="docs/screenshots/framed/playback-toolbar.png" width="32%" alt="Choose the shortcuts shown on your playback toolbar"></a>
-  <a href="docs/screenshots/phone/playback-settings.png"><img src="docs/screenshots/framed/playback-settings.png" width="32%" alt="Customize media-button actions, skip duration and lock-screen options"></a>
-  <a href="docs/screenshots/phone/sleep-timer.png"><img src="docs/screenshots/framed/sleep-timer.png" width="32%" alt="Sleep timer with time presets and end-of-chapter options"></a>
+  <a href="docs/screenshots/phone/appearance.png"><img src="docs/screenshots/framed/appearance.png" width="32%" alt="Choose Books, Grid or List view and two or three books per row"></a>
+  <a href="docs/screenshots/phone/edit-book.png"><img src="docs/screenshots/framed/edit-book.png" width="32%" alt="Edit an audiobook title and cover without changing the audio file"></a>
+  <a href="docs/screenshots/phone/playback-settings.png"><img src="docs/screenshots/framed/playback-settings.png" width="32%" alt="Choose playback skip duration, auto rewind and media-button actions"></a>
 </p>
 
 ---
 
-## Why download this instead of Voice?
+## What's new in v1.29
 
-Honestly? You probably shouldn't. Voice is polished, actively maintained, and built by someone who knows what they're doing. Download that first.
+- A book-inspired library with cropped portrait covers, subtle page edges, and a choice of two or three books per row
+- Personal shelves and series stacks, with editable ordering and drag-to-move between visible shelves; Current keeps your active books within reach
+- A focused Appearance editor for Books, Grid and List layouts
+- Edit titles and covers without rewriting audio files; edits survive rescans and travel with portable backups
+- More reliable chapter-number corrections when navigating backward through irregular chapter markers
+- Protection against accidental headphone or media-button resume after the sleep timer finishes
+- Optionally remember volume boost across all books
+- Updated playback libraries and refreshed phone and tablet screenshots
 
-But you can try both. If the features below add value to your listening experience then great. If not then no worries.
-
----
-
-## What's new in v1.28
+### Previous additions in v1.28
 
 - Customize the now-playing toolbar with up to four shortcuts; other actions stay in the menu
 - Toolbar choices are saved and included in settings backups
@@ -68,6 +71,8 @@ But you can try both. If the features below add value to your listening experien
 - Hide and restore books from the library
 - Resizable widget with configurable opacity and text scale
 - Customizable media button actions (double/triple press)
+- Personal shelves, ordered series stacks, and a book-inspired library view
+- Portable title and cover edits that leave your audio files unchanged
 - Firebase removed entirely — no analytics or background telemetry
 
 ---
@@ -82,7 +87,7 @@ Or grab and sideload the APK from the [Releases](https://github.com/Mistermo-vib
 
 ## Build from source
 
-Requires JDK 21 and Android SDK. See `gradle/libs.versions.toml` for exact versions.
+Requires JDK 21 and Android SDK. See [development instructions](docs/development.md) for setup and tests, and `gradle/libs.versions.toml` for exact versions.
 
 ```bash
 git clone https://github.com/Mistermo-vibecode/VoicePlus.git

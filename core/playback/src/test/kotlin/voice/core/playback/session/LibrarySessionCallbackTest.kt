@@ -1,11 +1,13 @@
 package voice.core.playback.session
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.InputDevice
 import android.view.KeyEvent
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionResult
+import androidx.test.core.app.ApplicationProvider
 import io.kotest.matchers.shouldBe
 import io.mockk.Runs
 import io.mockk.every
@@ -16,6 +18,7 @@ import io.mockk.verifySequence
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -26,6 +29,11 @@ import voice.core.playback.player.VoicePlayer
 
 @RunWith(RobolectricTestRunner::class)
 class LibrarySessionCallbackTest {
+
+  @After
+  fun clearSleepResumeConfirmation() {
+    newIntentHolder().clearSleepResumeConfirmation()
+  }
 
   @Test
   fun `Android Auto next and previous ignore reversed headset actions`() = runTest {
@@ -106,6 +114,8 @@ class LibrarySessionCallbackTest {
   private fun mediaButtonCallback(
     player: VoicePlayer,
     scope: CoroutineScope,
+    intentHolder: PlaybackIntentHolder = newIntentHolder(),
+    context: Context = ApplicationProvider.getApplicationContext(),
   ) = LibrarySessionCallback(
     mediaItemProvider = mockk(),
     scope = scope,
@@ -117,10 +127,14 @@ class LibrarySessionCallbackTest {
     doubleClickHandlerStore = MemoryDataStore(MediaButtonClickAction.SKIP_BACKWARD),
     tripleClickHandlerStore = MemoryDataStore(MediaButtonClickAction.SKIP_FORWARD),
     bookmarkRepo = mockk(),
-    intentHolder = mockk(),
+    intentHolder = intentHolder,
     positionUpdater = mockk(),
-    context = mockk(),
+    context = context,
   )
+
+  private fun newIntentHolder() = PlaybackIntentHolder(ApplicationProvider.getApplicationContext()).apply {
+    clearSleepResumeConfirmation()
+  }
 
   private fun mediaKey(
     keyCode: Int,
@@ -195,15 +209,36 @@ class LibrarySessionCallbackTest {
     every { player.pause() } just Runs
     every { player.currentPosition } returns 50_000L
     every { player.seekTo(any<Long>()) } just Runs
-    val intentHolder = PlaybackIntentHolder()
+    val intentHolder = newIntentHolder()
 
     pauseWithRewind(player, intentHolder, rewindMs = 7_500L)
 
     intentHolder.stoppedBySleepTimer shouldBe true
+    intentHolder.confirmExternalResume(nowMs = 1_000L) shouldBe false
     verifySequence {
       player.pause()
       player.currentPosition
       player.seekTo(42_500L)
     }
+  }
+
+  @Test
+  fun `headset play must be repeated after sleep timer stops playback`() = runTest {
+    val player = mockk<VoicePlayer>(relaxed = true) {
+      every { isPlaying } returns false
+      every { currentMediaItem } returns mockk()
+    }
+    val intentHolder = newIntentHolder().apply { requireSleepResumeConfirmation() }
+    val callback = mediaButtonCallback(player, this, intentHolder)
+    val session = mockk<MediaSession>(relaxed = true)
+    val controller = mockk<MediaSession.ControllerInfo>()
+
+    callback.onMediaButtonEvent(session, controller, mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) shouldBe true
+    advanceUntilIdle()
+    verify(exactly = 0) { player.play() }
+
+    callback.onMediaButtonEvent(session, controller, mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)) shouldBe true
+    advanceUntilIdle()
+    verify(exactly = 1) { player.play() }
   }
 }

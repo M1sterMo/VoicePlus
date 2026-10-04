@@ -6,6 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
+import java.io.File
 import java.util.zip.CRC32
 
 private const val FORMAT_VERSION = 1
@@ -19,7 +20,10 @@ private data class ExternalBackupBundle(
 )
 
 internal sealed interface ExternalBackupBundleDecodeResult {
-  data class Valid(val snapshot: LibrarySnapshot) : ExternalBackupBundleDecodeResult
+  data class Valid(
+    val snapshot: LibrarySnapshot,
+    val covers: Map<String, File> = emptyMap(),
+  ) : ExternalBackupBundleDecodeResult
   data object Corrupt : ExternalBackupBundleDecodeResult
 
   // Parseable envelope from a NEWER app version. Distinct from Corrupt: restore must STOP and

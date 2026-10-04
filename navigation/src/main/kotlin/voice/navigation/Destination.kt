@@ -50,7 +50,10 @@ sealed interface Destination {
   }
 
   @Serializable
-  data class CoverFromInternet(val bookId: BookId) : Compose {
+  data class CoverFromInternet(
+    val bookId: BookId,
+    val editSession: String? = null,
+  ) : Compose {
     override val trackingName: String get() = "CoverFromInternet"
   }
 
@@ -62,6 +65,7 @@ sealed interface Destination {
     val cover:
     @Serializable(with = UriSerializer::class)
     Uri,
+    val editSession: String? = null,
   ) : Compose {
     override val trackingName: String get() = "EditCover"
   }

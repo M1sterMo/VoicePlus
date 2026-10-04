@@ -30,17 +30,21 @@ interface SelectCoverFromInternetProvider {
     NavEntry(key) {
       SelectCoverFromInternet(
         bookId = key.bookId,
+        editSession = key.editSession,
       )
     }
   }
 }
 
 @Composable
-fun SelectCoverFromInternet(bookId: BookId) {
-  val viewModel = retain(bookId.value) {
+fun SelectCoverFromInternet(
+  bookId: BookId,
+  editSession: String? = null,
+) {
+  val viewModel = retain(bookId.value, editSession) {
     rootGraphAs<SelectCoverFromInternetViewModel.Factory.Provider>()
       .factory
-      .create(bookId)
+      .create(bookId, editSession)
   }
 
   val sink = MutableSharedFlow<SelectCoverFromInternetViewModel.Events>(extraBufferCapacity = 1)

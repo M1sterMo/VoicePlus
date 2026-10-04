@@ -1,8 +1,10 @@
 package voice.core.playback.history
 
+import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.test.core.app.ApplicationProvider
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -14,6 +16,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import voice.core.data.BookId
 import voice.core.data.ChapterId
 import voice.core.data.ListeningEvent
@@ -26,6 +30,7 @@ import voice.core.data.repo.ListeningSessionRepo
 import voice.core.playback.session.MediaId
 import java.time.Instant
 
+@RunWith(RobolectricTestRunner::class)
 class ListeningEventRecorderTest {
 
   private val bookId = BookId("content://books/1")
@@ -39,7 +44,7 @@ class ListeningEventRecorderTest {
   private val eventRepo: ListeningEventRepo = mockk {
     coEvery { addEvent(any()) } answers { events += firstArg<ListeningEvent>() }
   }
-  private val holder = PlaybackIntentHolder()
+  private val holder = PlaybackIntentHolder(ApplicationProvider.getApplicationContext<Context>())
 
   private val chapterMediaId =
     Json.encodeToString(MediaId.serializer(), MediaId.Chapter(bookId, chapterId))

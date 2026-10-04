@@ -1,5 +1,6 @@
 package voice.features.settings
 
+import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
@@ -14,7 +15,8 @@ data class SettingsViewState(
   val autoRewindInSeconds: Int,
   val appVersion: String,
   val dialog: Dialog?,
-  val useGrid: Boolean,
+  val gridMode: GridMode,
+  val booksPerRow: Int,
   val autoSleepTimer: AutoSleepTimerViewState,
   val showFolderPickerEntry: Boolean,
   val mediaButtonDoubleClickAction: MediaButtonClickAction,
@@ -49,7 +51,8 @@ data class SettingsViewState(
         autoRewindInSeconds = 12,
         dialog = null,
         appVersion = "1.2.3",
-        useGrid = true,
+        gridMode = GridMode.GRID,
+        booksPerRow = 2,
         autoSleepTimer = AutoSleepTimerViewState.preview(),
         showFolderPickerEntry = false,
         mediaButtonDoubleClickAction = MediaButtonClickAction.SKIP_FORWARD,

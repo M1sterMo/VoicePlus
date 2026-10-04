@@ -13,12 +13,16 @@ import voice.core.data.repo.internals.dao.BookContentDao
 import voice.core.data.repo.internals.dao.BookmarkDao
 import voice.core.data.repo.internals.dao.ChapterDao
 import voice.core.data.repo.internals.dao.ChapterNameOverrideDao
+import voice.core.data.repo.internals.dao.LibraryOrganisationDao
 import voice.core.data.repo.internals.dao.ListeningEventDao
 import voice.core.data.repo.internals.dao.ListeningSessionDao
 import voice.core.data.repo.internals.dao.RecentBookSearchDao
 
 @ContributesTo(AppScope::class)
 public interface PersistenceModule {
+
+  @Provides
+  private fun libraryOrganisationDao(appDb: AppDb): LibraryOrganisationDao = appDb.libraryOrganisationDao()
 
   @Provides
   private fun chapterDao(appDb: AppDb): ChapterDao = appDb.chapterDao()
@@ -52,7 +56,6 @@ public interface PersistenceModule {
   ): AppDb {
     return Room.databaseBuilder(context, AppDb::class.java, AppDb.DATABASE_NAME)
       .addMigrations(*migrations.toTypedArray())
-      .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
       .build()
   }
 

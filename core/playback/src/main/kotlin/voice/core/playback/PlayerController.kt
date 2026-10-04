@@ -6,7 +6,9 @@ import androidx.datastore.core.DataStore
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -20,7 +22,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.asDeferred
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import voice.core.data.BookId
 import voice.core.data.ChapterId
@@ -38,6 +42,7 @@ import voice.core.playback.session.toMediaIdOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+@SingleIn(AppScope::class)
 @Inject
 class PlayerController(
   private val context: Context,
@@ -66,6 +71,7 @@ class PlayerController(
       return _controller
     }
   private val scope = CoroutineScope(Dispatchers.Main.immediate)
+  private val gainChanges = mutableListOf<Job>()
 
   fun pauseIfCurrentBookDifferentFrom(id: BookId) {
     scope.launch {
@@ -190,8 +196,20 @@ class PlayerController(
     controller.setPlaybackSpeed(speed)
   }
 
-  fun setGain(gain: Decibel) = executeAfterPrepare { controller ->
-    controller.sendCustomCommand(CustomCommand.SetGain(gain))
+  @IgnorableReturnValue
+  fun setGain(
+    gain: Decibel,
+    remember: Boolean = false,
+  ) = scope.launch {
+    val controller = awaitConnect() ?: return@launch
+    if (maybePrepare(controller)) controller.sendCustomCommand(CustomCommand.SetGain(gain, remember)).await()
+  }.also {
+    gainChanges.removeAll { job -> job.isCompleted }
+    gainChanges.add(it)
+  }
+
+  suspend fun awaitGainChanges() {
+    gainChanges.toList().joinAll()
   }
 
   fun setVolume(volume: Float) = executeAfterPrepare {

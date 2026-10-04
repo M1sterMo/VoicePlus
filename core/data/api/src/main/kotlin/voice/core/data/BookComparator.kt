@@ -2,16 +2,17 @@ package voice.core.data
 
 import voice.core.common.comparator.NaturalOrderComparator
 
+private val nameOrder = compareBy<Book, String>(NaturalOrderComparator.stringComparator) { it.content.name }
+  .thenBy { it.id.value }
+
 public enum class BookComparator(private val comparatorFunction: Comparator<Book>) : Comparator<Book> by comparatorFunction {
 
   ByLastPlayed(
-    compareByDescending {
+    compareByDescending<Book> {
       it.content.lastPlayedAt
-    },
+    }.then(nameOrder),
   ),
   ByName(
-    Comparator { left, right ->
-      NaturalOrderComparator.stringComparator.compare(left.content.name, right.content.name)
-    },
+    nameOrder,
   ),
 }

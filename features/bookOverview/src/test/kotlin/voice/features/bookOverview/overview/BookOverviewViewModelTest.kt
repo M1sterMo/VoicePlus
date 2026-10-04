@@ -11,6 +11,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.test.runTest
@@ -30,20 +31,21 @@ import voice.core.playback.playstate.PlayStateManager
 import voice.core.scanner.DeviceHasStoragePermissionBug
 import voice.core.scanner.MediaScanTrigger
 import voice.core.search.BookSearch
-import voice.core.ui.GridCount
 import voice.features.bookOverview.book
 import voice.navigation.Navigator
 
 class BookOverviewViewModelTest {
 
   @Test
-  fun `state updates the current book item from live playback`() = runTest {
+  fun `state waits for saved density then updates the current book item from live playback`() = runTest {
     val currentBook = book(name = "Current", time = 1_000)
     val otherBook = book(name = "Other", time = 2_000)
+    val library = MutableStateFlow(listOf(currentBook, otherBook))
     val livePlaybackFlow = MutableStateFlow<LivePlaybackState?>(null)
+    val savedDensity = MutableSharedFlow<Int>(replay = 1)
     val viewModel = BookOverviewViewModel(
       repo = mockk<BookRepository> {
-        every { flow() } returns MutableStateFlow(listOf(currentBook, otherBook))
+        every { flow() } returns library
       },
       mediaScanner = mockk<MediaScanTrigger> {
         every { scannerActive } returns MutableStateFlow(false)
@@ -54,10 +56,8 @@ class BookOverviewViewModelTest {
         every { livePlaybackStateFlow(currentBook.id) } returns livePlaybackFlow
       },
       currentBookStoreDataStore = MemoryDataStore(currentBook.id),
-      gridModeStore = MemoryDataStore(GridMode.LIST),
-      gridCount = mockk<GridCount> {
-        every { useGridAsDefault() } returns false
-      },
+      gridModeStore = MemoryDataStore(GridMode.BOOKS),
+      booksPerRowStore = mockk { every { data } returns savedDensity },
       navigator = mockk<Navigator>(),
       recentBookSearchDao = mockk<RecentBookSearchDao> {
         every { recentBookSearches() } returns MutableStateFlow(emptyList())
@@ -73,16 +73,20 @@ class BookOverviewViewModelTest {
         every { hasBug } returns MutableStateFlow(false)
       },
       folderPickerInSettingsFeatureFlag = MemoryFeatureFlag(false),
-      notStartedExpandedStore = mockk { every { data } returns MutableStateFlow(true) },
-      finishedExpandedStore = mockk { every { data } returns MutableStateFlow(true) },
       experimentalPlaybackPersistenceFeatureFlag = MemoryFeatureFlag(true),
+      organisationRepo = mockk { every { flow() } returns MutableStateFlow(voice.core.data.LibraryOrganisation()) },
     )
 
     backgroundScope.launchMolecule(RecompositionMode.Immediate) {
       viewModel.state()
     }.test {
       awaitItem() shouldBe BookOverviewViewState.Loading
+      yield()
+      expectNoEvents()
+      savedDensity.emit(3)
       val initial = awaitItem()
+      initial.layoutMode shouldBe BookOverviewLayoutMode.Books
+      initial.booksPerRow shouldBe 3
       val initialCurrentItem = initial.currentBook(currentBook.id)
       val initialOtherItem = initial.currentBook(otherBook.id)
       val initialKeys = initial.books.getValue(BookOverviewCategory.CURRENT).keys.toList()
@@ -104,6 +108,14 @@ class BookOverviewViewModelTest {
       initial.currentBook(currentBook.id) shouldBe currentBook.overlay(livePlaybackState).toItemViewState()
       initial.currentBook(otherBook.id) shouldBe initialOtherItem
       expectNoEvents()
+
+      // Lazy layouts may still hold the previous map while a new book changes the order.
+      val addedBook = book(name = "New", time = 1_000)
+      library.value = listOf(currentBook, addedBook, otherBook)
+      val updated = awaitItem()
+      updated.currentBook(addedBook.id).id shouldBe addedBook.id
+      initial.currentBook(otherBook.id).id shouldBe otherBook.id
+      updated.currentBook(otherBook.id).id shouldBe otherBook.id
     }
   }
 

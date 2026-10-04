@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 public enum class GridMode {
   LIST,
   GRID,
+  BOOKS,
   FOLLOW_DEVICE,
 }

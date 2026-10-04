@@ -1,0 +1,11 @@
+Book-style library with two or three columns, personal shelves, series stacks, and drag-and-drop ordering.
+
+Edited titles and covers survive rescans and portable backups.
+
+Stable chapter corrections for books with irregular markers.
+
+Safer playback after sleep timers and improved search, headset, Android Auto, lock-screen and widget controls.
+
+Option to remember volume boost across books.
+
+Updated libraries and refreshed screenshots.

@@ -246,7 +246,10 @@ class LibrarySessionCallback(
         player.setSkipSilenceEnabled(command.skipSilence)
       }
       is CustomCommand.SetGain -> {
-        player.setGain(command.gain)
+        return scope.future {
+          player.setGain(command.gain, command.remember)
+          SessionResult(SessionResult.RESULT_SUCCESS)
+        }
       }
       is CustomCommand.PauseWithRewind -> {
         pauseWithRewind(player, intentHolder, command.rewindMs)
@@ -373,10 +376,18 @@ class LibrarySessionCallback(
       player.pause()
       return
     }
+    if (!intentHolder.confirmExternalResume()) {
+      showSleepResumeConfirmation()
+      return
+    }
     if (player.currentMediaItem == null) {
       prepareCurrentBook()
     }
     player.play()
+  }
+
+  private fun showSleepResumeConfirmation() {
+    Toast.makeText(context, StringsR.string.sleep_resume_confirmation, Toast.LENGTH_SHORT).show()
   }
 
   private suspend fun createQuickBookmark() {
@@ -400,6 +411,7 @@ internal fun pauseWithRewind(
   rewindMs: Long,
 ) {
   intentHolder.stoppedBySleepTimer = true
+  intentHolder.requireSleepResumeConfirmation()
   player.pause()
   player.seekTo((player.currentPosition - rewindMs).coerceAtLeast(0L))
 }

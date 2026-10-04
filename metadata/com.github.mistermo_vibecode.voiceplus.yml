@@ -1,5 +1,5 @@
 Categories:
-  - Multimedia
+  - Audiobook
 License: GPL-3.0-only
 AuthorName: Mistermo
 WebSite: https://github.com/mistermo-vibecode/VoicePlus
@@ -7,46 +7,8 @@ SourceCode: https://github.com/mistermo-vibecode/VoicePlus
 IssueTracker: https://github.com/mistermo-vibecode/VoicePlus/issues
 Changelog: https://github.com/mistermo-vibecode/VoicePlus/releases
 
-Summary: Audiobook player with listening logs, statistics, and no tracking
-Description: |
-  VoicePlus is a local audiobook player for Android. It plays audio files stored on your device, keeps track of where you left off, and adds a set of listening tools not found in most audiobook apps. There are no accounts, no cloud sync, no ads, and no analytics.
-
-  VOICEPLUS FEATURES:
-
-  - Listening Log: every listening session is recorded locally so you can see when and how long you listened
-  - Listening Statistics: charts and summaries of your listening history, all computed on-device
-  - Character List: attach a list of characters to any book for quick reference while listening
-  - Hidden Books: hide books from your library without deleting them
-  - Collapsible library sections: organize your library with expandable groups
-  - Widget enhancements: updated home screen widget with more playback information
-  - Customizable media button actions: configure what double-tap and triple-tap on your headset button does
-  - Sleep timer enhancements: extended options including end-of-chapter detection
-
-  CORE FEATURES:
-
-  - Add audiobook folders from local storage using Android's file picker
-  - Each subfolder is treated as one book, keeping your library clean
-  - Remembers your position in every book automatically
-  - Adjustable playback speed
-  - Sleep timer: stops playback after a set time or at the end of a chapter
-  - Bookmarks
-  - Android Auto support
-  - Material You design with light and dark themes
-  - Chapter navigation
-  - Cover art: set manually or search online via DuckDuckGo (user-initiated only)
-
-  PRIVACY:
-
-  VoicePlus does not collect, transmit, or store any data about you outside your device. There are no analytics SDKs, no crash-reporting services, no advertising networks, and no Google or Firebase services in this app.
-
-  The only network activity is a cover art image search, and only when you explicitly open the 'Search for cover online' screen and trigger it yourself. The search query (book title and author) is sent to DuckDuckGo. DuckDuckGo does not track searches or build user profiles. No other network requests are made.
-
-  All listening data (history, statistics, characters, bookmarks, preferences) is stored in a local database on your device and never leaves it.
-
-  VoicePlus is built on Voice Audiobook Player by Paul Woitaschek (https://github.com/PaulWoitaschek/Voice), licensed under GPL-3.0.
-
 RepoType: git
-Repo: https://github.com/mistermo-vibecode/VoicePlus
+Repo: https://github.com/mistermo-vibecode/VoicePlus.git
 Binaries:
   https://github.com/mistermo-vibecode/VoicePlus/releases/download/v%v/app-libre-release-signed.apk
 
@@ -54,16 +16,6 @@ Builds:
   - versionName: '1.19'
     versionCode: 5404008
     commit: be629e48dd5418de53145f04839cc6d3902e88fc
-    subdir: app
-    gradle:
-      - libre
-    prebuild:
-      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
-      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
-
-  - versionName: '1.20'
-    versionCode: 5404009
-    commit: 9b69ffa2dc96f39115ae69579ce0fbd74f21e18f
     subdir: app
     gradle:
       - libre
@@ -83,7 +35,17 @@ Builds:
 
   - versionName: '1.22'
     versionCode: 5404011
-    commit: 1c1da7aeb74963605a564f81d2eccbff24cfed17
+    commit: 16f20623f56c9b6ca06f94594bb2788fc0d9430f
+    subdir: app
+    gradle:
+      - libre
+    prebuild:
+      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
+      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
+
+  - versionName: '1.23'
+    versionCode: 5404012
+    commit: 9ee6d5aab296fcf38f313485d5cc168ddf9525b6
     subdir: app
     gradle:
       - libre
@@ -93,7 +55,7 @@ Builds:
 
   - versionName: 1.23.1
     versionCode: 5404013
-    commit: v1.23.1
+    commit: 60a95717131eae352c6155f3e58a424e0e824b1e
     subdir: app
     gradle:
       - libre
@@ -103,7 +65,47 @@ Builds:
 
   - versionName: '1.24'
     versionCode: 5408001
-    commit: v1.24
+    commit: a40c11a9bf0c42e3ad7e08e61e1778e0d02a5f6e
+    subdir: app
+    gradle:
+      - libre
+    prebuild:
+      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
+      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
+
+  - versionName: '1.25'
+    versionCode: 5408002
+    commit: 49442cf3fe4212b28fe8d2e79418f3378c7e1200
+    subdir: app
+    gradle:
+      - libre
+    prebuild:
+      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
+      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
+
+  - versionName: '1.26'
+    versionCode: 5408003
+    commit: 15a506794e37e4dd1086be8261e5d4390d15828e
+    subdir: app
+    gradle:
+      - libre
+    prebuild:
+      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
+      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
+
+  - versionName: '1.27'
+    versionCode: 5408004
+    commit: 9605084855ee8f11b46ff1436a110fcc5c200b02
+    subdir: app
+    gradle:
+      - libre
+    prebuild:
+      - sed -i -e '/review/d' ../features/review/play/build.gradle.kts
+      - sed -i -e '/foojay/d' ../{.,plugins}/settings.gradle.kts
+
+  - versionName: '1.28'
+    versionCode: 5408005
+    commit: 87e96ab1dd8c4d807ad0f64440324a82c81f01de
     subdir: app
     gradle:
       - libre
@@ -115,5 +117,6 @@ AllowedAPKSigningKeys: e9b7ebffdfd96d08bb751810819c2133a6c060bb6f17449d95223b6f8
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: '1.24'
-CurrentVersionCode: 5408001
+UpdateCheckData: app/build.gradle.kts|versionCode.*?(\d+)\)?|.|versionName.*?"([^"]+)"
+CurrentVersion: '1.28'
+CurrentVersionCode: 5408005

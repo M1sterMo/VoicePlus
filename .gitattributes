@@ -17,8 +17,7 @@
 #
 #   git config merge.ours.driver true
 #
-# (The setup is local to .git/config and isn't checked in. The Bash setup line
-# is also documented in CLAUDE.md.)
+# The setup is local to .git/config and isn't checked in.
 #
 # Files NOT listed here (e.g. app/build.gradle.kts, gradle/libs.versions.toml,
 # AndroidManifest.xml, baseSetup.kt) intentionally remain merge-conflict prone
