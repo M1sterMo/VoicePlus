@@ -2,6 +2,7 @@ package voice.app
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
@@ -26,6 +27,7 @@ import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.espresso.matcher.ViewMatchers.isRoot
@@ -56,6 +58,7 @@ import voice.core.scanner.BookEditDraftStore
 import voice.core.scanner.MediaScanTrigger
 import voice.navigation.Destination
 import voice.navigation.Navigator
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.time.Instant
 import androidx.test.espresso.action.ViewActions.pressBack as pressBackAction
@@ -167,7 +170,13 @@ class FeatureRegressionTest {
       compose.onNodeWithText("Delete Book").assertIsDisplayed()
       // Wait for the sheet's native window to receive focus before injecting Back.
       onView(isRoot()).inRoot(isDialogRoot()).perform(pressBackAction())
-      compose.waitUntilAtLeastOneExists(searchResult, 10_000)
+      try {
+        compose.waitUntilAtLeastOneExists(searchResult, 10_000)
+      } catch (failure: ComposeTimeoutException) {
+        val hierarchy = ByteArrayOutputStream()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).dumpWindowHierarchy(hierarchy)
+        throw AssertionError(hierarchy.toString(Charsets.UTF_8.name()), failure)
+      }
       compose.onNode(searchResult).performClick()
       compose.waitUntilAtLeastOneExists(hasText("Chapter 12"), 10_000)
       compose.onNodeWithText(title).assertIsDisplayed()
@@ -237,6 +246,8 @@ class FeatureRegressionTest {
     // Clearing explicitly also tests returning to an existing search after closing the editor.
     compose.onNode(hasSetTextAction()).performTextReplacement(title)
     compose.waitUntilAtLeastOneExists(searchResult, 10_000)
+    // Back must dismiss the book menu, not a keyboard left open by text entry.
+    closeSoftKeyboard()
   }
 
   private fun withFixture(

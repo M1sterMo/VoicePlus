@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/build_setup
-      - name: Run Unit Tests + Lint
+      - name: Run Android lint
         run: ./gradlew :app:lintLibreDebug
       - uses: actions/upload-artifact@v6
         if: always()
@@ -77,3 +77,12 @@ jobs:
           report_paths: 'app/build/outputs/androidTest-results/**/TEST-*.xml'
           check_name: "Instrumentation Tests"
           annotate_only: true
+      - name: Retain emulator failure reports
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: instrumentation-reports
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+            app/build/outputs/managed_device_android_test_additional_output/**
