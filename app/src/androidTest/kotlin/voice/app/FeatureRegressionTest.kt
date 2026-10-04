@@ -26,7 +26,9 @@ import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.matcher.ViewMatchers.isRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -56,6 +58,8 @@ import voice.navigation.Destination
 import voice.navigation.Navigator
 import java.io.File
 import java.time.Instant
+import androidx.test.espresso.action.ViewActions.pressBack as pressBackAction
+import androidx.test.espresso.matcher.RootMatchers.isDialog as isDialogRoot
 
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
@@ -161,7 +165,8 @@ class FeatureRegressionTest {
       compose.waitUntilAtLeastOneExists(hasText("Edit book"), 10_000)
       compose.onNodeWithText("Edit book").assertIsDisplayed()
       compose.onNodeWithText("Delete Book").assertIsDisplayed()
-      pressBack()
+      // Wait for the sheet's native window to receive focus before injecting Back.
+      onView(isRoot()).inRoot(isDialogRoot()).perform(pressBackAction())
       compose.waitUntilAtLeastOneExists(searchResult, 10_000)
       compose.onNode(searchResult).performClick()
       compose.waitUntilAtLeastOneExists(hasText("Chapter 12"), 10_000)
