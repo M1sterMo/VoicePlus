@@ -33,6 +33,10 @@ jobs:
             echo "Missing release notes: $notes" >&2
             exit 1
           fi
+          if [[ $(wc -m < "$notes") -gt 500 ]]; then
+            echo "Release notes exceed F-Droid's 500-character limit" >&2
+            exit 1
+          fi
           echo "RELEASE_NOTES_PATH=$notes" >> "$GITHUB_ENV"
 
       - name: Decode Keystore
