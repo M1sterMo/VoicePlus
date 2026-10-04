@@ -47,6 +47,28 @@ jobs:
       - name: Build Signed Release APK
         run: ./gradlew :app:assembleLibreRelease --no-configuration-cache
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Verify F-Droid reproducibility
+        run: |
+          python -m pip install apksigcopier==1.1.1
+          repro_source="$RUNNER_TEMP/fdroid-rebuild"
+          git clone --shared --no-checkout "$GITHUB_WORKSPACE" "$repro_source"
+          git -C "$repro_source" checkout --detach "$GITHUB_SHA"
+          # Apply the prebuild steps from the official F-Droid recipe.
+          sed -i -e '/review/d' "$repro_source/features/review/play/build.gradle.kts"
+          sed -i -e '/foojay/d' "$repro_source/settings.gradle.kts" "$repro_source/plugins/settings.gradle.kts"
+          (
+            cd "$repro_source"
+            ./gradlew :app:assembleLibreRelease --no-build-cache --no-configuration-cache
+          )
+          apksigcopier compare --unsigned \
+            --verify-cmd "$ANDROID_HOME/build-tools/36.0.0/apksigner verify" \
+            "$GITHUB_WORKSPACE/app/build/outputs/apk/libre/release/app-libre-release.apk" \
+            "$repro_source/app/build/outputs/apk/libre/release/app-libre-release-unsigned.apk"
+
       - name: Rename APK for F-Droid Binaries URL
         run: mv app/build/outputs/apk/libre/release/app-libre-release.apk app/build/outputs/apk/libre/release/app-libre-release-signed.apk
 

@@ -88,7 +88,10 @@ Pushing a `vMAJOR.MINOR` tag starts the
 [Release Workflow](https://github.com/Mistermo-vibecode/VoicePlus/actions/workflows/release.yml).
 Manual runs must also use that version's matching tag.
 
-The workflow builds a signed `libre` release APK and publishes it as a draft GitHub release. F-Droid picks up the binary
+The workflow builds a signed `libre` release APK, independently rebuilds it with
+F-Droid's prebuild adjustments, and checks reproducibility by copying and verifying
+the APK signature. A mismatch stops the release before draft creation.
+It then publishes a draft GitHub release. F-Droid picks up the binary
 from the published release later; the draft must first be published. Verify the
 live F-Droid screenshot listing after its metadata refresh. Local validation is
 not evidence that the public listing has already changed.
