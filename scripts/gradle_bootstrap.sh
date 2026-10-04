@@ -4,7 +4,8 @@ set -euo pipefail
 
 # Policy
 LOCAL_MEM_PCT=75
-CI_LINUX_MEM_PCT=90
+# Leave room for the emulator and native JVM allocations.
+CI_LINUX_MEM_PCT=60
 CI_DARWIN_MEM_PCT=90
 CGROUP_MEM_PCT=85
 GRADLE_SHARE_PCT=50
@@ -118,8 +119,8 @@ main() {
 
   local gradle_xms kotlin_xms
   if $ci; then
-    gradle_xms=$gradle_xmx
-    kotlin_xms=$kotlin_xmx
+    gradle_xms=$MIN_XMS_GB
+    kotlin_xms=$MIN_XMS_GB
   else
     gradle_xms=$(ensure_min $(( gradle_xmx * LOCAL_XMS_PCT / 100 )) "$MIN_XMS_GB")
     kotlin_xms=$(ensure_min $(( kotlin_xmx * LOCAL_XMS_PCT / 100 )) "$MIN_XMS_GB")
@@ -150,7 +151,7 @@ main() {
   {
     printf '%s\n' "$prefix"
     printf '%s\n' "org.gradle.jvmargs=${GRADLE_JVM_ARGS}"
-    printf '%s\n' "kotlin.daemon.jvm.options=${KOTLIN_JVM_ARGS}"
+    printf '%s\n' "kotlin.daemon.jvmargs=${KOTLIN_JVM_ARGS}"
     printf '%s\n' "$suffix"
   } >> "$file"
 

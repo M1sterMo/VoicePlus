@@ -86,3 +86,9 @@ jobs:
             app/build/reports/androidTests/**
             app/build/outputs/androidTest-results/**
             app/build/outputs/managed_device_android_test_additional_output/**
+      - name: Report runner memory on failure
+        if: failure()
+        run: |
+          free -h
+          ps -eo comm,rss --sort=-rss | head -n 12
+          sudo dmesg | tail -n 40

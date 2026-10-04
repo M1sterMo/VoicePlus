@@ -58,6 +58,7 @@ jobs:
       - name: Verify F-Droid reproducibility
         run: |
           python -m pip install apksigcopier==1.1.1
+          ./gradlew --stop
           repro_source="$RUNNER_TEMP/fdroid-rebuild"
           git clone --shared --no-checkout "$GITHUB_WORKSPACE" "$repro_source"
           git -C "$repro_source" checkout --detach "$GITHUB_SHA"
