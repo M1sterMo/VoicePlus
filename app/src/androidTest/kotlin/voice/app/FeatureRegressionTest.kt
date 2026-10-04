@@ -162,6 +162,7 @@ class FeatureRegressionTest {
       compose.onNodeWithText("Edit book").assertIsDisplayed()
       compose.onNodeWithText("Delete Book").assertIsDisplayed()
       pressBack()
+      compose.waitUntilAtLeastOneExists(searchResult, 10_000)
       compose.onNode(searchResult).performClick()
       compose.waitUntilAtLeastOneExists(hasText("Chapter 12"), 10_000)
       compose.onNodeWithText(title).assertIsDisplayed()

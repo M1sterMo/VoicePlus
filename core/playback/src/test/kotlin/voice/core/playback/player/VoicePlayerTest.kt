@@ -162,7 +162,7 @@ class VoicePlayerTest {
     repo = bookRepository,
     currentBookStoreId = currentBookStoreId,
     seekTimeStore = seekTimeStore,
-    autoRewindAmountStore = mockk(),
+    autoRewindAmountStore = MemoryDataStore(0),
     scope = CoroutineScope(scope.backgroundScope.coroutineContext + UnconfinedTestDispatcher(scope.testScheduler)),
     chapterRepo = mockk {
       coEvery { this@mockk.get(any()) } answers {
@@ -927,6 +927,8 @@ class VoicePlayerTest {
       Shadows.shadowOf(Looper.getMainLooper()).idle()
       player.playWhenReady shouldBe true
 
+      player.seekTo(1_000)
+      player.shouldHavePosition(0, 1_000)
       lockscreenPlayer.pause()
       Shadows.shadowOf(Looper.getMainLooper()).idle()
       player.playWhenReady shouldBe false
