@@ -17,6 +17,7 @@ import voice.core.data.repo.internals.getInt
 import voice.core.data.repo.internals.getString
 import voice.core.data.repo.internals.getStringOrNull
 import voice.core.data.repo.internals.mapRows
+import java.time.Instant
 import java.util.UUID
 import kotlin.random.Random
 
@@ -411,6 +412,23 @@ class DataBaseMigratorTest {
     }
 
     bookmarkCursor.close()
+  }
+
+  @Test
+  fun chapterRescanMigrationClearsFileLastModified() {
+    val name = "chapter-rescan"
+    helper.createDatabase(name, 69).use { db ->
+      db.execSQL(
+        """INSERT INTO chapters2 (id, name, duration, fileLastModified, markData, fileSize)
+           VALUES ('file', 'Chapter', 10, '2020-01-01T00:00:00Z', '[]', 5)""",
+      )
+    }
+    helper.runMigrationsAndValidate(name, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT fileLastModified FROM chapters2").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        cursor.getString(0) shouldBe Instant.EPOCH.toString()
+      }
+    }
   }
 
   private object BookTable {
