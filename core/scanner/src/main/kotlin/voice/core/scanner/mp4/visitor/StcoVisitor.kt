@@ -20,10 +20,10 @@ internal class StcoVisitor : AtomVisitor {
       Logger.w("Unexpected version $version in stco atom, expected 0")
     } else {
       buffer.skipBytes(3) // flags
+      val track = parseOutput.currentTrack() ?: return
       val numberOfEntries = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stco: $numberOfEntries")
-      val chunkOffsets = (0 until numberOfEntries).map { buffer.readUnsignedInt() }
-      parseOutput.chunkOffsets.add(chunkOffsets)
+      track.chunkOffsets = List(numberOfEntries) { buffer.readUnsignedInt() }
     }
   }
 }

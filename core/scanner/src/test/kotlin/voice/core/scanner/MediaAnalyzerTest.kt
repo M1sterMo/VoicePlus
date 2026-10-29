@@ -26,10 +26,14 @@ import voice.core.scanner.mp4.Mp4BoxParser
 import voice.core.scanner.mp4.Mp4ChapterExtractor
 import voice.core.scanner.mp4.visitor.ChapVisitor
 import voice.core.scanner.mp4.visitor.ChplVisitor
+import voice.core.scanner.mp4.visitor.Co64Visitor
+import voice.core.scanner.mp4.visitor.HdlrVisitor
 import voice.core.scanner.mp4.visitor.MdhdVisitor
 import voice.core.scanner.mp4.visitor.StcoVisitor
 import voice.core.scanner.mp4.visitor.StscVisitor
+import voice.core.scanner.mp4.visitor.StszVisitor
 import voice.core.scanner.mp4.visitor.SttsVisitor
+import voice.core.scanner.mp4.visitor.TkhdVisitor
 import java.io.File
 import kotlin.time.Duration.Companion.minutes
 
@@ -49,8 +53,12 @@ internal class MediaAnalyzerTest {
         mdhdVisitor = MdhdVisitor(),
         sttsVisitor = SttsVisitor(),
         stcoVisitor = StcoVisitor(),
+        co64Visitor = Co64Visitor(),
+        stszVisitor = StszVisitor(),
         chplVisitor = ChplVisitor(),
         chapVisitor = ChapVisitor(),
+        tkhdVisitor = TkhdVisitor(),
+        hdlrVisitor = HdlrVisitor(),
       ),
       chapterTrackProcessor = ChapterTrackProcessor(),
     ),
@@ -177,10 +185,7 @@ internal class MediaAnalyzerTest {
       metadata.title shouldBe "Auphonic Chapter Marks Demo"
       metadata.artist shouldBe "Auphonic"
       metadata.album shouldBe "Auphonic Examples"
-      metadata.chapters shouldContainExactly auphonicChapters.filter {
-        // for some reason only this one is missing in the test files
-        it.name != "Creating a new production"
-      }
+      metadata.chapters shouldContainExactly auphonicChapters
     }
   }
 

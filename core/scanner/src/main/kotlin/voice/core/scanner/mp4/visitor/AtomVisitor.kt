@@ -10,4 +10,13 @@ internal interface AtomVisitor {
     buffer: ParsableByteArray,
     parseOutput: Mp4ChpaterExtractorOutput,
   )
+
+  /**
+   * False skips the payload without reading it. Audio sample-size tables are millions of
+   * entries and are not needed to locate chapter titles.
+   */
+  fun consumes(
+    parseOutput: Mp4ChpaterExtractorOutput,
+    payloadSize: Long,
+  ): Boolean = payloadSize in 0..Int.MAX_VALUE.toLong()
 }

@@ -81,7 +81,7 @@ public abstract class AppDb : RoomDatabase() {
   public abstract fun libraryOrganisationDao(): LibraryOrganisationDao
 
   internal companion object {
-    const val VERSION = 70
+    const val VERSION = 71
     const val DATABASE_NAME = "autoBookDB"
   }
 }

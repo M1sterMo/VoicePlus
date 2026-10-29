@@ -21,9 +21,10 @@ internal class StscVisitor : AtomVisitor {
       Logger.w("Unexpected version $version in stsc atom, expected 0")
     } else {
       buffer.skipBytes(3) // flags
+      val track = parseOutput.currentTrack() ?: return
       val numberOfEntries = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stsc: $numberOfEntries")
-      val stscEntriesForTrack = (0 until numberOfEntries).map {
+      track.stscEntries = List(numberOfEntries) {
         val firstChunk = buffer.readUnsignedInt()
         val samplesPerChunk = buffer.readUnsignedIntToInt()
         buffer.skipBytes(4) // skip sample description index
@@ -32,7 +33,6 @@ internal class StscVisitor : AtomVisitor {
           samplesPerChunk = samplesPerChunk,
         )
       }
-      parseOutput.stscEntries.add(stscEntriesForTrack)
     }
   }
 }
