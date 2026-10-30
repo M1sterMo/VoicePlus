@@ -203,7 +203,11 @@ private class WindowDataSource(
     return (bytes.size - position).toLong()
   }
 
-  override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+  override fun read(
+    buffer: ByteArray,
+    offset: Int,
+    length: Int,
+  ): Int {
     if (position >= bytes.size) return C.RESULT_END_OF_INPUT
     val count = minOf(length, bytes.size - position)
     bytes.copyInto(buffer, destinationOffset = offset, startIndex = position, endIndex = position + count)

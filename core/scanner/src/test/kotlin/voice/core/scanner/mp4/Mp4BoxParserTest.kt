@@ -116,23 +116,39 @@ private class SparseExtractorInput(
   private var position = 0L
   private var peekPosition = 0L
 
-  override fun read(target: ByteArray, offset: Int, length: Int): Int {
+  override fun read(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+  ): Int {
     val read = readAt(::position, target, offset, length)
     peekPosition = position
     return read
   }
 
-  override fun readFully(target: ByteArray, offset: Int, length: Int, allowEndOfInput: Boolean): Boolean {
+  override fun readFully(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+    allowEndOfInput: Boolean,
+  ): Boolean {
     return readFullyAt(::position, target, offset, length, allowEndOfInput)
   }
 
-  override fun readFully(target: ByteArray, offset: Int, length: Int) {
+  override fun readFully(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+  ) {
     if (!readFully(target, offset, length, false)) throw EOFException()
   }
 
   override fun skip(length: Int): Int = skipAt(::position, length)
 
-  override fun skipFully(length: Int, allowEndOfInput: Boolean): Boolean {
+  override fun skipFully(
+    length: Int,
+    allowEndOfInput: Boolean,
+  ): Boolean {
     if (position + length > fileLength) {
       if (allowEndOfInput) return false
       throw EOFException()
@@ -146,17 +162,33 @@ private class SparseExtractorInput(
     if (!skipFully(length, false)) throw EOFException()
   }
 
-  override fun peek(target: ByteArray, offset: Int, length: Int): Int = readAt(::peekPosition, target, offset, length)
+  override fun peek(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+  ): Int = readAt(::peekPosition, target, offset, length)
 
-  override fun peekFully(target: ByteArray, offset: Int, length: Int, allowEndOfInput: Boolean): Boolean {
+  override fun peekFully(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+    allowEndOfInput: Boolean,
+  ): Boolean {
     return readFullyAt(::peekPosition, target, offset, length, allowEndOfInput)
   }
 
-  override fun peekFully(target: ByteArray, offset: Int, length: Int) {
+  override fun peekFully(
+    target: ByteArray,
+    offset: Int,
+    length: Int,
+  ) {
     if (!peekFully(target, offset, length, false)) throw EOFException()
   }
 
-  override fun advancePeekPosition(length: Int, allowEndOfInput: Boolean): Boolean {
+  override fun advancePeekPosition(
+    length: Int,
+    allowEndOfInput: Boolean,
+  ): Boolean {
     if (peekPosition + length > fileLength) {
       if (allowEndOfInput) return false
       throw EOFException()
@@ -179,7 +211,10 @@ private class SparseExtractorInput(
 
   override fun getLength(): Long = fileLength
 
-  override fun <E : Throwable> setRetryPosition(position: Long, e: E): Unit = throw e
+  override fun <E : Throwable> setRetryPosition(
+    position: Long,
+    e: E,
+  ): Unit = throw e
 
   private fun readFullyAt(
     cursor: kotlin.reflect.KMutableProperty0<Long>,
@@ -219,7 +254,10 @@ private class SparseExtractorInput(
     return count
   }
 
-  private fun skipAt(cursor: kotlin.reflect.KMutableProperty0<Long>, length: Int): Int {
+  private fun skipAt(
+    cursor: kotlin.reflect.KMutableProperty0<Long>,
+    length: Int,
+  ): Int {
     val pos = cursor.get()
     val count = minOf(length.toLong(), (fileLength - pos).coerceAtLeast(0)).toInt()
     cursor.set(pos + count)
@@ -227,7 +265,10 @@ private class SparseExtractorInput(
   }
 }
 
-private fun box(type: String, payload: ByteArray): ByteArray {
+private fun box(
+  type: String,
+  payload: ByteArray,
+): ByteArray {
   val out = ByteArray(8 + payload.size)
   writeU32(out, 0, out.size.toLong())
   type.toByteArray(Charsets.US_ASCII).copyInto(out, 4)
@@ -235,14 +276,22 @@ private fun box(type: String, payload: ByteArray): ByteArray {
   return out
 }
 
-private fun writeU32(target: ByteArray, offset: Int, value: Long) {
+private fun writeU32(
+  target: ByteArray,
+  offset: Int,
+  value: Long,
+) {
   target[offset] = (value ushr 24).toByte()
   target[offset + 1] = (value ushr 16).toByte()
   target[offset + 2] = (value ushr 8).toByte()
   target[offset + 3] = value.toByte()
 }
 
-private fun writeU64(target: ByteArray, offset: Int, value: Long) {
+private fun writeU64(
+  target: ByteArray,
+  offset: Int,
+  value: Long,
+) {
   writeU32(target, offset, value ushr 32)
   writeU32(target, offset + 4, value and 0xFFFF_FFFFL)
 }

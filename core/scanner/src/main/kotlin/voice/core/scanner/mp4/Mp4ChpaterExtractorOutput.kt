@@ -14,9 +14,7 @@ internal class Mp4ChpaterExtractorOutput {
   }
 }
 
-internal class TrackTables(
-  val id: Int,
-) {
+internal class TrackTables(val id: Int) {
   var handler: String? = null
   var timeScale: Long? = null
   var durations: List<SttsEntry> = emptyList()
