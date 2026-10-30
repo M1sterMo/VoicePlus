@@ -62,6 +62,31 @@ internal class Mp4BoxParserTest {
     StszVisitor().consumes(output, payloadSize = 5_000_000) shouldBe false
   }
 
+  @Test
+  fun `a trak without tkhd does not inherit the previous track id`() {
+    val moov = box(
+      "moov",
+      trak(trackId = 1, offset = 11) + box("trak", mdiaWith(box("co64", co64(offset = 22)))),
+    )
+
+    val output = parser().invoke(input(moov))
+
+    output.tracks.keys shouldBe setOf(1)
+    output.tracks.getValue(1).chunkOffsets shouldBe listOf(11L)
+  }
+
+  @Test
+  fun `a co64 declaring more entries than it holds is ignored`() {
+    val moov = box(
+      "moov",
+      box("trak", box("tkhd", tkhd(trackId = 2)) + mdiaWith(box("co64", co64(offset = 99, declaredEntries = 1_000)))),
+    )
+
+    val output = parser().invoke(input(moov))
+
+    output.tracks[2]?.chunkOffsets.orEmpty() shouldBe emptyList()
+  }
+
   private fun parser(): Mp4BoxParser {
     return Mp4BoxParser(
       stscVisitor = StscVisitor(),
@@ -86,26 +111,24 @@ internal class Mp4BoxParserTest {
   private fun moovWithCo64(
     trackId: Int,
     offset: Long,
-  ): ByteArray {
-    val tkhd = ByteArray(16)
-    writeU32(tkhd, 12, trackId.toLong())
-    val co64 = ByteArray(16)
-    writeU32(co64, 4, 1)
-    writeU64(co64, 8, offset)
-    return box(
-      "moov",
-      box(
-        "trak",
-        box("tkhd", tkhd) + box(
-          "mdia",
-          box(
-            "minf",
-            box("stbl", box("co64", co64)),
-          ),
-        ),
-      ),
-    )
+  ): ByteArray = box("moov", trak(trackId, offset))
+
+  private fun trak(
+    trackId: Int,
+    offset: Long,
+  ): ByteArray = box("trak", box("tkhd", tkhd(trackId)) + mdiaWith(box("co64", co64(offset))))
+
+  private fun tkhd(trackId: Int): ByteArray = ByteArray(16).also { writeU32(it, 12, trackId.toLong()) }
+
+  private fun co64(
+    offset: Long,
+    declaredEntries: Int = 1,
+  ): ByteArray = ByteArray(16).also {
+    writeU32(it, 4, declaredEntries.toLong())
+    writeU64(it, 8, offset)
   }
+
+  private fun mdiaWith(table: ByteArray): ByteArray = box("mdia", box("minf", box("stbl", table)))
 }
 
 private class SparseExtractorInput(

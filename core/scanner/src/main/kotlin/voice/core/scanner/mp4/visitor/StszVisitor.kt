@@ -15,7 +15,7 @@ internal class StszVisitor : AtomVisitor {
     parseOutput: Mp4ChpaterExtractorOutput,
     payloadSize: Long,
   ): Boolean {
-    if (payloadSize !in 0..MAX_SAMPLE_SIZE_TABLE_BYTES) return false
+    if (payloadSize > MAX_SAMPLE_SIZE_TABLE_BYTES) return false
     val handler = parseOutput.currentTrack()?.handler
     return handler != "soun" && handler != "vide"
   }
@@ -37,10 +37,7 @@ internal class StszVisitor : AtomVisitor {
       track.constantSampleSize = constantSampleSize
       return
     }
-    if (sampleCount > MAX_SAMPLES) {
-      Logger.w("Refusing to store $sampleCount sample sizes for track ${track.id}")
-      return
-    }
+    if (!buffer.fitsEntries("stsz", sampleCount, 4)) return
     track.sampleSizes = List(sampleCount) { buffer.readUnsignedIntToInt() }
   }
 

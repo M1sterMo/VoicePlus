@@ -2,7 +2,6 @@ package voice.core.scanner.mp4
 
 import android.content.Context
 import android.net.Uri
-import androidx.media3.common.C
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.extractor.DefaultExtractorInput
@@ -24,8 +23,8 @@ internal class Mp4ChapterExtractor(
     val dataSource = DefaultDataSource.Factory(context).createDataSource()
 
     try {
-      dataSource.open(DataSpec(uri))
-      val input = DefaultExtractorInput(dataSource, 0, C.LENGTH_UNSET.toLong())
+      val length = dataSource.open(DataSpec(uri))
+      val input = DefaultExtractorInput(dataSource, 0, length)
       val topLevelResult = boxParser(input)
       val trackId = topLevelResult.chapterTrackId
       when {

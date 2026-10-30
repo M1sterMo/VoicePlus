@@ -45,6 +45,7 @@ internal class Mp4BoxParser(
     hdlrVisitor,
   )
   private val visitorByPath = visitors.associateBy { it.path }
+  private val trakPath = listOf("moov", "trak")
 
   operator fun invoke(input: ExtractorInput): Mp4ChpaterExtractorOutput {
     val scratch = ParsableByteArray(Mp4Box.LONG_HEADER_SIZE)
@@ -122,7 +123,7 @@ internal class Mp4BoxParser(
       when {
         visitor != null -> {
           Logger.v("Found ${visitor.path.last()}!")
-          if (visitor.consumes(parseOutput, payloadSize) && payloadSize <= Int.MAX_VALUE) {
+          if (payloadSize <= Int.MAX_VALUE && visitor.consumes(parseOutput, payloadSize)) {
             val size = payloadSize.toInt()
             scratch.reset(size)
             if (!input.readFully(scratch.data, 0, size, true)) {
@@ -138,6 +139,10 @@ internal class Mp4BoxParser(
           }
         }
         visitors.any { it.path.startsWith(currentPath) } -> {
+          if (currentPath == trakPath) {
+            // Tables inside a trak belong to the track its tkhd names, never to the previous trak.
+            parseOutput.currentTrackId = null
+          }
           parseBoxes(
             input = input,
             path = currentPath,

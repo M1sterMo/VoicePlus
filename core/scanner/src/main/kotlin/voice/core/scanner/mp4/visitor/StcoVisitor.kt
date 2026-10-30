@@ -23,6 +23,7 @@ internal class StcoVisitor : AtomVisitor {
       val track = parseOutput.currentTrack() ?: return
       val numberOfEntries = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stco: $numberOfEntries")
+      if (!buffer.fitsEntries("stco", numberOfEntries, 4)) return
       track.chunkOffsets = List(numberOfEntries) { buffer.readUnsignedInt() }
     }
   }

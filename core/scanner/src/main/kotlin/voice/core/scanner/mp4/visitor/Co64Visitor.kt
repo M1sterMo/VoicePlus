@@ -23,6 +23,7 @@ internal class Co64Visitor : AtomVisitor {
     }
     buffer.skipBytes(3)
     val numberOfEntries = buffer.readUnsignedIntToInt()
+    if (!buffer.fitsEntries("co64", numberOfEntries, 8)) return
     track.chunkOffsets = List(numberOfEntries) { buffer.readUnsignedLongToLong() }
   }
 }

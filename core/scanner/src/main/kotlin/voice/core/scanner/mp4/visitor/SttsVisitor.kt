@@ -24,6 +24,7 @@ internal class SttsVisitor : AtomVisitor {
       val track = parseOutput.currentTrack() ?: return
       val numberOfEntriesInSttsTable = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stts: $numberOfEntriesInSttsTable")
+      if (!buffer.fitsEntries("stts", numberOfEntriesInSttsTable, 8)) return
       track.durations = List(numberOfEntriesInSttsTable) {
         SttsEntry(
           sampleCount = buffer.readUnsignedInt(),

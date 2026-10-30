@@ -24,6 +24,7 @@ internal class StscVisitor : AtomVisitor {
       val track = parseOutput.currentTrack() ?: return
       val numberOfEntries = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stsc: $numberOfEntries")
+      if (!buffer.fitsEntries("stsc", numberOfEntries, 12)) return
       track.stscEntries = List(numberOfEntries) {
         val firstChunk = buffer.readUnsignedInt()
         val samplesPerChunk = buffer.readUnsignedIntToInt()
