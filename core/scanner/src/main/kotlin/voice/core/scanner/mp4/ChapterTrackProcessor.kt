@@ -2,7 +2,6 @@ package voice.core.scanner.mp4
 
 import android.net.Uri
 import androidx.media3.common.C
-import androidx.media3.common.util.ParsableByteArray
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import dev.zacsweers.metro.Inject
@@ -33,55 +32,45 @@ internal class ChapterTrackProcessor {
       Logger.w("No time scale found for track ID $trackId")
       return emptyList()
     }
-    val durations = track.durations
-    val stscEntries = track.stscEntries
+    if (track.durations.isEmpty()) {
+      Logger.w("No durations found for track ID $trackId")
+      return emptyList()
+    }
+    val samplesPerChunk = chunkOffsets.indices.map { getSamplesPerChunk(it, track.stscEntries) }
+    if (samplesPerChunk.sumOf { it.toLong() } > MAX_SAMPLES_PER_TRACK) {
+      Logger.w("Refusing to expand more than $MAX_SAMPLES_PER_TRACK samples in chapter track $trackId")
+      return emptyList()
+    }
     val hasSampleSizes = track.constantSampleSize > 0 || track.sampleSizes.isNotEmpty()
+    if (!hasSampleSizes && samplesPerChunk.any { it > 1 }) {
+      Logger.w("Chapter track $trackId packs several samples in one chunk without sample sizes")
+      return emptyList()
+    }
 
+    val durations = SampleDurations(track.durations)
     var position = 0L
-    var durationEntryIndex = 0
-    var samplesConsumedInDurationEntry = 0L
     var sampleIndex = 0
     val chapters = mutableListOf<MarkData>()
-
     chunkOffsets.forEachIndexed { chunkIndex, chunkOffset ->
-      val samplesInThisChunk = getSamplesPerChunk(chunkIndex, stscEntries)
-      if (samplesInThisChunk > MAX_SAMPLES_PER_TRACK) {
-        Logger.w("Refusing to expand $samplesInThisChunk samples in chapter track $trackId")
-        return emptyList()
-      }
-      if (samplesInThisChunk > 1 && !hasSampleSizes) {
-        Logger.w("Chapter track $trackId packs $samplesInThisChunk samples in one chunk without sample sizes")
-        return emptyList()
-      }
-      var bytesIntoChunk = 0L
-      repeat(samplesInThisChunk) {
-        val sampleOffset = chunkOffset + bytesIntoChunk
-        val sampleSize = track.sampleSize(sampleIndex) ?: 0
-        bytesIntoChunk += sampleSize.toLong()
-        sampleIndex++
-
-        val consumedDuration = consumeDuration(
-          sampleCount = 1,
-          durations = durations,
-          durationEntryIndex = durationEntryIndex,
-          samplesConsumedInDurationEntry = samplesConsumedInDurationEntry,
-        )
-        durationEntryIndex = consumedDuration.durationEntryIndex
-        samplesConsumedInDurationEntry = consumedDuration.samplesConsumedInDurationEntry
-        if (!consumedDuration.hasEnoughDurations) {
-          Logger.w("Not enough sample durations for chapter sample $sampleIndex")
-        }
-
+      var sampleOffset = chunkOffset
+      repeat(samplesPerChunk[chunkIndex]) {
         chapters += MarkData(
           startMs = ticksToMilliseconds(position, timeScale),
           name = readSampleName(dataSource, uri, sampleOffset),
         )
-        position = Math.addExact(position, consumedDuration.duration)
+        val duration = durations.next()
+        if (duration == null) {
+          Logger.w("Not enough sample durations for chapter sample ${sampleIndex + 1}")
+        }
+        position = Math.addExact(position, duration ?: 0L)
+        sampleOffset += track.sampleSize(sampleIndex) ?: 0
+        sampleIndex++
       }
     }
     return chapters.sorted()
   }
 
+  /** A chapter title sample is a big-endian 16-bit length followed by that many UTF-8 bytes. */
   private fun readSampleName(
     dataSource: DataSource,
     uri: Uri,
@@ -94,67 +83,48 @@ internal class ChapterTrackProcessor {
         .setPosition(offset)
         .build(),
     )
-    val lengthBytes = ByteArray(2)
-    if (!dataSource.readFully(lengthBytes)) return ""
+    val lengthBytes = dataSource.readOrNull(2) ?: return truncatedTitle(offset)
     val textLength = ((lengthBytes[0].toInt() and 0xFF) shl 8) or (lengthBytes[1].toInt() and 0xFF)
-    if (textLength == 0) return ""
     if (textLength > MAX_TITLE_BYTES) {
-      Logger.w("Chapter title length $textLength is implausible")
+      Logger.w("Chapter title length $textLength at offset $offset is implausible")
       return ""
     }
-    val text = ByteArray(textLength)
-    if (!dataSource.readFully(text)) return ""
+    val text = dataSource.readOrNull(textLength) ?: return truncatedTitle(offset)
     return text.toString(Charsets.UTF_8)
   }
 
-  private fun DataSource.readFully(target: ByteArray): Boolean {
-    var offset = 0
-    while (offset < target.size) {
-      val read = read(target, offset, target.size - offset)
-      if (read == C.RESULT_END_OF_INPUT || read <= 0) return false
-      offset += read
-    }
-    return true
+  private fun truncatedTitle(offset: Long): String {
+    Logger.w("Chapter title at offset $offset is truncated")
+    return ""
   }
 
-  private fun consumeDuration(
-    sampleCount: Int,
-    durations: List<SttsEntry>,
-    durationEntryIndex: Int,
-    samplesConsumedInDurationEntry: Long,
-  ): ConsumedDuration {
-    var remainingSamples = sampleCount.toLong()
-    var currentDurationEntryIndex = durationEntryIndex
-    var currentSamplesConsumedInDurationEntry = samplesConsumedInDurationEntry
-    var duration = 0L
-
-    while (remainingSamples > 0 && currentDurationEntryIndex < durations.size) {
-      val durationEntry = durations[currentDurationEntryIndex]
-      val samplesLeftInEntry =
-        durationEntry.sampleCount - currentSamplesConsumedInDurationEntry
-      if (samplesLeftInEntry <= 0) {
-        currentDurationEntryIndex++
-        currentSamplesConsumedInDurationEntry = 0L
-        continue
-      }
-
-      val samplesToConsume = minOf(remainingSamples, samplesLeftInEntry)
-      duration += samplesToConsume * durationEntry.sampleDuration
-      remainingSamples -= samplesToConsume
-      currentSamplesConsumedInDurationEntry += samplesToConsume
-
-      if (currentSamplesConsumedInDurationEntry == durationEntry.sampleCount) {
-        currentDurationEntryIndex++
-        currentSamplesConsumedInDurationEntry = 0L
-      }
+  /** Reads exactly [length] bytes, or null when the input ends first. */
+  private fun DataSource.readOrNull(length: Int): ByteArray? {
+    val target = ByteArray(length)
+    var filled = 0
+    while (filled < length) {
+      val read = read(target, filled, length - filled)
+      if (read == C.RESULT_END_OF_INPUT || read == 0) return null
+      filled += read
     }
+    return target
+  }
 
-    return ConsumedDuration(
-      duration = duration,
-      durationEntryIndex = currentDurationEntryIndex,
-      samplesConsumedInDurationEntry = currentSamplesConsumedInDurationEntry,
-      hasEnoughDurations = remainingSamples == 0L,
-    )
+  /** Walks the time-to-sample table one sample at a time. */
+  private class SampleDurations(private val entries: List<SttsEntry>) {
+    private var entryIndex = 0
+    private var consumedInEntry = 0L
+
+    /** The next sample's duration in ticks, or null once the table is exhausted. */
+    fun next(): Long? {
+      while (entryIndex < entries.size && consumedInEntry >= entries[entryIndex].sampleCount) {
+        entryIndex++
+        consumedInEntry = 0L
+      }
+      val entry = entries.getOrNull(entryIndex) ?: return null
+      consumedInEntry++
+      return entry.sampleDuration
+    }
   }
 
   private fun ticksToMilliseconds(
@@ -183,13 +153,6 @@ internal class ChapterTrackProcessor {
     }
     return 1
   }
-
-  private data class ConsumedDuration(
-    val duration: Long,
-    val durationEntryIndex: Int,
-    val samplesConsumedInDurationEntry: Long,
-    val hasEnoughDurations: Boolean,
-  )
 
   private companion object {
     const val MAX_TITLE_BYTES = 4_096

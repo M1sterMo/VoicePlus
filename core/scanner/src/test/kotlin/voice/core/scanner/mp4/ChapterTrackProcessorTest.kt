@@ -135,6 +135,66 @@ internal class ChapterTrackProcessorTest {
     )
   }
 
+  @Test
+  fun `a track without durations yields no chapters`() {
+    val chapters = invoke(
+      trackId = 1,
+      names = listOf("one", "two"),
+      samplesPerChunk = listOf(1, 1),
+      durations = emptyList(),
+    )
+
+    chapters shouldBe emptyList()
+  }
+
+  @Test
+  fun `more samples than the cap across all chunks yields no chapters`() {
+    val output = Mp4ChpaterExtractorOutput().apply {
+      tracks[1] = TrackTables(1).apply {
+        chunkOffsets = List(3) { it * 70_000L }
+        durations = listOf(SttsEntry(sampleCount = 210_000, sampleDuration = 1))
+        timeScale = 1000
+        stscEntries = listOf(StscEntry(firstChunk = 1, samplesPerChunk = 70_000))
+        constantSampleSize = 1
+      }
+    }
+
+    val chapters = ChapterTrackProcessor()(
+      uri = Uri.EMPTY,
+      dataSource = ByteArrayDataSource(byteArrayOf(0)),
+      trackId = 1,
+      output = output,
+    )
+
+    chapters shouldBe emptyList()
+  }
+
+  @Test
+  fun `a title cut off by the end of the file is empty`() {
+    val output = Mp4ChpaterExtractorOutput().apply {
+      tracks[1] = TrackTables(1).apply {
+        chunkOffsets = listOf(0L, 5L)
+        durations = listOf(SttsEntry(sampleCount = 2, sampleDuration = 100))
+        timeScale = 1000
+        stscEntries = listOf(StscEntry(firstChunk = 1, samplesPerChunk = 1))
+      }
+    }
+    // "one" is complete; the second sample announces five bytes but the file ends after two.
+    val data = byteArrayOf(0, 3, 'o'.code.toByte(), 'n'.code.toByte(), 'e'.code.toByte(), 0, 5, 'x'.code.toByte(), 'y'.code.toByte())
+
+    val chapters = ChapterTrackProcessor()(
+      uri = Uri.EMPTY,
+      dataSource = ByteArrayDataSource(data),
+      trackId = 1,
+      output = output,
+    )
+
+    chapters shouldBe listOf(
+      MarkData(startMs = 0, name = "one"),
+      MarkData(startMs = 100, name = ""),
+    )
+  }
+
   private fun invoke(
     trackId: Int,
     names: List<String>,
