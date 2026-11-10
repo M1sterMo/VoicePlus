@@ -16,6 +16,7 @@
     android:contentDescription="" />
 
   <LinearLayout
+    android:id="@+id/content"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center_vertical"
@@ -38,13 +39,16 @@
       android:orientation="vertical">
 
       <!-- Weighted so that, when the widget is too short, this block gives up space and the
-           buttons below keep their full size. -->
+           buttons below keep their full size. The gap above the buttons is this
+           block's bottom padding, so it gives way too. -->
       <LinearLayout
+        android:id="@+id/text"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="bottom"
         android:orientation="vertical"
+        android:paddingBottom="8dp"
         tools:ignore="NestedWeights">
 
         <TextView
@@ -87,7 +91,6 @@
         android:id="@+id/buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
         android:gravity="center"
         android:orientation="horizontal">
 
