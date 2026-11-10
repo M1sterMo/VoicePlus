@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import voice.core.logging.api.Logger
 import voice.core.strings.R
 import voice.features.folderPicker.folderPicker.FileTypeSelection
+import voice.features.folderPicker.rememberFolderPicker
 
 /**
  * Picking a folder is the way to go: it can hold one book or a whole library.
@@ -33,23 +34,13 @@ internal fun ContentTypeChoices(
       onAdd(FileTypeSelection.File, uri)
     }
   }
-  val documentTreeLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-    if (uri != null) {
-      onAdd(FileTypeSelection.Folder, uri)
-    }
-  }
+  val pickFolder = rememberFolderPicker { onAdd(FileTypeSelection.Folder, it) }
   Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Button(
       modifier = Modifier
         .fillMaxWidth()
         .heightIn(min = 56.dp),
-      onClick = {
-        try {
-          documentTreeLauncher.launch(null)
-        } catch (e: ActivityNotFoundException) {
-          Logger.w(e, "Could not add folder")
-        }
-      },
+      onClick = pickFolder,
     ) {
       Text(stringResource(R.string.folder_add_action_folder))
     }

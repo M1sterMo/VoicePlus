@@ -23,6 +23,7 @@ dependencies {
   implementation(libs.coil)
   implementation(libs.androidxCore)
   implementation(libs.documentFile)
+  implementation(libs.datastore)
 
   testImplementation(libs.molecule)
 }

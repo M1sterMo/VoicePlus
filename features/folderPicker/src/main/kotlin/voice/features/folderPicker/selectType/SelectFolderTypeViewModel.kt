@@ -2,17 +2,18 @@ package voice.features.folderPicker.selectType
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
+import androidx.datastore.core.DataStore
 import androidx.documentfile.provider.DocumentFile
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import voice.core.common.DispatcherProvider
+import voice.core.common.RetainedViewModel
 import voice.core.data.folders.AudiobookFolders
+import voice.core.data.store.ExcludedBooksStore
 import voice.core.documentfile.CachedDocumentFileFactory
 import voice.core.documentfile.nameWithoutExtension
 import voice.navigation.Destination
@@ -21,20 +22,40 @@ import voice.navigation.Origin
 
 @AssistedInject
 class SelectFolderTypeViewModel(
-  private val dispatcherProvider: DispatcherProvider,
+  dispatcherProvider: DispatcherProvider,
+  documentFileFactory: CachedDocumentFileFactory,
+  @ExcludedBooksStore
+  excludedBooksStore: DataStore<Set<String>>,
   private val audiobookFolders: AudiobookFolders,
   private val navigator: Navigator,
-  private val documentFileFactory: CachedDocumentFileFactory,
   @Assisted
   private val uri: Uri,
   @Assisted
-  private val documentFile: DocumentFile,
+  documentFile: DocumentFile,
   @Assisted
   private val origin: Origin,
-) {
+) : RetainedViewModel() {
+
+  private val folderName = mutableStateOf("")
 
   // the guess until the user picks a mode
   private val selectedMode = mutableStateOf<FolderMode?>(null)
+  private val structure = mutableStateOf<Structure?>(null)
+
+  init {
+    // looked through once for as long as the screen is retained, and stopped when it is left
+    scope.launch(dispatcherProvider.io) {
+      val folder = documentFileFactory.create(documentFile.uri)
+      folderName.value = folder.nameWithoutExtension()
+      val excludedIds = excludedBooksStore.data.first()
+      val loaded = Structure(
+        guess = folder.guessFolderMode(),
+        booksByMode = FolderMode.entries.associateWith { folder.books(it, excludedIds) },
+      )
+      if (selectedMode.value == null) selectedMode.value = loaded.guess
+      structure.value = loaded
+    }
+  }
 
   internal fun selectMode(mode: FolderMode) {
     selectedMode.value = mode
@@ -42,6 +63,11 @@ class SelectFolderTypeViewModel(
 
   internal fun onCloseClick() {
     navigator.goBack()
+  }
+
+  internal fun chooseAnotherFolder(uri: Uri) {
+    navigator.goBack()
+    navigator.goTo(Destination.SelectFolderType(uri = uri, origin = origin))
   }
 
   internal fun add() {
@@ -55,22 +81,9 @@ class SelectFolderTypeViewModel(
 
   @Composable
   internal fun viewState(): SelectFolderTypeViewState {
-    val folder = remember { documentFileFactory.create(documentFile.uri) }
-    val folderName by produceState(initialValue = "") {
-      value = withContext(dispatcherProvider.io) { folder.nameWithoutExtension() }
-    }
-    val structure by produceState<Structure?>(initialValue = null) {
-      value = withContext(dispatcherProvider.io) {
-        Structure(
-          guess = folder.guessFolderMode(),
-          booksByMode = FolderMode.entries.associateWith { folder.books(it) },
-        )
-      }.also {
-        if (selectedMode.value == null) selectedMode.value = it.guess
-      }
-    }
+    val structure = structure.value
     return SelectFolderTypeViewState(
-      folderName = folderName,
+      folderName = folderName.value,
       selectedMode = selectedMode.value ?: FolderMode.SingleBook,
       guessedMode = structure?.guess,
       booksByMode = structure?.booksByMode,

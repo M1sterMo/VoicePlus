@@ -294,6 +294,8 @@
     <string name="book_header_expand_section">Expand %1$s</string>
     <string name="book_header_collapse_section">Collapse %1$s</string>
     <string name="close">Close</string>
+    <!-- Content description of the arrow that goes back to the previous screen. -->
+    <string name="navigate_back">Back</string>
     <string name="delete">Delete</string>
     <string name="add">Add</string>
     <string name="folder_mode_root">Top-Level Book Mode: Subfolders are books</string>

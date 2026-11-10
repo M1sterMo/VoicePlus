@@ -7,8 +7,11 @@ import app.cash.molecule.RecompositionMode
 import app.cash.molecule.launchMolecule
 import app.cash.turbine.test
 import io.kotest.matchers.shouldBe
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -40,10 +43,11 @@ class SelectFolderTypeViewModelTest {
     val audiobookFolders = mockk<AudiobookFolders>(relaxed = true)
     val navigator = mockk<Navigator>(relaxed = true)
     val viewModel = SelectFolderTypeViewModel(
-      dispatcherProvider = DispatcherProvider(coroutineContext, coroutineContext, coroutineContext),
+      dispatcherProvider = DispatcherProvider(io = UnconfinedTestDispatcher(testScheduler)),
+      documentFileFactory = FileBasedDocumentFactory,
+      excludedBooksStore = mockk { every { data } returns flowOf(emptySet()) },
       audiobookFolders = audiobookFolders,
       navigator = navigator,
-      documentFileFactory = FileBasedDocumentFactory,
       uri = audiobookFolder.toUri(),
       documentFile = DocumentFile.fromFile(audiobookFolder),
       origin = Origin.Onboarding,
