@@ -14,11 +14,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import voice.core.ui.ImmutableFile
 
-/** A vibrant (else dominant) colour from the cover artwork, or null without artwork. */
+/**
+ * A vibrant (else dominant) colour from the cover artwork: transparent while it is being picked,
+ * null without artwork.
+ */
 @Composable
 internal fun rememberCoverColor(cover: ImmutableFile?): Color? {
   val context = LocalContext.current
-  return produceState<Color?>(null, cover) {
+  return produceState<Color?>(Color.Transparent, cover) {
     value = cover?.let { sampleColor(context, it) }
   }.value
 }
