@@ -4,6 +4,8 @@ import kotlinx.serialization.json.Json
 import voice.core.data.GridMode
 import voice.core.data.MediaButtonClickAction
 import voice.core.data.PlaybackToolbarAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.repo.internals.MemoryDataStore
 import voice.core.data.sleeptimer.SleepTimerPreference
 import kotlin.time.Duration.Companion.seconds
@@ -20,6 +22,9 @@ internal fun backupFixture(name: String): String {
 /** A [SettingsSnapshotter] over in-memory stores at their production defaults. */
 internal fun testSettingsSnapshotter(): SettingsSnapshotter = SettingsSnapshotter(
   darkTheme = MemoryDataStore(false),
+  themeMode = MemoryDataStore(ThemeMode.SYSTEM),
+  themeColor = MemoryDataStore(ThemeColor.DYNAMIC),
+  coverGlow = MemoryDataStore(true),
   autoRewind = MemoryDataStore(2),
   seekTime = MemoryDataStore(20),
   fadeOut = MemoryDataStore(10.seconds),

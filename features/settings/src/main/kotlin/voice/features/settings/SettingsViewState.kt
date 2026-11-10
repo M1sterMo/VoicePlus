@@ -4,13 +4,16 @@ import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import java.time.LocalTime
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 data class SettingsViewState(
-  val useDarkTheme: Boolean,
-  val showDarkThemePref: Boolean,
+  val themeMode: ThemeMode,
+  val themeColor: ThemeColor,
+  val coverGlow: Boolean,
   val seekTimeInSeconds: Int,
   val autoRewindInSeconds: Int,
   val appVersion: String,
@@ -45,8 +48,9 @@ data class SettingsViewState(
   companion object {
     fun preview(): SettingsViewState {
       return SettingsViewState(
-        useDarkTheme = false,
-        showDarkThemePref = true,
+        themeMode = ThemeMode.SYSTEM,
+        themeColor = ThemeColor.DYNAMIC,
+        coverGlow = true,
         seekTimeInSeconds = 42,
         autoRewindInSeconds = 12,
         dialog = null,

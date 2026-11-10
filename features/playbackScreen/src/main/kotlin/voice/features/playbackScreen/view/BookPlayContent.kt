@@ -39,6 +39,7 @@ internal fun BookPlayContent(
         sharedTransitionScope = sharedTransitionScope,
         cover = viewState.cover,
         bookJacket = viewState.bookJacket,
+        glow = viewState.coverGlow,
         playing = viewState.playing,
         onPlayClick = onPlayClick,
         sleepTimerState = viewState.sleepTimerState,
@@ -91,6 +92,7 @@ internal fun BookPlayContent(
         onPlayClick = onPlayClick,
         cover = viewState.cover,
         bookJacket = viewState.bookJacket,
+        glow = viewState.coverGlow,
         playing = viewState.playing,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier

@@ -236,6 +236,22 @@
     <string name="settings_section_appearance">Appearance</string>
     <!-- A numeric layout option, not a count of a pluralized noun. -->
     <string name="settings_appearance_books_summary" tools:ignore="PluralsCandidate">%1$s · %2$d per row</string>
+    <!-- e.g. "System theme · List" -->
+    <string name="settings_appearance_summary">%1$s theme · %2$s</string>
+    <string name="appearance_theme">Theme</string>
+    <string name="appearance_theme_system">System</string>
+    <string name="appearance_theme_light">Light</string>
+    <string name="appearance_theme_dark">Dark</string>
+    <string name="appearance_colour">Colour</string>
+    <string name="appearance_colour_wallpaper">Wallpaper colours</string>
+    <string name="appearance_colour_default">Default</string>
+    <string name="appearance_colour_teal">Teal</string>
+    <string name="appearance_colour_green">Green</string>
+    <string name="appearance_colour_orange">Orange</string>
+    <string name="appearance_colour_rose">Rose</string>
+    <string name="appearance_colour_blue">Blue</string>
+    <string name="appearance_cover_glow">Glow behind the cover</string>
+    <string name="appearance_cover_glow_summary">On the player, in the cover’s colours</string>
     <string name="settings_section_advanced">Advanced</string>
     <string name="settings_section_help_feedback">Help &amp; feedback</string>
     <string name="settings_section_about">About</string>

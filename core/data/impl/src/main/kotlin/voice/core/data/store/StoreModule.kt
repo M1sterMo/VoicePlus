@@ -3,11 +3,13 @@ package voice.core.data.store
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.datastore.core.DataMigration
 import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
@@ -18,6 +20,8 @@ import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
 import voice.core.data.OpenSessionCheckpoint
 import voice.core.data.PlaybackToolbarAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.sleeptimer.SleepTimerPreference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -48,6 +52,46 @@ public interface StoreModule {
         booleanPrefsDataMigration(sharedPreferences, "darkTheme"),
       ),
     )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @ThemeModeStore
+  private fun themeMode(
+    factory: VoiceDataStoreFactory,
+    @DarkThemeStore legacyDarkTheme: DataStore<Boolean>,
+  ): DataStore<ThemeMode> {
+    return factory.create(
+      serializer = ThemeMode.serializer(),
+      defaultValue = ThemeMode.SYSTEM,
+      fileName = "themeMode",
+      migrations = listOf(
+        // The old Android 9 dark-theme switch carries over as Dark.
+        object : DataMigration<ThemeMode> {
+          override suspend fun shouldMigrate(currentData: ThemeMode): Boolean = legacyDarkTheme.data.first()
+
+          override suspend fun migrate(currentData: ThemeMode): ThemeMode = ThemeMode.DARK
+
+          override suspend fun cleanUp() {
+            legacyDarkTheme.updateData { false }
+          }
+        },
+      ),
+    )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @ThemeColorStore
+  private fun themeColor(factory: VoiceDataStoreFactory): DataStore<ThemeColor> {
+    return factory.create(ThemeColor.serializer(), ThemeColor.DYNAMIC, "themeColor")
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @CoverGlowStore
+  private fun coverGlow(factory: VoiceDataStoreFactory): DataStore<Boolean> {
+    return factory.boolean("coverGlow", defaultValue = true)
   }
 
   @Provides

@@ -23,8 +23,18 @@ public annotation class GridModeStore
 @Qualifier
 public annotation class BooksPerRowStore
 
+/** The Android 9 dark-theme switch; only read to migrate into [ThemeModeStore]. */
 @Qualifier
 public annotation class DarkThemeStore
+
+@Qualifier
+public annotation class ThemeModeStore
+
+@Qualifier
+public annotation class ThemeColorStore
+
+@Qualifier
+public annotation class CoverGlowStore
 
 @Qualifier
 public annotation class FadeOutStore

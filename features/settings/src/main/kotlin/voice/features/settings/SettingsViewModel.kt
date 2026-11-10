@@ -21,10 +21,12 @@ import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.AutoRewindAmountStore
 import voice.core.data.store.BooksPerRowStore
-import voice.core.data.store.DarkThemeStore
+import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.ExperimentalPlaybackPersistenceStore
 import voice.core.data.store.GridModeStore
 import voice.core.data.store.IgnoreFileTagsStore
@@ -34,10 +36,11 @@ import voice.core.data.store.MediaButtonDoubleClickHandlerStore
 import voice.core.data.store.MediaButtonTripleClickHandlerStore
 import voice.core.data.store.SeekTimeStore
 import voice.core.data.store.SleepTimerPreferenceStore
+import voice.core.data.store.ThemeColorStore
+import voice.core.data.store.ThemeModeStore
 import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.FolderPickerInSettingsFeatureFlagQualifier
 import voice.core.scanner.MediaScanTrigger
-import voice.core.ui.DARK_THEME_SETTABLE
 import voice.navigation.Destination
 import voice.navigation.Navigator
 import java.net.URLEncoder
@@ -47,8 +50,12 @@ import kotlin.time.Duration.Companion.minutes
 
 @Inject
 class SettingsViewModel(
-  @DarkThemeStore
-  private val useDarkThemeStore: DataStore<Boolean>,
+  @ThemeModeStore
+  private val themeModeStore: DataStore<ThemeMode>,
+  @ThemeColorStore
+  private val themeColorStore: DataStore<ThemeColor>,
+  @CoverGlowStore
+  private val coverGlowStore: DataStore<Boolean>,
   @AutoRewindAmountStore
   private val autoRewindAmountStore: DataStore<Int>,
   @SeekTimeStore
@@ -85,7 +92,9 @@ class SettingsViewModel(
 
   @Composable
   fun viewState(): SettingsViewState {
-    val useDarkTheme by remember { useDarkThemeStore.data }.collectAsState(initial = false)
+    val themeMode by remember { themeModeStore.data }.collectAsState(initial = ThemeMode.SYSTEM)
+    val themeColor by remember { themeColorStore.data }.collectAsState(initial = ThemeColor.DYNAMIC)
+    val coverGlow by remember { coverGlowStore.data }.collectAsState(initial = true)
     val autoRewindAmount by remember { autoRewindAmountStore.data }.collectAsState(initial = 0)
     val seekTime by remember { seekTimeStore.data }.collectAsState(initial = 0)
     val gridMode by remember { gridModeStore.data }.collectAsState(initial = GridMode.GRID)
@@ -113,8 +122,9 @@ class SettingsViewModel(
     )
     val ignoreFileTags by remember { ignoreFileTagsStore.data }.collectAsState(initial = false)
     return SettingsViewState(
-      useDarkTheme = useDarkTheme,
-      showDarkThemePref = DARK_THEME_SETTABLE,
+      themeMode = themeMode,
+      themeColor = themeColor,
+      coverGlow = coverGlow,
       seekTimeInSeconds = seekTime,
       autoRewindInSeconds = autoRewindAmount,
       dialog = dialog.value,
@@ -145,10 +155,16 @@ class SettingsViewModel(
     navigator.goBack()
   }
 
-  override fun toggleDarkTheme() {
-    scope.launch {
-      useDarkThemeStore.updateData { !it }
-    }
+  override fun setThemeMode(mode: ThemeMode) {
+    scope.launch { themeModeStore.updateData { mode } }
+  }
+
+  override fun setThemeColor(color: ThemeColor) {
+    scope.launch { themeColorStore.updateData { color } }
+  }
+
+  override fun setCoverGlow(enabled: Boolean) {
+    scope.launch { coverGlowStore.updateData { enabled } }
   }
 
   override fun setLibraryView(mode: GridMode) {
