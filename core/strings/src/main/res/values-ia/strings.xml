@@ -38,8 +38,6 @@
     <string name="generic_error_retry">Retentar</string>
     <string name="storage_bug_title">Permission requirite</string>
     <string name="storage_bug_button">Conceder le permission</string>
-    <string name="select_folder_type_file">File</string>
-    <string name="select_folder_type_folder">Dossier</string>
     <string name="onboarding_welcome_title">Benvenite a Voice!</string>
     <string name="onboarding.button_next">Sequente</string>
     <string name="onboarding.completion.title">Jam es toto preste!</string>
@@ -73,7 +71,6 @@
     <string name="pref_auto_rewind_title">Auto rebobinar</string>
     <string name="pref_suggest_idea">Suggerer un idea</string>
     <string name="play_current">Reproducer le actual</string>
-    <string name="folder_type_no_books">Voice non poteva deteger necun libro? Il ha alcun files de audio?</string>
     <string name="media_session_root">Tote le audiolibros</string>
     <string name="select_folder_title_onboarding">Adde tu prime audiolibro</string>
     <string name="select_folder_title_default">Adde tu audiolibro(s)</string>
@@ -103,13 +100,10 @@
     <string name="folder_mode_root">Modo libro de nivello superior: Le subdossieres es libros</string>
     <string name="folder_mode_single">Modo de libro single: Un dossier es equal a un libro.</string>
     <string name="folder_mode_author">Modo Libro-Autor: Subdossieres es autores, lor subdossieres es libros.</string>
-    <string name="folder_type_book_example_header">Isto poterea facer que le sequente libros sia detegite</string>
-    <string name="folder_type_title">Como es structurate tu files?</string>
     <string name="voice_intro_first_book">Nos adde tu dossier de audiolibro dunque tu pote comenciar a ascoltar lo!</string>
     <string name="migration_detail_content_position_current_chapter_title">Capitulo actual</string>
     <string name="migration_detail_content_position_current_chapter_position">Position in le capitulo</string>
     <string name="battery_optimization_rationale">A causa del restrictiones de energia, poterea haber interruptiones in le reproduction.</string>
-    <string name="select_folder_subtitle">Desira tu adder un sol file como libro o dossier?</string>
     <string name="onboarding_welcome_subtitle">Tu reproductor personal de audiolibros de tasca. Que nos comencia.</string>
     <string name="onboarding.explanation.title">Tu bibliotheca, tu maniera</string>
     <string name="onboarding.completion.subtitle">Tu prime audiolibro es preste pro reproducer. Gaude tu viage con Voice!</string>

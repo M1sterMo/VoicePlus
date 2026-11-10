@@ -55,9 +55,6 @@
         <item quantity="one">%d ऑडियो फाइल</item>
         <item quantity="other">%d ऑडियो फाइलें</item>
     </plurals>
-    <string name="folder_type_book_example_header">इससे निम्नलिखित पुस्तकों का पता चलेगा</string>
-    <string name="folder_type_no_books">Voice किसी भी किताब का पता नहीं लगा सकी। क्या कोई ऑडियो फाइल है?</string>
-    <string name="folder_type_title">आपकी फाइलें कैसे संरचित हैं?</string>
     <string name="bookmark_just_now">बस अभी</string>
     <string name="voice_intro_first_book">चलिए आपका ऑडियोबुक फोल्डर जोड़ते हैं ताकि आप सुनना शुरू कर सकें!</string>
     <string name="migration_hint_title">पुरानी पुस्तक स्थितियों तक पहुँचना</string>
@@ -99,8 +96,6 @@
     <string name="cover_search.icon_recent">हाल की खोज</string>
     <string name="cover_search.author">लेखक</string>
     <string name="storage_bug_button">अनुमति प्रदान करें</string>
-    <string name="select_folder_type_folder">फोल्डर</string>
-    <string name="select_folder_subtitle">क्या आप एक फाइल को पुस्तक या फोल्डर के रूप में जोड़ना चाहेंगे?</string>
     <string name="onboarding_welcome_title">Voice में आपका स्वागत है!</string>
     <string name="onboarding.button_next">अगला</string>
     <string name="onboarding.explanation.title">आपकी लाइब्रेरी, आपका तरीका</string>
@@ -112,7 +107,6 @@
     <string name="onboarding.completion.subtitle">आपकी पहली ऑडियोबुक चलने के लिए तैयार है। Voice के साथ अपनी यात्रा का आनंद लें!</string>
     <string name="onboarding.completion.next_button">सुनना शुरू करें</string>
     <string name="select_folder_title_default">अपनी ऑडियोबुक जोड़ें</string>
-    <string name="select_folder_type_file">फाइल</string>
     <string name="onboarding_welcome_subtitle">आपका व्यक्तिगत पॉकेट ऑडियोबुक प्लेयर। आइए आपको सेट अप करने में मदद करें।</string>
     <string name="review.request.button.no">नहीं, धन्यवाद</string>
     <string name="review.feedback.button.no">रद्द करें</string>

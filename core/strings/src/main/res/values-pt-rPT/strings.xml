@@ -55,7 +55,6 @@
         <item quantity="many">%d ficheiros de áudio</item>
         <item quantity="other">%d ficheiros de áudio</item>
     </plurals>
-    <string name="folder_type_book_example_header">Isso fará com que os respectivos livros sejam reconhecidos</string>
     <string name="voice_intro_first_book">Vamos adicionar uma pasta de Audiolivros para começar a ouvir!</string>
     <string name="migration_detail_content_name">Nome</string>
     <string name="migration_detail_content_root">Pasta raiz</string>
@@ -63,8 +62,6 @@
     <string name="migration_detail_content_added_at">Adicionado em</string>
     <string name="search_hint">O que procura?</string>
     <string name="notification_sleep_timer_disable">Desativar desligamento automático</string>
-    <string name="folder_type_no_books">Voice não conseguiu encontrar nenhum livro. O ficheiro está no formato certo?</string>
-    <string name="folder_type_title">Como os seus ficheiros estão organizados?</string>
     <string name="migration_hint_title">Aceder posições de livros antigos</string>
     <string name="delete_book_dialog_content">Isso deletará os ficheiros no seu aparelho.</string>
     <string name="delete_book_dialog_title">Deletar livro</string>
@@ -97,8 +94,6 @@
     <string name="media_session_root">Audiolivros</string>
     <string name="media_session_recent">Recente</string>
     <string name="notification_sleep_timer_enable">Ativar desligamento automático</string>
-    <string name="select_folder_type_file">Ficheiro</string>
-    <string name="select_folder_type_folder">Pasta</string>
     <string name="onboarding.button_next">Próximo</string>
     <string name="onboarding.completion.next_button">Começar a ouvir</string>
 </resources>

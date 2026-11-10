@@ -55,7 +55,6 @@
     <string name="action_settings">Eelistused</string>
     <string name="pref_theme_dark">Tume kujundus</string>
     <string name="add">Lisa</string>
-    <string name="folder_type_no_books">Voice ei suutnud tuvastada ühtegi heliraamatut. Kas nutiseadmes üldse on helifaile?</string>
     <string name="voice_intro_first_book">Lisame nüüd üheskoos heliraamatute kausta ja sa saad alustada kuulamisega!</string>
     <string name="folder_mode_root">Kahetasemeline raamatuvaade: alamkaustad on raamatud</string>
     <string name="folder_mode_single">Ühetasemeline raamatuvaade: iga kaust on raamat.</string>
@@ -64,9 +63,7 @@
         <item quantity="one">%d helifail</item>
         <item quantity="other">%d helifaili</item>
     </plurals>
-    <string name="folder_type_title">Kuidas on sinu heliraamatute failid struktureeritud?</string>
     <string name="bookmark_just_now">Just nüüd</string>
-    <string name="folder_type_book_example_header">Sellega tuvastatakse järgnevad raamatud</string>
     <string name="onboarding_welcome_title">Tere tulemast heliraamatuesitajasse Voice!</string>
     <string name="onboarding.explanation.subtitle">Voice\'i puhul saad sa heliraamatuid lisada üksikute failidena või koondada neid kaustadesse. Tee nii, nagu soovid!</string>
     <string name="review.request.title">Kas sulle meeldib Voice?</string>
@@ -76,9 +73,6 @@
     <string name="storage_bug_button">Anna õigused</string>
     <string name="select_folder_title_onboarding">Lisa oma esimene heliraamat</string>
     <string name="select_folder_title_default">Lisa oma heliraamat(ud)</string>
-    <string name="select_folder_type_file">Fail</string>
-    <string name="select_folder_type_folder">Kaust</string>
-    <string name="select_folder_subtitle">Kas sa sooviksid üheks raamatuks lisada faili või kausta?</string>
     <string name="onboarding_welcome_subtitle">Sinu isiklik heliraamatute esitaja taskus. Võtame nüüd ette algseadistamise.</string>
     <string name="onboarding.button_next">Edasi</string>
     <string name="onboarding.explanation.title">Sinu raamatukogu, just nii nagu soovid</string>

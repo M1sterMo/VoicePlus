@@ -81,7 +81,6 @@
         <item quantity="one">%d فایل صوتی</item>
         <item quantity="other">%d فایل های صوتی</item>
     </plurals>
-    <string name="folder_type_book_example_header">این کار منجر به شناسایی کتاب های زیر می شود</string>
     <string name="migration_hint_title">دسترسی به موقعیت های کتاب قدیمی</string>
     <string name="migration_detail_content_name">نام</string>
     <string name="migration_detail_content_position_current_file_position">موقعیت در فایل</string>
@@ -109,15 +108,10 @@
     <string name="onboarding.explanation.title">کتابخانه شما، به روش شما</string>
     <string name="book_header_completed">تمام شده</string>
     <string name="folder_mode_author">حالت نویسنده-کتاب: زیرپوشه ها نویسنده هستند، زیر-زیرپوشه ها کتابها هستند.</string>
-    <string name="folder_type_no_books">Voice نتوانست هیچ کتابی را شناسایی کند. آیا فایل های صوتی وجود دارد؟</string>
-    <string name="folder_type_title">ساختار فایل های شما چگونه است؟</string>
     <string name="migration_delete_dialog_action_keep">نگه داری</string>
     <string name="delete_book_bottom_sheet_title">پاک کردن کتاب</string>
     <string name="generic_error_retry">تلاش مجدد</string>
-    <string name="select_folder_type_file">فایل</string>
-    <string name="select_folder_type_folder">پوشه</string>
     <string name="storage_bug_subtitle">در برخی از دستگاه‌ها، یک برنامه سیستم مجوز لازم برای دسترسی به کارت حافظه خارجی را ندارد. این دسترسی برای Voice برای خواندن کتاب‌های صوتی شما ضروری است.</string>
-    <string name="select_folder_subtitle">آیا می خواهید یک فایل را به عنوان یک کتاب یا یک پوشه اضافه کنید؟</string>
     <string name="onboarding.completion.subtitle">اولین کتاب صوتی شما آماده پخش است. از گشت و گذار خود با Voice لذت ببرید!</string>
     <string name="review.feedback.title">از شنیدن آن متاسفیم!</string>
     <string name="review.feedback.content">ممکن است به ما بگویید چه اشتباهی رخ داده است؟ ما از بازخورد شما قدردانی می کنیم و به ما کمک می کند تا تجربه شما را بهبود ببخشیم.</string>

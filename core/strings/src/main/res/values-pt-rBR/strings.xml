@@ -55,9 +55,6 @@
         <item quantity="many">%d ficheiros de áudio</item>
         <item quantity="other">%d ficheiros de áudio</item>
     </plurals>
-    <string name="folder_type_book_example_header">Isto fará com que os respectivos livros sejam reconhecidos</string>
-    <string name="folder_type_no_books">Voice não conseguiu encontrar nenhum livro. O ficheiro está no formato certo?</string>
-    <string name="folder_type_title">Como os seus ficheiros estão organizados?</string>
     <string name="bookmark_just_now">Nesse exato momento</string>
     <string name="voice_intro_first_book">Vamos adicionar uma pasta de Audiolivros para começar a ouvir!</string>
     <string name="migration_hint_title">Aceder posições de livros antigos</string>
@@ -126,9 +123,6 @@
     <string name="cover_search.icon_recent">Pesquisa recente</string>
     <string name="cover_search.author">Autor</string>
     <string name="select_folder_title_default">Adicionar seus Audiobook(s)</string>
-    <string name="select_folder_type_file">Ficheiro</string>
-    <string name="select_folder_type_folder">Pasta</string>
-    <string name="select_folder_subtitle">Gostaria de adicionar um único arquivo como um livro ou pasta?</string>
     <string name="onboarding_welcome_title">Seja bem vindo ao Voice!</string>
     <string name="onboarding.completion.next_button">Começar a ouvir</string>
     <string name="pref_faq">Perguntas frequentes</string>

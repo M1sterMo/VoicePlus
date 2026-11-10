@@ -16,7 +16,6 @@
     <string name="book_header_completed">Fullført</string>
     <string name="folder_mode_root">Samlet lydboksmappe: hver undermappe er én bok</string>
     <string name="folder_mode_single">Enkelvis lydboksmappe: denne mappen er én bok.</string>
-    <string name="folder_type_title">Hvilken struktur har filene dine?</string>
     <string name="migration_detail_content_bookmarks">Bokmerker</string>
     <string name="voice_intro_first_book">Legg til lydbokmappen din så du kan begynne å lytte!</string>
     <string name="migration_hint_confirm">Skjønner</string>
@@ -66,7 +65,6 @@
     <string name="play_current">Spill nåværende</string>
     <string name="close">Lukk</string>
     <string name="add">Legg til</string>
-    <string name="folder_type_book_example_header">Dette vil føre til at følgende bøker oppdages</string>
     <plurals name="folder_type_file_count">
         <item quantity="one">%d lydfil</item>
         <item quantity="other">%d lydfiler</item>
@@ -81,7 +79,6 @@
     <string name="notification_sleep_timer_disable">Slå av innsovningstidsur</string>
     <string name="migration_detail_content_added_at">Lagt til på</string>
     <string name="migration_detail_content_position_current_chapter_position">Posisjon i kapittel</string>
-    <string name="folder_type_no_books">Voice klarte ikke å finne noen bøker. Finnes det noen lydfiler?</string>
     <string name="migration_detail_content_position_current_file_position">Posisjon i filen</string>
     <string name="migration_detail_content_root">Rot-mappe</string>
     <string name="migration_delete_dialog_title">Slett posisjoner</string>
@@ -97,7 +94,6 @@
         <item quantity="other">%d minutter</item>
     </plurals>
     <string name="select_folder_title_onboarding">Legg til din første lydbok</string>
-    <string name="select_folder_type_folder">Mappe</string>
     <string name="onboarding.button_next">Neste</string>
     <string name="storage_bug_title">Tillatelse kreves</string>
     <string name="storage_bug_subtitle">På enkelte enheter mangler en systemapp den nødvendige tillatelsen for å få tilgang til det eksterne lagringsmediet. Denne tilgangen er avgjørende for at Voice skal kunne lese lydbøkene dine.</string>
@@ -107,7 +103,6 @@
     <string name="folder_mode_author">Samlet forfatter/kategori-modus: undermapper er forfattere, hver mappe under er én bok.</string>
     <string name="cover_search.icon_recent">Siste søk</string>
     <string name="cover_search.author">Forfatter</string>
-    <string name="select_folder_type_file">Fil</string>
     <string name="cover_search_template_with_author">%1$s av %2$s lydbokomslag</string>
     <string name="review.feedback.content">Kan du fortelle oss hva som gikk galt? Vi setter pris på tilbakemeldingen din, og det hjelper oss med å forbedre opplevelsen din.</string>
     <string name="sleep_timer.title">Sov godt! 🌙</string>
@@ -120,7 +115,6 @@
     <string name="review.feedback.title">Det var leit å høre!</string>
     <string name="review.feedback.button.yes">Send tilbakemelding</string>
     <string name="review.feedback.button.no">Avbryt</string>
-    <string name="select_folder_subtitle">Vil du legge til en enkelt fil som en bok eller en mappe?</string>
     <string name="onboarding.explanation.subtitle">Med Voice kan du legge til bøker som individuelle filer eller organisere dem i mapper. Ditt valg!</string>
     <string name="onboarding.completion.title">Du er ferdig!</string>
     <string name="onboarding_welcome_title">Velkommen til Voice!</string>

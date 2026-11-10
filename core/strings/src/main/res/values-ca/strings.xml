@@ -46,8 +46,6 @@
         <item quantity="many">%d fitxers d\'àudio</item>
         <item quantity="other">%d fitxers d\'àudio</item>
     </plurals>
-    <string name="folder_type_no_books">El Voice no ha pogut detectar cap llibre. Hi ha cap fitxer d\'àudio?</string>
-    <string name="folder_type_title">Com s\'estructuren els fitxers?</string>
     <string name="bookmark_just_now">Ara mateix</string>
     <string name="voice_intro_first_book">Afegiu la carpeta de l\'audiollibre perquè pugueu començar a escoltar-lo.</string>
     <string name="migration_hint_confirm">Entesos</string>
@@ -72,8 +70,6 @@
     <string name="storage_bug_title">Es requereix el permís</string>
     <string name="storage_bug_button">Autoritzeu el permís</string>
     <string name="generic_error_retry">Torna-ho a provar</string>
-    <string name="select_folder_type_file">Fitxer</string>
-    <string name="select_folder_type_folder">Carpeta</string>
     <string name="onboarding.button_next">Següent</string>
     <string name="notification_sleep_timer_disable">Desactiva el temporitzador de repòs</string>
     <string name="select_folder_title_default">Afegeix audiollibres</string>
@@ -82,7 +78,6 @@
     <string name="select_folder_title_onboarding">Afegeix el primer audiollibre</string>
     <string name="onboarding.explanation.title">La teva biblioteca, a la teva manera</string>
     <string name="onboarding_welcome_subtitle">El teu reproductor d\'audiollibres de butxaca. Comencem.</string>
-    <string name="select_folder_subtitle">Voleu afegir un sol fitxer com a llibre o una carpeta?</string>
     <string name="onboarding.completion.next_button">Comenceu a escoltar-lo</string>
     <string name="review.request.title">Esteu gaudint del Voice?</string>
     <string name="review.request.button.yes">Valoreu-lo ara</string>
@@ -120,7 +115,6 @@
     <string name="book_header_not_started">Encara no s\'ha iniciat</string>
     <string name="book_header_completed">Completat</string>
     <string name="delete">Suprimeix</string>
-    <string name="folder_type_book_example_header">Això faria que es detectessin els llibres següents</string>
     <string name="migration_hint_title">Accedint a les posicions antigues del llibre</string>
     <string name="delete_book_dialog_title">Suprimeix el llibre</string>
     <string name="media_session_root">Tots els audiollibres</string>

@@ -45,8 +45,6 @@
     <string name="delete">Skrap</string>
     <string name="add">Voeg toe</string>
     <string name="folder_mode_single">Enkelboek-modus: Een gids staan vir een boek.</string>
-    <string name="folder_type_no_books">Geen boeke wat opgetel nie. Is daar enige Audio lêers?</string>
-    <string name="folder_type_title">Hoe is jou lêers onderverdeel?</string>
     <string name="bookmark_just_now">Nou net</string>
     <string name="migration_hint_title">Oud lees posisies</string>
     <string name="migration_hint_confirm">Ek verstaan</string>
@@ -79,7 +77,6 @@
     <string name="pref_theme_dark">Donker tema</string>
     <string name="pref_app_version">Toep weergawe</string>
     <string name="folder_mode_root">Boeke-op-hoofvlak-modus: Subgidse is boeke</string>
-    <string name="folder_type_book_example_header">Dit sal lei tot die volgende boeke wat opgetel word</string>
     <string name="voice_intro_first_book">Kom ons voeg jou audioboek gids sodat jy kan begin luister!</string>
     <string name="migration_hint_content">As gevolg van veranderinge aan nuwer Android weergawes is dit noodsaaklik om jou audioboek gids te kies met behulp van die stelsel gids kieser. \n \nKliek die ikoon bo om jou ou boek posisies te sien.</string>
     <string name="migration_detail_title">Oud boek posisies</string>
@@ -104,9 +101,6 @@
     <string name="storage_bug_button">Gee toestemming</string>
     <string name="select_folder_title_onboarding">Voeg jou eerste luisterboek by</string>
     <string name="select_folder_title_default">Voeg jou luisterboek(e) by</string>
-    <string name="select_folder_type_file">Lêer</string>
-    <string name="select_folder_type_folder">Gids</string>
-    <string name="select_folder_subtitle">Wil jy ’n enkele lêer as ’n boek byvoeg, of ’n gids?</string>
     <string name="onboarding_welcome_title">Welkom by Voice!</string>
     <string name="onboarding_welcome_subtitle">Jou persoonlike sak-luisterboekspeler. Kom ons kry jou opgestel.</string>
     <string name="onboarding.button_next">Volgende</string>

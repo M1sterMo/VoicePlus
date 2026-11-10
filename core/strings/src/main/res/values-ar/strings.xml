@@ -63,9 +63,6 @@
         <item quantity="many">%d ملفاً صوتياً</item>
         <item quantity="other">%d ملف صوتي</item>
     </plurals>
-    <string name="folder_type_book_example_header">سيؤدي هذا إلى اكتشاف الكتاب التالي</string>
-    <string name="folder_type_no_books">لم يتمكن فويس من اكتشاف أي كتب. هل هناك أي ملفات صوتية؟</string>
-    <string name="folder_type_title">ما هي هيكلية ملفاتك؟</string>
     <string name="bookmark_just_now">الآن</string>
     <string name="voice_intro_first_book">دعنا نضيف مجلد كتبك الصوتية لتبدأ الاستماع!</string>
     <string name="migration_hint_title">الوصول إلى مواضع الكتاب القديم</string>
@@ -114,15 +111,12 @@
     <string name="cover_search_template_no_author">غلاف الكتاب الصوتي %s</string>
     <string name="cover_search_template_with_author">%1$s بواسطة غلاف الكتاب الصوتي %2$s</string>
     <string name="select_folder_title_default">أضف كتبك الصوتية</string>
-    <string name="select_folder_type_folder">مجلد</string>
-    <string name="select_folder_subtitle">هل تريد إضافة ملف مفرد ككتاب أو مجلد؟</string>
     <string name="onboarding_welcome_title">مرحبا بك في فويس!</string>
     <string name="onboarding.completion.next_button">ابدأ بالاستماع</string>
     <string name="cover_search.icon_recent">أخر استعلام</string>
     <string name="cover_search.author">المؤلف</string>
     <string name="folder_mode_author">وضع المؤلفين: كل مجلد فرعي مؤلف وكل مجلد فرعي في ذاك المجلد كتاب لذاك المؤلف.</string>
     <string name="select_folder_title_onboarding">أضف أول كتاب صوتي</string>
-    <string name="select_folder_type_file">ملف</string>
     <string name="onboarding_welcome_subtitle">مشغلك للكتب الصوتية. دعنا نجهز كتبك.</string>
     <string name="onboarding.button_next">التالي</string>
     <string name="onboarding.explanation.title">مكتبتك، طريقك</string>

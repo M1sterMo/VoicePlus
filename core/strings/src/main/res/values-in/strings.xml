@@ -54,9 +54,7 @@
     <string name="pref_auto_rewind_title">Mundur otomatis</string>
     <string name="add">Tambah</string>
     <string name="action_sleep">Pengatur Waktu Tidur</string>
-    <string name="folder_type_title">Bagaimana file Anda terstruktur?</string>
     <string name="folder_mode_root">Mode Buku Tingkat Atas: Subfolder adalah buku</string>
-    <string name="folder_type_no_books">Suara tidak dapat mendeteksi buku apa pun. Apakah ada file audio?</string>
     <string name="bookmark_just_now">Baru saja</string>
     <string name="migration_hint_title">Mengakses posisi Buku lama</string>
     <string name="migration_hint_confirm">Oke</string>
@@ -65,7 +63,6 @@
     <plurals name="folder_type_file_count">
         <item quantity="other">%d file audio</item>
     </plurals>
-    <string name="folder_type_book_example_header">Hal ini akan menyebabkan buku-buku berikut ini terdeteksi</string>
     <string name="folder_mode_author">Mode Penulis-Buku: Subfolder adalah penulis, sub-subfolder adalah buku.</string>
     <string name="migration_detail_content_name">Nama</string>
     <string name="voice_intro_first_book">Mari tambahkan folder buku audio Anda sehingga Anda dapat mulai mendengarkan!</string>
@@ -103,9 +100,6 @@
     <string name="storage_bug_button">Berikan izin</string>
     <string name="select_folder_title_onboarding">Tambahkan Buku Audio Pertama Anda</string>
     <string name="select_folder_title_default">Tambahkan Buku Audio Anda</string>
-    <string name="select_folder_type_file">Berkas</string>
-    <string name="select_folder_type_folder">Folder</string>
-    <string name="select_folder_subtitle">Apakah Anda ingin menambahkan satu berkas sebagai buku atau sebuah folder?</string>
     <string name="onboarding_welcome_title">Selamat datang di Voice!</string>
     <string name="onboarding_welcome_subtitle">Pemutar buku audio saku pribadi Anda. Mari kita siapkan semuanya.</string>
     <string name="onboarding.button_next">Berikutnya</string>
