@@ -10,6 +10,8 @@ import voice.core.data.ShelfSort
 import voice.features.bookOverview.overview.BookOverviewItemViewState
 import voice.features.bookOverview.series.LibraryEntry
 
+internal const val UP_NEXT = "upnext"
+
 internal enum class ShelfFilter { ALL, NOT_STARTED, COMPLETED }
 
 internal data class LibrarySection(
@@ -18,7 +20,9 @@ internal data class LibrarySection(
   val entries: List<LibraryEntry>,
   val totalCount: Int = entries.sumOf { it.allBooks.size },
 ) {
-  val current: Boolean get() = shelf == null
+  /** Current and Up next show books that live on a shelf; they can't be organised themselves. */
+  val projection: Boolean get() = shelf == null
+  val upNext: Boolean get() = id == UP_NEXT
   val count: Int get() = entries.sumOf { it.books.size }
   val expanded: Boolean get() = shelf?.expanded ?: true
 }
@@ -29,6 +33,7 @@ internal fun librarySections(
   current: List<BookId>,
   organisation: LibraryOrganisation,
   filter: ShelfFilter,
+  upNext: List<BookId> = emptyList(),
 ): List<LibrarySection> {
   val placements = organisation.placements.associateBy { BookId(it.bookId) }
   val series = organisation.series.associateBy { it.id }
@@ -38,6 +43,10 @@ internal fun librarySections(
       LibraryEntry(null, listOf(book), sectionId = "current", itemId = "book:${book.value.id.value}")
     }
     if (currentEntries.isNotEmpty()) add(LibrarySection("current", null, currentEntries))
+    val queued = upNext.mapNotNull(books::get).mapIndexed { index, book ->
+      LibraryEntry(null, listOf(book), sectionId = UP_NEXT, itemId = "book:${book.value.id.value}", queuePosition = index + 1)
+    }
+    if (queued.isNotEmpty()) add(LibrarySection(UP_NEXT, null, queued))
     organisation.shelves.sortedWith(
       compareBy<LibraryShelf> {
         it.id == LibraryShelf.OTHER

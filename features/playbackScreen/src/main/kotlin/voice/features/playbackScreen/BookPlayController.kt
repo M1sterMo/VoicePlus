@@ -28,6 +28,7 @@ import voice.core.data.BookId
 import voice.features.playbackScreen.view.BookPlayView
 import voice.features.playbackScreen.view.PlaybackToolbarDialog
 import voice.features.sleepTimer.SleepTimerDialog
+import voice.features.upNext.UpNextSheet
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import voice.navigation.SharedTransitionNavEntryProvider
@@ -85,6 +86,7 @@ fun BookPlayScreen(
     onSpeedChangeClick = viewModel::onPlaybackSpeedIconClick,
     onListeningLogClick = viewModel::onListeningLogClick,
     onCharacterListClick = viewModel::onCharacterListClick,
+    onUpNextClick = viewModel::onUpNextClick,
     onCustomizeToolbarClick = viewModel::onCustomizeToolbarClick,
     onCloseClick = viewModel::onCloseClick,
     onSkipToNext = viewModel::next,
@@ -105,6 +107,7 @@ fun BookPlayScreen(
       is BookPlayDialogViewState.SelectChapterDialog -> {
         SelectChapterDialog(dialogState, viewModel)
       }
+      BookPlayDialogViewState.UpNext -> UpNextSheet(onDismiss = viewModel::dismissDialog)
       BookPlayDialogViewState.ToolbarActions -> {
         PlaybackToolbarDialog(
           pinnedActions = viewState.toolbarActions,

@@ -19,6 +19,7 @@ import voice.core.data.BookId
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.ExcludedBooksStore
+import voice.core.data.store.UpNextStore
 import voice.core.logging.api.Logger
 import voice.core.playback.PlayerController
 import voice.core.scanner.MediaScanTrigger
@@ -42,6 +43,8 @@ class DeleteBookViewModel(
   private val playerController: PlayerController,
   @CurrentBookStore
   private val currentBookStoreId: DataStore<BookId?>,
+  @UpNextStore
+  private val upNextStore: DataStore<List<BookId>>,
   private val dispatcherProvider: DispatcherProvider,
 ) : RetainedViewModel(),
   BottomSheetItemViewModel {
@@ -99,6 +102,7 @@ class DeleteBookViewModel(
       // or Android Auto browse — both resolve the current book without checking whether it's hidden.
       playerController.pauseIfCurrentBookIs(state.id)
       currentBookStoreId.updateData { current -> current.takeUnless { it == state.id } }
+      upNextStore.updateData { it - state.id }
 
       if (state.alsoDeleteFiles) {
         deleteFiles(state.id)

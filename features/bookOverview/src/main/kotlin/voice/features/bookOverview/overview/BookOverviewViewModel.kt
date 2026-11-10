@@ -35,6 +35,7 @@ import voice.core.data.repo.internals.dao.RecentBookSearchDao
 import voice.core.data.store.BooksPerRowStore
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.GridModeStore
+import voice.core.data.store.UpNextStore
 import voice.core.featureflag.ExperimentalPlaybackPersistenceQualifier
 import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.FolderPickerInSettingsFeatureFlagQualifier
@@ -77,6 +78,8 @@ class BookOverviewViewModel(
   @ExperimentalPlaybackPersistenceQualifier
   private val experimentalPlaybackPersistenceFeatureFlag: FeatureFlag<Boolean>,
   private val organisationRepo: LibraryOrganisationRepo,
+  @UpNextStore
+  private val upNextStore: DataStore<List<BookId>>,
 ) : RetainedViewModel() {
   private var searchActive by mutableStateOf(false)
   private var query by mutableStateOf("")
@@ -113,8 +116,11 @@ class BookOverviewViewModel(
       .collectAsState(initial = null).value
     val booksPerRow = remember { booksPerRowStore.data }.collectAsState(initial = null).value?.coerceIn(2, 3)
     val organisation = remember { organisationRepo.flow() }.collectAsState(initial = null).value
+    val upNext = remember { upNextStore.data }.collectAsState(initial = null).value
     // Show the saved layout on the first populated frame, without a two-to-three-column shuffle.
-    if (gridMode == null || books == null || booksPerRow == null || organisation == null) return BookOverviewViewState.Loading
+    if (gridMode == null || books == null || booksPerRow == null || organisation == null || upNext == null) {
+      return BookOverviewViewState.Loading
+    }
     val noBooks = !scannerActive && books.isEmpty()
 
     val layoutMode = when (gridMode) {
@@ -138,6 +144,7 @@ class BookOverviewViewModel(
       layoutMode = layoutMode,
       booksPerRow = booksPerRow,
       organisation = organisation,
+      upNext = upNext,
       books = books
         .groupBy {
           it.category

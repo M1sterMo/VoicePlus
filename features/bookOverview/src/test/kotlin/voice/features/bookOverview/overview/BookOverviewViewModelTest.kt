@@ -57,6 +57,7 @@ class BookOverviewViewModelTest {
       },
       currentBookStoreDataStore = MemoryDataStore(currentBook.id),
       gridModeStore = MemoryDataStore(GridMode.BOOKS),
+      upNextStore = MemoryDataStore(emptyList()),
       booksPerRowStore = mockk { every { data } returns savedDensity },
       navigator = mockk<Navigator>(),
       recentBookSearchDao = mockk<RecentBookSearchDao> {

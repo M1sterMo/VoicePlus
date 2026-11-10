@@ -35,6 +35,7 @@ import voice.features.bookOverview.series.LibraryEntry
 import voice.features.bookOverview.series.SeriesCard
 import voice.features.bookOverview.views.LibraryGridBook
 import voice.features.bookOverview.views.ListBookRow
+import voice.features.bookOverview.views.QueueBadge
 
 @Composable
 internal fun LibraryEntryTile(
@@ -157,9 +158,10 @@ internal fun LibraryEntryTile(
       }
       val scope = sharedTransitionScope.takeIf { entry.key == activeCoverKey }
       if (layout == BookOverviewLayoutMode.List) {
-        ListBookRow(entry.books.single().value, click, longClick, scope)
+        ListBookRow(entry.books.single().value, click, longClick, scope, queuePosition = entry.queuePosition)
       } else {
         LibraryGridBook(entry.books.single().value, click, longClick, scope, layout == BookOverviewLayoutMode.Books, compactBooks)
+        entry.queuePosition?.let { QueueBadge(it, Modifier.align(Alignment.TopEnd).padding(8.dp)) }
       }
     }
     if (selecting) Checkbox(selected.containsAll(ids), onCheckedChange = { toggle() }, Modifier.align(Alignment.TopEnd).padding(4.dp))

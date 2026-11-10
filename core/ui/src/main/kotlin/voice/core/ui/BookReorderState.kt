@@ -1,4 +1,4 @@
-package voice.features.bookOverview.series
+package voice.core.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -24,15 +24,15 @@ import kotlinx.coroutines.launch
 import voice.core.data.BookId
 
 @Composable
-internal fun rememberSeriesReorderState(
+fun rememberBookReorderState(
   list: LazyListState,
   onMove: (BookId, Int) -> Unit,
-): SeriesReorderState {
+): BookReorderState {
   val scope = rememberCoroutineScope()
   val move by rememberUpdatedState(onMove)
   val haptics = LocalHapticFeedback.current
   val state = remember(list, scope, haptics) {
-    SeriesReorderState(list, scope, { id, index -> move(id, index) }) {
+    BookReorderState(list, scope, { id, index -> move(id, index) }) {
       haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
   }
@@ -50,8 +50,11 @@ internal fun rememberSeriesReorderState(
   return state
 }
 
-/** Pick up and move within the list; keys keep the held book stable while its neighbours move. */
-internal class SeriesReorderState(
+/**
+ * Pick up and move within the list; keys keep the held book stable while its neighbours move.
+ * The list's item keys must be the books' [BookId.value]s.
+ */
+class BookReorderState internal constructor(
   private val list: LazyListState,
   private val scope: CoroutineScope,
   private val onMove: (BookId, Int) -> Unit,

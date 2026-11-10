@@ -44,6 +44,15 @@ class LibrarySectionTest {
     sections.flatMap { it.entries }.map { it.key }.distinct().size shouldBe 2
   }
 
+  @Test fun `up next sits under current in queue order and leaves books on their shelves`() {
+    val queue = listOf(next.value.id, BookId("deleted"), finished.value.id)
+    val sections = librarySections(books, listOf(current.value.id), organisation, ShelfFilter.ALL, queue)
+    sections.map { it.id } shouldBe listOf("current", UP_NEXT, "fantasy")
+    sections[1].entries.map { it.books.single() to it.queuePosition } shouldBe listOf(next to 1, finished to 2)
+    sections[2].count shouldBe 3
+    librarySections(books, emptyList(), organisation, ShelfFilter.ALL, emptyList()).map { it.id } shouldBe listOf("fantasy")
+  }
+
   @Test fun `filter leaves current unchanged and retains whole series for its editor`() {
     val sections = librarySections(books, listOf(current.value.id), organisation, ShelfFilter.COMPLETED)
     sections[0].entries.single().books.single() shouldBe current
