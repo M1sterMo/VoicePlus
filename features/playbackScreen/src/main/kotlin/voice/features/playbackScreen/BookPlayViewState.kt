@@ -15,6 +15,7 @@ data class BookPlayViewState(
   val sleepTimerState: SleepTimerViewState,
   val playedTime: Duration,
   val duration: Duration,
+  val playbackSpeed: Float,
   val playing: Boolean,
   val cover: ImmutableFile?,
   val skipSilence: Boolean,
@@ -41,6 +42,12 @@ data class BookPlayViewState(
     }
   }
 }
+
+/**
+ * Wall-clock listening time for this much audio at [speed]: at 2x, an hour of audio takes half an hour.
+ * Mirrors the library's speed-adjusted remaining time.
+ */
+internal fun Duration.atSpeed(speed: Float): Duration = if (speed > 0F) this / speed.toDouble() else this
 
 internal sealed interface BookPlayDialogViewState {
   data class SpeedDialog(val speed: Float) : BookPlayDialogViewState {

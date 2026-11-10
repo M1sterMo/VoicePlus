@@ -52,6 +52,7 @@ import voice.core.sleeptimer.SleepTimerState
 import voice.features.sleepTimer.SleepTimerViewState
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -399,6 +400,41 @@ class BookPlayViewModelTest {
       state.playing shouldBe true
       state.chapterName shouldBe "Final Section"
       state.playedTime shouldBe 45.seconds
+    }
+  }
+
+  @Test
+  fun `chapter times follow playback speed while the slider stays on audio time`() = scope.runTest {
+    val livePlaybackFlow = MutableStateFlow<LivePlaybackState?>(null)
+    val viewModel = viewModel(livePlaybackFlow = livePlaybackFlow)
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      var state = awaitItem()
+      while (state == null) state = awaitItem()
+
+      // The current mark runs 2:00 up to (not including) 4:00 and playback sits 30s into it.
+      val markDuration = 2.minutes - 1.milliseconds
+      for ((speed, played, totalSeconds) in listOf(
+        Triple(0.5F, 60.seconds, 239L),
+        Triple(1F, 30.seconds, 119L),
+        Triple(1.5F, 20.seconds, 79L),
+        Triple(2F, 15.seconds, 59L),
+      )) {
+        livePlaybackFlow.value = LivePlaybackState(
+          bookId = book.id,
+          chapterId = book.currentChapter.id,
+          positionMs = book.content.positionInChapter,
+          isPlaying = false,
+          playbackSpeed = speed,
+        )
+        state = awaitItem()!!
+        state.playedTime shouldBe 30.seconds
+        state.duration shouldBe markDuration
+        state.playedTime.atSpeed(state.playbackSpeed) shouldBe played
+        state.duration.atSpeed(state.playbackSpeed).inWholeSeconds shouldBe totalSeconds
+      }
     }
   }
 

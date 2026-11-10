@@ -146,6 +146,7 @@ class BookPlayViewModel(
       chapterName = chapterName.takeIf { hasMoreThanOneChapter },
       duration = currentMark.durationMs.milliseconds,
       playedTime = positionInCurrentMark.milliseconds,
+      playbackSpeed = book.content.playbackSpeed,
       cover = book.content.cover?.let(::ImmutableFile),
       skipSilence = book.content.skipSilence,
       characterCount = characterCount,

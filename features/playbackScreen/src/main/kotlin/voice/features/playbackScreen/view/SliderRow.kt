@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import voice.core.ui.formatTime
+import voice.features.playbackScreen.atSpeed
 import kotlin.math.abs
 import kotlin.time.Duration
 
@@ -26,6 +27,7 @@ import kotlin.time.Duration
 internal fun SliderRow(
   duration: Duration,
   playedTime: Duration,
+  playbackSpeed: Float,
   onSeek: (Duration) -> Unit,
   enabled: Boolean = true,
 ) {
@@ -63,22 +65,18 @@ internal fun SliderRow(
       dragging -> localValue
       else -> heldAfterSeek ?: liveFraction
     }
+    // Labels show listening time at the current speed; the slider itself stays on audio time.
+    val listeningMs = duration.atSpeed(playbackSpeed).inWholeMilliseconds
     // The label lives in the same Row as the slider, so its width sets the track's width. Pin it
     // to the widest string it can show (the full duration) via an invisible template — otherwise
     // every digit change mid-drag resizes the track and the thumb hops under a steady finger.
     Box(contentAlignment = Alignment.CenterEnd) {
       Text(
-        text = formatTime(
-          timeMs = duration.inWholeMilliseconds,
-          durationMs = duration.inWholeMilliseconds,
-        ),
+        text = formatTime(timeMs = listeningMs, durationMs = listeningMs),
         modifier = Modifier.alpha(0F),
       )
       Text(
-        text = formatTime(
-          timeMs = (duration * displayedFraction.toDouble()).inWholeMilliseconds,
-          durationMs = duration.inWholeMilliseconds,
-        ),
+        text = formatTime(timeMs = (listeningMs * displayedFraction).toLong(), durationMs = listeningMs),
       )
     }
     Slider(
@@ -98,10 +96,7 @@ internal fun SliderRow(
       },
     )
     Text(
-      text = formatTime(
-        timeMs = duration.inWholeMilliseconds,
-        durationMs = duration.inWholeMilliseconds,
-      ),
+      text = formatTime(timeMs = listeningMs, durationMs = listeningMs),
     )
   }
 }
