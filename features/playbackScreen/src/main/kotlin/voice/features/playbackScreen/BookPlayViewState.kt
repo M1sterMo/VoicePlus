@@ -82,4 +82,6 @@ internal sealed interface BookPlayDialogViewState {
   value class SleepTimer(val viewState: SleepTimerViewState) : BookPlayDialogViewState
 
   data object ToolbarActions : BookPlayDialogViewState
+
+  data object UpNext : BookPlayDialogViewState
 }

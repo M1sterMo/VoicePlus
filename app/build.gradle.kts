@@ -163,6 +163,7 @@ dependencies {
   implementation(projects.core.sleepTimer.api)
   implementation(projects.core.sleepTimer.impl)
   implementation(projects.features.sleepTimer)
+  implementation(projects.features.upNext)
   implementation(projects.features.settings)
   implementation(projects.features.folderPicker)
   implementation(projects.features.bookOverview)

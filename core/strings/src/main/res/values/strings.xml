@@ -558,4 +558,11 @@
     <string name="library_series_saved">Series saved</string>
     <string name="library_series_ungrouped">Books ungrouped</string>
     <string name="book_progress_completed">%1$d%% completed</string>
+    <string name="up_next">Up next</string>
+    <string name="up_next_add">Add to Up next</string>
+    <string name="up_next_remove">Remove from Up next</string>
+    <string name="up_next_now_playing">Now playing</string>
+    <string name="up_next_hint">Drag to reorder · swipe a book away to remove it</string>
+    <string name="up_next_empty">Long-press a book in your library to add it to Up next.</string>
+    <string name="up_next_length">%1$dh %2$02dm</string>
 </resources>

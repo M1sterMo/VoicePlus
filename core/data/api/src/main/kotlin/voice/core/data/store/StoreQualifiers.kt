@@ -8,6 +8,10 @@ public annotation class OnboardingCompletedStore
 @Qualifier
 public annotation class CurrentBookStore
 
+/** The books queued to play after the current one, in order. */
+@Qualifier
+public annotation class UpNextStore
+
 @Qualifier
 public annotation class AutoRewindAmountStore
 

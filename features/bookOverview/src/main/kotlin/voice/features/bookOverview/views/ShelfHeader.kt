@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Icon
@@ -36,12 +37,13 @@ import voice.core.strings.R as StringsR
 
 @Composable
 internal fun LibrarySection.title(): String = when {
-  current -> stringResource(StringsR.string.book_header_current)
+  upNext -> stringResource(StringsR.string.up_next)
+  projection -> stringResource(StringsR.string.book_header_current)
   id == LibraryShelf.OTHER -> stringResource(StringsR.string.library_other)
   else -> shelf!!.name
 }
 
-/** A quiet heading, with organisation controls kept out of the book tiles. */
+/** A quiet heading, with organisation controls kept out of the book tiles. [onOpen] makes the whole heading a link instead. */
 @Composable
 internal fun ShelfHeader(
   title: String,
@@ -51,6 +53,7 @@ internal fun ShelfHeader(
   onMenu: (() -> Unit)?,
   modifier: Modifier = Modifier,
   dropActive: Boolean = false,
+  onOpen: (() -> Unit)? = null,
 ) {
   val expandedLabel = stringResource(if (expanded) StringsR.string.library_expanded else StringsR.string.library_collapsed)
   val container by animateColorAsState(
@@ -59,13 +62,11 @@ internal fun ShelfHeader(
   )
   Row(modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(container), verticalAlignment = Alignment.CenterVertically) {
     Row(
-      Modifier.weight(1f).heightIn(min = if (onToggle == null && onMenu == null) 32.dp else 48.dp).then(
-        if (onToggle ==
-          null
-        ) {
-          Modifier
-        } else {
-          Modifier.semantics { stateDescription = expandedLabel }.clickable(role = Role.Button, onClick = onToggle)
+      Modifier.weight(1f).heightIn(min = if (onToggle == null && onMenu == null && onOpen == null) 32.dp else 48.dp).then(
+        when {
+          onToggle != null -> Modifier.semantics { stateDescription = expandedLabel }.clickable(role = Role.Button, onClick = onToggle)
+          onOpen != null -> Modifier.clickable(role = Role.Button, onClick = onOpen)
+          else -> Modifier
         },
       ),
       verticalAlignment = Alignment.CenterVertically,
@@ -88,6 +89,7 @@ internal fun ShelfHeader(
         )
       }
       if (onToggle != null) Icon(Icons.Outlined.ExpandMore, null, Modifier.rotate(if (expanded) 180f else 0f))
+      if (onOpen != null) Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null)
     }
     if (onMenu != null) {
       IconButton(onClick = onMenu) { Icon(Icons.Outlined.MoreHoriz, stringResource(StringsR.string.library_organise_shelf, title)) }

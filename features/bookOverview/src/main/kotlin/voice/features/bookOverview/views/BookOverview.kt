@@ -84,6 +84,7 @@ import voice.features.bookOverview.shelves.ShelfLibraryBar
 import voice.features.bookOverview.shelves.librarySections
 import voice.features.bookOverview.shelves.rememberLibraryShelfDragState
 import voice.features.bookOverview.views.topbar.BookOverviewTopBar
+import voice.features.upNext.UpNextSheet
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import voice.navigation.SharedTransitionNavEntryProvider
@@ -263,6 +264,7 @@ fun BookOverviewScreen(
   )
 
   var showBottomSheet by remember { mutableStateOf(false) }
+  var showUpNext by rememberSaveable { mutableStateOf(false) }
   val flatBooks = viewState.books.values.flatMap { it.entries }.associate { it.toPair() }
   // Progress animates in each tile; only fields which affect membership/sorting rebuild sections.
   val sortInputs by remember(flatBooks) {
@@ -281,8 +283,8 @@ fun BookOverviewScreen(
     }
   }
   val current = viewState.books[BookOverviewCategory.CURRENT].orEmpty().keys.toList()
-  val sections = remember(flatBooks, current, viewState.organisation, shelfViewModel.filter, sortInputs) {
-    librarySections(flatBooks, current, viewState.organisation ?: LibraryOrganisation(), shelfViewModel.filter)
+  val sections = remember(flatBooks, current, viewState.organisation, shelfViewModel.filter, sortInputs, viewState.upNext) {
+    librarySections(flatBooks, current, viewState.organisation ?: LibraryOrganisation(), shelfViewModel.filter, viewState.upNext)
   }
   val seriesEntries = sections.flatMap { it.entries }
   LaunchedEffect(viewState.isLoading, sections.map { it.id }, viewState.layoutMode) {
@@ -306,7 +308,7 @@ fun BookOverviewScreen(
   Box {
     val overlayOpen =
       openSeries != null || shelfViewModel.dialog != null || shelfViewModel.draft != null || seriesViewModel.state != null ||
-        showBottomSheet
+        showBottomSheet || showUpNext
     BookOverview(
       openSeriesKey = openSeries.takeIf { seriesPrepared },
       modifier = Modifier.focusProperties {
@@ -331,7 +333,7 @@ fun BookOverviewScreen(
         )
       },
       snackbar = { SnackbarHost(snackbar) },
-      onShelfToggle = { section -> if (!section.current) shelfViewModel.toggleExpanded(section.id, section.expanded) },
+      onShelfToggle = { section -> if (!section.projection) shelfViewModel.toggleExpanded(section.id, section.expanded) },
       onShelfMenu = { shelfViewModel.dialog = ShelfDialog.Menu(it) },
       onShelfAdd = { shelfViewModel.addToShelf(it) },
       activeCoverKey = activeCoverKey,
@@ -342,6 +344,7 @@ fun BookOverviewScreen(
       organising = shelfViewModel.organising,
       dragState = libraryDrag.takeIf { !shelfViewModel.selecting },
       onOrganise = shelfViewModel::chooseShelf,
+      onUpNextClick = { showUpNext = true },
       onSettingsClick = {
         scrollState.capture(viewState.layoutMode, listState, gridState)
         bookOverviewViewModel.onSettingsClick()
@@ -444,6 +447,7 @@ fun BookOverviewScreen(
       onToggleDeleteFiles = deleteBookViewModel::onToggleDeleteFiles,
     )
   }
+  if (showUpNext) UpNextSheet(onDismiss = { showUpNext = false })
   val editBookDraft by editBookViewModel.state.collectAsState()
   editBookDraft?.let { EditBookDialog(it, editBookViewModel) }
 
@@ -505,6 +509,7 @@ internal fun BookOverview(
   organising: Boolean = false,
   dragState: LibraryShelfDragState? = null,
   onOrganise: (Set<BookId>) -> Unit = {},
+  onUpNextClick: () -> Unit = {},
 ) {
   val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
   Scaffold(
@@ -572,6 +577,7 @@ internal fun BookOverview(
             organising = organising,
             dragState = dragState,
             onOrganise = onOrganise,
+            onUpNextClick = onUpNextClick,
             onBookClick = onBookClick,
             onBookLongClick = onBookLongClick,
             showPermissionBugCard = viewState.showStoragePermissionBugCard,
@@ -599,6 +605,7 @@ internal fun BookOverview(
             organising = organising,
             dragState = dragState,
             onOrganise = onOrganise,
+            onUpNextClick = onUpNextClick,
             onBookClick = onBookClick,
             onBookLongClick = onBookLongClick,
             showPermissionBugCard = viewState.showStoragePermissionBugCard,

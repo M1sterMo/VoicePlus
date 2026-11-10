@@ -82,6 +82,7 @@ internal fun GridBooks(
   organising: Boolean = false,
   dragState: LibraryShelfDragState? = null,
   onOrganise: (Set<BookId>) -> Unit = {},
+  onUpNextClick: () -> Unit = {},
 ) {
   BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     val contentWidth = if (booksMode) (booksPerRow.coerceIn(2, 3) * 240).dp else 840.dp
@@ -112,7 +113,7 @@ internal fun GridBooks(
           PermissionBugCard(onPermissionBugCardClick)
         }
       }
-      sections.filter { (!selecting && !organising) || !it.current }.forEachIndexed { index, section ->
+      sections.filter { (!selecting && !organising) || !it.projection }.forEachIndexed { index, section ->
         val expanded = section.expanded
         item(
           span = { GridItemSpan(maxLineSpan) },
@@ -127,11 +128,12 @@ internal fun GridBooks(
               .padding(top = if (index == 0) 0.dp else 8.dp, start = if (booksMode) 4.dp else 12.dp)
               .onGloballyPositioned { dragState?.registerShelf(section.id, it.boundsInRoot()) },
             title = section.title(),
-            count = section.count.takeUnless { section.current },
+            count = section.count.takeUnless { section.projection && !section.upNext },
             expanded = expanded,
-            onToggle = if (section.current) null else ({ onShelfToggle(section) }),
-            onMenu = if (section.current || selecting) null else ({ onShelfMenu(section.id) }),
+            onToggle = if (section.projection) null else ({ onShelfToggle(section) }),
+            onMenu = if (section.projection || selecting) null else ({ onShelfMenu(section.id) }),
             dropActive = dragState?.hoveredShelf == section.id,
+            onOpen = onUpNextClick.takeIf { section.upNext },
           )
         }
         if (expanded) {
@@ -163,7 +165,7 @@ internal fun GridBooks(
               activeCoverKey = activeCoverKey,
               sharedTransitionScope = sharedTransitionScope,
               openSeriesKey = openSeriesKey,
-              selecting = selecting && !section.current,
+              selecting = selecting && !section.projection,
               selected = selected,
               onSelect = onSelect,
               modifier = Modifier.animateItem(),

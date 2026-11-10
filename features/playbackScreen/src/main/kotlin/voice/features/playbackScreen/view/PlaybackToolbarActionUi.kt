@@ -1,6 +1,7 @@
 package voice.features.playbackScreen.view
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.QueueMusic
 import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Group
@@ -17,6 +18,7 @@ internal val PlaybackToolbarAction.icon: ImageVector
     PlaybackToolbarAction.PLAYBACK_SPEED -> Icons.Outlined.Speed
     PlaybackToolbarAction.CHAPTER_FIX -> Icons.Outlined.EditNote
     PlaybackToolbarAction.LISTENING_LOG -> Icons.Outlined.History
+    PlaybackToolbarAction.UP_NEXT -> Icons.AutoMirrored.Outlined.QueueMusic
   }
 
 internal val PlaybackToolbarAction.labelRes: Int
@@ -26,4 +28,5 @@ internal val PlaybackToolbarAction.labelRes: Int
     PlaybackToolbarAction.PLAYBACK_SPEED -> StringsR.string.playback_speed
     PlaybackToolbarAction.CHAPTER_FIX -> StringsR.string.chapter_fix_menu
     PlaybackToolbarAction.LISTENING_LOG -> StringsR.string.listening_log
+    PlaybackToolbarAction.UP_NEXT -> StringsR.string.up_next
   }

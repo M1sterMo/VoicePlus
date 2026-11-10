@@ -410,6 +410,10 @@ class BookPlayViewModel(
     navigator.goTo(Destination.CharacterList(bookId))
   }
 
+  fun onUpNextClick() {
+    _dialogState.value = BookPlayDialogViewState.UpNext
+  }
+
   fun onBookmarkLongClick() {
     scope.launch {
       val book = currentBook() ?: return@launch

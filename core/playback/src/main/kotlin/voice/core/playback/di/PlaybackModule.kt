@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.Media3AudioOffloadFeatureFlagQualifier
+import voice.core.playback.UpNextAdvancer
 import voice.core.playback.history.ListeningEventRecorder
 import voice.core.playback.misc.VolumeGain
 import voice.core.playback.notification.MainActivityIntentProvider
@@ -57,6 +58,7 @@ interface PlaybackModule {
     playStateDelegatingListener: PlayStateDelegatingListener,
     positionUpdater: PositionUpdater,
     listeningEventRecorder: ListeningEventRecorder,
+    upNextAdvancer: UpNextAdvancer,
     volumeGain: VolumeGain,
     durationInconsistenciesUpdater: DurationInconsistenciesUpdater,
     @Media3AudioOffloadFeatureFlagQualifier media3AudioOffloadFeatureFlag: FeatureFlag<Boolean>,
@@ -87,6 +89,7 @@ interface PlaybackModule {
         playStateDelegatingListener.attachTo(player)
         positionUpdater.attachTo(player)
         listeningEventRecorder.attachTo(player)
+        upNextAdvancer.attachTo(player)
         durationInconsistenciesUpdater.attachTo(player)
         player.onAudioSessionIdChanged {
           volumeGain.audioSessionId = it

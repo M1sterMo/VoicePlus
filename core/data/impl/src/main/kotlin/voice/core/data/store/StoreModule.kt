@@ -8,6 +8,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
@@ -147,6 +148,17 @@ public interface StoreModule {
       serializer = BookId.serializer().nullable,
       fileName = "currentBook",
       defaultValue = null,
+    )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
+  @UpNextStore
+  private fun upNext(factory: VoiceDataStoreFactory): DataStore<List<BookId>> {
+    return factory.create(
+      serializer = ListSerializer(BookId.serializer()),
+      fileName = "upNext",
+      defaultValue = emptyList(),
     )
   }
 
