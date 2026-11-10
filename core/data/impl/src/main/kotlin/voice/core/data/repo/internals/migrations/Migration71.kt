@@ -33,5 +33,6 @@ internal class Migration71 : AutoMigrationSpec {
     db.execSQL(
       "DELETE FROM book_character WHERE seriesId IS NULL AND bookId IN (SELECT bookId FROM libraryPlacement WHERE seriesId IS NOT NULL)",
     )
+    db.execSQL("UPDATE book_character SET ownerBookId = bookId WHERE seriesId IS NULL")
   }
 }

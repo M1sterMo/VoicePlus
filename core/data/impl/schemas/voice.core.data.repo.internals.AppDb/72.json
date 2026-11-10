@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 72,
-    "identityHash": "0f99956b8492070fe984ac4efc9d21e9",
+    "identityHash": "c18870fceda42c7bcf4bee637c2ccc82",
     "entities": [
       {
         "tableName": "chapters2",
@@ -486,7 +486,7 @@
       },
       {
         "tableName": "book_character",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bookId` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL DEFAULT 0, `createdAt` TEXT NOT NULL, `updatedAt` TEXT NOT NULL, `seriesId` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bookId` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL DEFAULT 0, `createdAt` TEXT NOT NULL, `updatedAt` TEXT NOT NULL, `seriesId` TEXT, `ownerBookId` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -534,6 +534,11 @@
           {
             "fieldPath": "seriesId",
             "columnName": "seriesId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownerBookId",
+            "columnName": "ownerBookId",
             "affinity": "TEXT"
           }
         ],
@@ -701,7 +706,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0f99956b8492070fe984ac4efc9d21e9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c18870fceda42c7bcf4bee637c2ccc82')"
     ]
   }
 }

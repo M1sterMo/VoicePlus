@@ -270,6 +270,35 @@ class OsWipeRestorerTest {
   }
 
   @Test
+  fun `retrying after the missing book is found does not duplicate its series characters`() = runTest {
+    val books = listOf("Dune", "Ghost").map { snapshotBookOf("primary:Books/$it", listOf("01.mp3"), "01.mp3", 0, 0) }
+    val leto = BookCharacterDto(
+      id = 0,
+      bookId = oldUri("primary:Books/Ghost"),
+      name = "Leto",
+      description = "",
+      createdAtEpochMillis = 1,
+      updatedAtEpochMillis = 1,
+      seriesId = "s",
+    )
+    val snapshot = snapshotOf(books.map { it.first }, books.flatMap { it.second }, characters = listOf(leto)).copy(
+      organisation = LibraryOrganisation(
+        series = listOf(LibrarySeries("s", "Dune")),
+        placements = books.mapIndexed { index, (dto, _) -> LibraryPlacement(dto.id, position = 0, seriesId = "s", seriesPosition = index) },
+      ),
+    )
+    onScan = { scanInBook("primary:Books/Dune", listOf("01.mp3")) }
+    restorer().run(snapshot)
+    onScan = { listOf("Dune", "Ghost").forEach { scanInBook("primary:Books/$it", listOf("01.mp3")) } }
+
+    restorer().run(snapshot)
+
+    val list = BookCharacterRepoImpl(db.bookCharacterDao()).characters(BookId(newUri("primary:Books/Dune"))).first()
+    list.map { it.name } shouldBe listOf("Leto")
+    list.single().bookId shouldBe BookId(newUri("primary:Books/Ghost"))
+  }
+
+  @Test
   fun `an empty (no-permission) scan writes nothing and surfaces everything for retry`() = runTest {
     val (dune, duneChapters) = snapshotBookOf("primary:Books/Dune", listOf("01.mp3"), "01.mp3", position = 400, lastPlayed = 5_000)
     onScan = {} // re-grant not done yet -> scan finds nothing

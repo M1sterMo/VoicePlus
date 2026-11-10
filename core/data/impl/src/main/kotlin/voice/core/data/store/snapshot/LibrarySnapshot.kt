@@ -113,6 +113,8 @@ internal data class BookCharacterDto(
   val createdAtEpochMillis: Long,
   val updatedAtEpochMillis: Long,
   val seriesId: String? = null,
+  // Null in backups from before shared lists, where the book a character was added in owned it.
+  val ownerBookId: String? = null,
 )
 
 @Serializable
@@ -241,6 +243,7 @@ internal fun BookCharacter.toDto() = BookCharacterDto(
   createdAtEpochMillis = createdAt.toEpochMilli(),
   updatedAtEpochMillis = updatedAt.toEpochMilli(),
   seriesId = seriesId,
+  ownerBookId = ownerBookId?.value,
 )
 
 internal fun BookCharacterDto.toBookCharacter() = BookCharacter(
@@ -252,6 +255,7 @@ internal fun BookCharacterDto.toBookCharacter() = BookCharacter(
   createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
   updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
   seriesId = seriesId,
+  ownerBookId = BookId(ownerBookId ?: bookId).takeIf { seriesId == null },
 )
 
 internal fun ChapterNameOverride.toDto() = ChapterNameOverrideDto(chapterId, markStartMs, bookId, name)
