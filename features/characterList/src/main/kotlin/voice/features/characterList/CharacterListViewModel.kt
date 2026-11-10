@@ -12,13 +12,16 @@ import kotlinx.coroutines.launch
 import voice.core.common.RetainedViewModel
 import voice.core.data.BookCharacter
 import voice.core.data.BookId
+import voice.core.data.LibraryOrganisation
 import voice.core.data.repo.BookCharacterRepo
+import voice.core.data.repo.LibraryOrganisationRepo
 import voice.navigation.Navigator
 import java.time.Instant
 
 @AssistedInject
 class CharacterListViewModel(
   private val characterRepo: BookCharacterRepo,
+  private val organisationRepo: LibraryOrganisationRepo,
   private val navigator: Navigator,
   @Assisted private val bookId: BookId,
 ) : RetainedViewModel() {
@@ -26,17 +29,9 @@ class CharacterListViewModel(
   @Composable
   fun viewState(): CharacterListViewState {
     val characters by remember { characterRepo.characters(bookId) }.collectAsState(initial = emptyList())
-    return CharacterListViewState(
-      characters = characters.mapIndexed { index, it -> it.toItemViewState(position = index + 1) },
-    )
+    val organisation by remember { organisationRepo.flow() }.collectAsState(initial = LibraryOrganisation())
+    return characterListViewState(bookId, characters, organisation)
   }
-
-  private fun BookCharacter.toItemViewState(position: Int) = CharacterItemViewState(
-    id = id,
-    name = name,
-    description = description,
-    position = position,
-  )
 
   fun addCharacter(
     name: String,
@@ -105,11 +100,47 @@ class CharacterListViewModel(
   }
 }
 
-data class CharacterListViewState(val characters: List<CharacterItemViewState>)
+internal fun characterListViewState(
+  bookId: BookId,
+  characters: List<BookCharacter>,
+  organisation: LibraryOrganisation,
+): CharacterListViewState {
+  val seriesId = organisation.placements.find { it.bookId == bookId.value }?.seriesId
+  // Raw series positions have gaps, so a book's number is its rank in the series' reading order.
+  val books = organisation.placements.filter { seriesId != null && it.seriesId == seriesId }
+    .sortedBy { it.seriesPosition }.map { it.bookId }
+  return CharacterListViewState(
+    characters = characters.mapIndexed { index, character ->
+      CharacterItemViewState(
+        id = character.id,
+        name = character.name,
+        description = character.description,
+        position = index + 1,
+        originBook = books.indexOf(character.bookId.value).takeIf { it >= 0 }?.plus(1),
+        fromOpenBook = character.bookId == bookId,
+      )
+    },
+    series = organisation.series.find { it.id == seriesId }?.let { SharedSeries(it.name, books.size) },
+  )
+}
+
+data class CharacterListViewState(
+  val characters: List<CharacterItemViewState>,
+  val series: SharedSeries? = null,
+)
+
+/** The series whose books all share this list. */
+data class SharedSeries(
+  val name: String,
+  val bookCount: Int,
+)
 
 data class CharacterItemViewState(
   val id: Long,
   val name: String,
   val description: String,
   val position: Int,
+  /** The 1-based place in the series of the book the character was added in, if it is still in the series. */
+  val originBook: Int? = null,
+  val fromOpenBook: Boolean = false,
 )

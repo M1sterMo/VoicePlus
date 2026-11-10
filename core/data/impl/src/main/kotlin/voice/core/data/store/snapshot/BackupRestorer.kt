@@ -122,7 +122,8 @@ internal class BackupRestorer(
         }
       }
     val bookmarks = snapshot.bookmarks.filter { included(it.bookId) }.map { it.toBookmark() }
-    val characters = snapshot.characters.filter { included(it.bookId) }.map { it.toBookCharacter() }
+    // A series' shared list outlives the book a character was added in.
+    val characters = snapshot.characters.filter { included(it.bookId) || it.seriesId != null }.map { it.toBookCharacter() }
     val overrides = snapshot.chapterNameOverrides.filter { included(it.bookId) }.map { it.toOverride() }
     val sessions = snapshot.sessions.filter { included(it.bookId) }.map { it.toListeningSession() }
     val events = snapshot.events.filter { included(it.bookId) }.map { it.toListeningEvent() }
@@ -134,6 +135,7 @@ internal class BackupRestorer(
       // Natural-key dedup for the autoGenerate-PK tables, seeded INSIDE the transaction: snapshot row
       // ids belong to a different database generation, so inserting by id could collide with (or
       // REPLACE) unrelated live rows. Insert with a fresh id instead, and skip rows already present.
+      val placementsBefore = organisationDao.placements()
       val seenSessionKeys = listeningSessionDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       val seenCharacterKeys = bookCharacterDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       val seenEventKeys = listeningEventDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
@@ -163,6 +165,7 @@ internal class BackupRestorer(
         if (seenEventKeys.add(event.naturalKey())) listeningEventDao.insert(event.copy(id = 0))
       }
       organisationDao.restore(snapshot, bookContentDao.all().associate { it.id.value to it.id.value })
+      bookCharacterDao.followSeries(placementsBefore)
     }
     return written
   }

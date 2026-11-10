@@ -12,13 +12,19 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import voice.core.data.BookCharacter
 import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
+import voice.core.data.LibraryOrganisation
+import voice.core.data.LibraryPlacement
+import voice.core.data.LibrarySeries
 import voice.core.data.ListeningSession
 import voice.core.data.MarkData
+import voice.core.data.repo.BookCharacterRepoImpl
 import voice.core.data.repo.BookContentRepoImpl
+import voice.core.data.repo.LibraryOrganisationRepoImpl
 import voice.core.data.repo.internals.AppDb
 import voice.core.data.repo.internals.MemoryDataStore
 import java.io.File
@@ -234,6 +240,80 @@ class BackupRestorerTest {
     db.bookCharacterDao().all().size shouldBe 1
     db.listeningEventDao().all().size shouldBe 1
   }
+
+  @Test
+  fun `series character lists and a former member's copy survive a backup round trip`() = runTest {
+    val source = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext<Context>(), AppDb::class.java)
+      .allowMainThreadQueries().build()
+    val snapshot = try {
+      val sourceBooks = BookContentRepoImpl(source.bookContentDao())
+      listOf("a", "b", "c").forEach { sourceBooks.put(book(it, active = true)) }
+      val organisation = LibraryOrganisationRepoImpl(source)
+      organisation.saveSeries(null, "Dune", listOf(BookId("a"), BookId("b"), BookId("c")))
+      val sourceCharacters = BookCharacterRepoImpl(source.bookCharacterDao())
+      sourceCharacters.upsert(character("c", "Paul"))
+      organisation.removeFromSeries(BookId("c"))
+      snapshotOf("a", "b", "c").copy(
+        schemaVersion = LibrarySnapshot.SCHEMA_VERSION,
+        characters = source.bookCharacterDao().all().map { it.toDto() },
+        organisation = organisation.get(),
+      )
+    } finally {
+      source.close()
+    }
+    val decoded = snapshotTestJson.decodeFromString<LibrarySnapshot>(snapshotTestJson.encodeToString(snapshot))
+    slot0.updateData { decoded }
+
+    restorer().restoreIfNeeded()
+
+    val characters = BookCharacterRepoImpl(db.bookCharacterDao())
+    val shared = characters.characters(BookId("a")).first().single()
+    shared.seriesId shouldBe snapshot.organisation!!.series.single().id
+    shared.bookId.value shouldBe "c"
+    characters.characters(BookId("b")).first() shouldBe listOf(shared)
+    characters.characters(BookId("c")).first().single().let {
+      it.name shouldBe "Paul"
+      it.seriesId shouldBe null
+    }
+    db.bookCharacterDao().all().size shouldBe 2
+  }
+
+  @Test
+  fun `restoring a backup from before shared lists merges each series' characters`() = runTest {
+    val series = LibrarySeries("dune", "Dune")
+    slot0.updateData {
+      snapshotOf("a", "b").copy(
+        schemaVersion = 7,
+        characters = listOf(character("a", "Paul"), character("b", "Paul"), character("b", "Leto", sortOrder = 1)).map { it.toDto() },
+        organisation = LibraryOrganisation(
+          series = listOf(series),
+          placements = listOf(
+            LibraryPlacement("a", position = 0, seriesId = series.id, seriesPosition = 0),
+            LibraryPlacement("b", position = 0, seriesId = series.id, seriesPosition = 1),
+          ),
+        ),
+      )
+    }
+
+    restorer().restoreIfNeeded()
+
+    val characters = BookCharacterRepoImpl(db.bookCharacterDao())
+    characters.characters(BookId("a")).first().map { it.name } shouldBe listOf("Paul", "Leto")
+    characters.characters(BookId("b")).first().map { it.name } shouldBe listOf("Paul", "Leto")
+  }
+
+  private fun character(
+    book: String,
+    name: String,
+    sortOrder: Int = 0,
+  ) = BookCharacter(
+    bookId = BookId(book),
+    name = name,
+    description = "",
+    sortOrder = sortOrder,
+    createdAt = Instant.ofEpochMilli(5),
+    updatedAt = Instant.ofEpochMilli(5),
+  )
 
   @Test
   fun `canApplyDirect is true only when every active snapshot book exists live`() = runTest {

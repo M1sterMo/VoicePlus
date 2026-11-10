@@ -214,7 +214,7 @@ internal object RestoreReKeyer {
       )
     }
 
-    // Characters are book-scoped (no chapter anchor): rewrite bookId, fresh PK, the writer dedups.
+    // Characters have no chapter anchor: rewrite bookId (a series list keeps its seriesId), fresh PK, the writer dedups.
     val characters = snap.characters.map { dto ->
       BookCharacter(
         id = 0,
@@ -224,6 +224,7 @@ internal object RestoreReKeyer {
         sortOrder = dto.sortOrder,
         createdAt = Instant.ofEpochMilli(dto.createdAtEpochMillis),
         updatedAt = Instant.ofEpochMilli(dto.updatedAtEpochMillis),
+        seriesId = dto.seriesId,
       )
     }
 

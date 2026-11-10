@@ -16,6 +16,7 @@ import org.junit.Test
 import voice.core.data.BookCharacter
 import voice.core.data.BookId
 import voice.core.data.repo.BookCharacterRepo
+import voice.core.data.repo.LibraryOrganisationRepo
 import voice.navigation.Navigator
 import java.time.Instant
 
@@ -38,7 +39,7 @@ class CharacterListViewModelTest {
     Dispatchers.resetMain()
   }
 
-  private fun viewModel() = CharacterListViewModel(repo, mockk<Navigator>(relaxed = true), bookId)
+  private fun viewModel() = CharacterListViewModel(repo, mockk<LibraryOrganisationRepo>(), mockk<Navigator>(relaxed = true), bookId)
 
   private fun seed(vararg names: String) {
     repo.characters.value = names.mapIndexed { index, name ->
