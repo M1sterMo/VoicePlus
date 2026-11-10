@@ -25,3 +25,11 @@ public data class ListeningSession(
   val endChapterId: ChapterId? = null,
   val endReason: Int? = null,
 )
+
+/** A finish marked by hand, not time spent listening. */
+public val ListeningSession.isCompletionMark: Boolean
+  get() = endReason == ListeningSessionEndReason.MarkedCompleted.id
+
+/** Evidence the book was finished: playback reached the end, or the listener marked it completed. */
+public val ListeningSession.isCompletion: Boolean
+  get() = endReason == ListeningSessionEndReason.EndOfBook.id || isCompletionMark

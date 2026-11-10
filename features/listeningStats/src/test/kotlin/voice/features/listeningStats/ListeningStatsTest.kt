@@ -6,6 +6,7 @@ import voice.core.data.BookId
 import voice.core.data.ChapterId
 import voice.core.data.ListeningSession
 import voice.core.data.ListeningSessionEndReason
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -50,6 +51,7 @@ class ListeningStatsTest {
     isCompleted: Boolean = false,
     lastChapter: ChapterId? = null,
     lastChapterDurationMs: Long = 0L,
+    lastPlayedAt: Instant = Instant.EPOCH,
   ) = LibraryBookInfo(
     id = BookId(id),
     name = name,
@@ -57,6 +59,7 @@ class ListeningStatsTest {
     isCompleted = isCompleted,
     lastChapter = lastChapter,
     lastChapterDurationMs = lastChapterDurationMs,
+    lastPlayedAt = lastPlayedAt,
   )
 
   private val defaultBooks = listOf(
@@ -211,6 +214,61 @@ class ListeningStatsTest {
     finished[0].listenedMs shouldBe 70 * 60_000L
     finished[0].finishedDate shouldBe today
     finished[1].listenedMs shouldBe 20 * 60_000L
+  }
+
+  @Test
+  fun `a book marked completed is dated by its mark, which is not listening`() {
+    val marked = BookId("content://marked")
+    val books = listOf(
+      book("content://earlier", name = "Earlier", isCompleted = true),
+      book("content://marked", name = "Marked", isCompleted = true),
+    )
+    val sessions = listOf(
+      session(
+        today.minusDays(5),
+        startHour = 9,
+        durationMinutes = 20,
+        bookId = BookId("content://earlier"),
+        endReason = ListeningSessionEndReason.EndOfBook.id,
+      ),
+      session(today.minusDays(3), startHour = 21, durationMinutes = 45, bookId = marked),
+      session(today, startHour = 8, durationMinutes = 0, bookId = marked, endReason = ListeningSessionEndReason.MarkedCompleted.id),
+    )
+
+    val state = stats(sessions, books)
+    state.finishedBooks.map { it.name } shouldBe listOf("Marked", "Earlier")
+    with(state.finishedBooks[0]) {
+      finishedDate shouldBe today
+      completionCount shouldBe 1
+      sessionCount shouldBe 1
+      listenedMs shouldBe 45 * 60_000L
+    }
+    state.todayMs shouldBe 0L
+    state.currentStreak shouldBe 0
+    state.avgSessionMs shouldBe (20 + 45) * 60_000L / 2
+  }
+
+  @Test
+  fun `a book marked completed before marks existed falls back to when it was last played`() {
+    val lastPlayed = today.minusDays(2).atTime(20, 0).atZone(zone).toInstant()
+    val books = listOf(
+      book("content://dated", name = "Dated", isCompleted = true),
+      book("content://unmarked", name = "Unmarked", isCompleted = true, lastPlayedAt = lastPlayed),
+    )
+    val sessions = listOf(
+      session(
+        today.minusDays(9),
+        startHour = 9,
+        durationMinutes = 20,
+        bookId = BookId("content://dated"),
+        endReason = ListeningSessionEndReason.EndOfBook.id,
+      ),
+    )
+
+    val finished = stats(sessions, books).finishedBooks
+    finished.map { it.name } shouldBe listOf("Unmarked", "Dated")
+    finished[0].finishedDate shouldBe today.minusDays(2)
+    finished[0].completionCount shouldBe null
   }
 
   @Test

@@ -26,7 +26,7 @@ import voice.core.common.comparator.sortedNaturally
 import voice.core.data.Book
 import voice.core.data.BookId
 import voice.core.data.GridMode
-import voice.core.data.ListeningSessionEndReason
+import voice.core.data.isCompletion
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.LibraryOrganisationRepo
@@ -97,7 +97,7 @@ class BookOverviewViewModel(
     val finishedAt = remember {
       sessionRepo.allSessions().map { sessions ->
         sessions
-          .filter { it.endReason == ListeningSessionEndReason.EndOfBook.id }
+          .filter { it.isCompletion }
           .groupBy({ it.bookId }, { it.endedAt })
           .mapValues { (_, endings) -> endings.max() }
       }

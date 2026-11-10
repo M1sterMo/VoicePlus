@@ -2,18 +2,28 @@ package voice.features.bookOverview.editBookCategory
 
 import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.flow.first
 import voice.core.data.BookId
+import voice.core.data.ChapterId
+import voice.core.data.ListeningSession
+import voice.core.data.ListeningSessionEndReason
+import voice.core.data.isCompletion
 import voice.core.data.repo.BookRepository
+import voice.core.data.repo.ListeningSessionRepo
 import voice.features.bookOverview.bottomSheet.BottomSheetItem
 import voice.features.bookOverview.bottomSheet.BottomSheetItemViewModel
 import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.overview.BookOverviewCategory
 import voice.features.bookOverview.overview.category
 import java.time.Instant
+import java.time.ZoneId
 
 @SingleIn(BookOverviewScope::class)
 @ContributesIntoSet(BookOverviewScope::class)
-class EditBookCategoryViewModel(private val repo: BookRepository) : BottomSheetItemViewModel {
+class EditBookCategoryViewModel(
+  private val repo: BookRepository,
+  private val sessionRepo: ListeningSessionRepo,
+) : BottomSheetItemViewModel {
 
   override suspend fun items(bookId: BookId): List<BottomSheetItem> {
     val book = repo.get(bookId) ?: return emptyList()
@@ -53,14 +63,46 @@ class EditBookCategoryViewModel(private val repo: BookRepository) : BottomSheetI
       else -> return
     }
 
+    val now = Instant.now()
+    val completing = item == BottomSheetItem.BookCategoryMarkAsCompleted
     repo.updateBook(book.id) {
       it.copy(
         currentChapter = currentChapter,
         positionInChapter = positionInChapter,
         // A hand-marked completion is dated now; otherwise a never-played book would show its
         // epoch placeholder as the finish date.
-        lastPlayedAt = if (item == BottomSheetItem.BookCategoryMarkAsCompleted) Instant.now() else it.lastPlayedAt,
+        lastPlayedAt = if (completing) now else it.lastPlayedAt,
       )
     }
+    if (completing) recordCompletion(book.id, currentChapter, positionInChapter, now)
+  }
+
+  /**
+   * Stats date a finish from completion records, so a hand-marked one needs its own. Marking the
+   * same book completed again on the same day (say after an accidental tap on play) is the same
+   * finish, not a second one.
+   */
+  private suspend fun recordCompletion(
+    bookId: BookId,
+    chapterId: ChapterId,
+    positionMs: Long,
+    now: Instant,
+  ) {
+    val zone = ZoneId.systemDefault()
+    val lastFinish = sessionRepo.sessions(bookId).first().firstOrNull { it.isCompletion }
+    if (lastFinish?.endedAt?.atZone(zone)?.toLocalDate() == now.atZone(zone).toLocalDate()) return
+    sessionRepo.addSession(
+      ListeningSession(
+        bookId = bookId,
+        chapterId = chapterId,
+        startedAt = now,
+        endedAt = now,
+        durationMs = 0,
+        startPositionMs = positionMs,
+        endPositionMs = positionMs,
+        endChapterId = chapterId,
+        endReason = ListeningSessionEndReason.MarkedCompleted.id,
+      ),
+    )
   }
 }
