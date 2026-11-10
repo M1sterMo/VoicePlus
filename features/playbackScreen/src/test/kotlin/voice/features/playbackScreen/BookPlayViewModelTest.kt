@@ -33,6 +33,7 @@ import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
+import voice.core.data.GridMode
 import voice.core.data.ListeningEventType
 import voice.core.data.MarkData
 import voice.core.data.PlaybackToolbarAction
@@ -52,6 +53,7 @@ import voice.core.sleeptimer.SleepTimerState
 import voice.features.sleepTimer.SleepTimerViewState
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -118,6 +120,7 @@ class BookPlayViewModelTest {
     sleepTimerPreferenceStore = sleepTimerDataStore,
     toolbarActionsStore = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
     globalVolumeGainStore = globalVolumeGainStore,
+    gridModeStore = MemoryDataStore(GridMode.FOLLOW_DEVICE),
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
   )
@@ -403,6 +406,80 @@ class BookPlayViewModelTest {
   }
 
   @Test
+  fun `chapter times follow playback speed while the slider stays on audio time`() = scope.runTest {
+    val livePlaybackFlow = MutableStateFlow<LivePlaybackState?>(null)
+    val viewModel = viewModel(livePlaybackFlow = livePlaybackFlow)
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      var state = awaitItem()
+      while (state == null) state = awaitItem()
+
+      // The current mark runs 2:00 up to (not including) 4:00 and playback sits 30s into it.
+      val markDuration = 2.minutes - 1.milliseconds
+      for ((speed, played, totalSeconds) in listOf(
+        Triple(0.5F, 60.seconds, 239L),
+        Triple(1F, 30.seconds, 119L),
+        Triple(1.5F, 20.seconds, 79L),
+        Triple(2F, 15.seconds, 59L),
+      )) {
+        livePlaybackFlow.value = LivePlaybackState(
+          bookId = book.id,
+          chapterId = book.currentChapter.id,
+          positionMs = book.content.positionInChapter,
+          isPlaying = false,
+          playbackSpeed = speed,
+        )
+        state = awaitItem()!!
+        state.playedTime shouldBe 30.seconds
+        state.duration shouldBe markDuration
+        state.playedTime.atSpeed(state.playbackSpeed) shouldBe played
+        state.duration.atSpeed(state.playbackSpeed).inWholeSeconds shouldBe totalSeconds
+      }
+    }
+  }
+
+  @Test
+  fun `book progress covers the whole book and its time left follows playback speed`() = scope.runTest {
+    val viewModel = viewModel(
+      livePlaybackFlow = MutableStateFlow(
+        LivePlaybackState(
+          bookId = book.id,
+          chapterId = book.currentChapter.id,
+          positionMs = book.content.positionInChapter,
+          isPlaying = false,
+          playbackSpeed = 2F,
+        ),
+      ),
+    )
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      var state = awaitItem()
+      while (state == null) state = awaitItem()
+      // Two 5-minute chapters, 2:30 into the second.
+      state.bookProgress shouldBe 0.75F
+      state.bookTimeLeft shouldBe 2.5.minutes
+      state.bookTimeLeft.atSpeed(state.playbackSpeed) shouldBe 75.seconds
+    }
+  }
+
+  @Test
+  fun `the cover is a book jacket only in the Books library layout`() = scope.runTest {
+    for (gridMode in GridMode.entries) {
+      backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+        viewModel(gridMode = gridMode).viewState()
+      }.test {
+        var state = awaitItem()
+        while (state == null) state = awaitItem()
+        state.bookJacket shouldBe (gridMode == GridMode.BOOKS)
+      }
+    }
+  }
+
+  @Test
   fun `viewState falls back to manager play state when live playback is unavailable`() = scope.runTest {
     val viewModel = viewModel(
       livePlaybackFlow = MutableStateFlow(null),
@@ -483,6 +560,7 @@ class BookPlayViewModelTest {
     livePlaybackFlow: MutableStateFlow<LivePlaybackState?> = MutableStateFlow(null),
     playStateFlow: MutableStateFlow<PlayStateManager.PlayState> = MutableStateFlow(PlayStateManager.PlayState.Paused),
     toolbarActionsStore: MemoryDataStore<Set<PlaybackToolbarAction>> = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
+    gridMode: GridMode = GridMode.FOLLOW_DEVICE,
   ): BookPlayViewModel {
     return BookPlayViewModel(
       bookRepository = mockk {
@@ -512,6 +590,7 @@ class BookPlayViewModelTest {
       sleepTimerPreferenceStore = sleepTimerDataStore,
       toolbarActionsStore = toolbarActionsStore,
       globalVolumeGainStore = globalVolumeGainStore,
+      gridModeStore = MemoryDataStore(gridMode),
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
     )

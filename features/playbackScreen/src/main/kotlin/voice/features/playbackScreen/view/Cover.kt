@@ -1,12 +1,18 @@
 package voice.features.playbackScreen.view
 
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -14,34 +20,68 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
+import voice.core.ui.BookshelfCover
 import voice.core.ui.ImmutableFile
 import voice.core.ui.sharedBookCover
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
+/**
+ * @param glow a soft halo behind the cover in a colour picked from the artwork (the theme's primary
+ * without artwork), rising while playing.
+ */
 @Composable
 internal fun Cover(
   bookId: BookId,
   sharedTransitionScope: SharedTransitionScope?,
   onDoubleClick: () -> Unit,
   cover: ImmutableFile?,
+  bookJacket: Boolean,
+  playing: Boolean,
+  glow: Boolean = true,
 ) {
-  AsyncImage(
-    modifier = Modifier
-      .fillMaxSize()
-      .sharedBookCover(bookId, sharedTransitionScope)
-      .pointerInput(Unit) {
-        detectTapGestures(
-          onDoubleTap = {
-            onDoubleClick()
-          },
-        )
-      }
-      .clip(RoundedCornerShape(20.dp)),
-    contentScale = ContentScale.Crop,
-    model = cover?.file,
-    placeholder = painterResource(id = UiR.drawable.album_art),
-    error = painterResource(id = UiR.drawable.album_art),
-    contentDescription = stringResource(id = StringsR.string.cover),
+  val glowElevation by animateDpAsState(
+    targetValue = when {
+      !glow -> 0.dp
+      playing -> 28.dp
+      else -> 4.dp
+    },
+    animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
+    label = "coverGlow",
   )
+  val glowColor = rememberCoverColor(cover.takeIf { glow }) ?: MaterialTheme.colorScheme.primary
+  // The jacket's corner radius matches BookshelfCover's.
+  val shape = RoundedCornerShape(if (bookJacket) 3.dp else 20.dp)
+  val glowAndDoubleTap = Modifier
+    // Not clipped: the jacket draws its own page edge and drop shadow past its corners.
+    .shadow(glowElevation, shape, clip = false, ambientColor = glowColor, spotColor = glowColor)
+    .pointerInput(Unit) {
+      detectTapGestures(
+        onDoubleTap = {
+          onDoubleClick()
+        },
+      )
+    }
+  if (bookJacket) {
+    BookshelfCover(
+      bookId = bookId,
+      cover = cover,
+      modifier = glowAndDoubleTap,
+      sharedTransitionScope = sharedTransitionScope,
+    )
+  } else {
+    AsyncImage(
+      modifier = Modifier
+        .fillMaxSize()
+        // After the shared bounds, so the glow travels with the cover between screens.
+        .sharedBookCover(bookId, sharedTransitionScope)
+        .then(glowAndDoubleTap)
+        .clip(shape),
+      contentScale = ContentScale.Crop,
+      model = cover?.file,
+      placeholder = painterResource(id = UiR.drawable.album_art),
+      error = painterResource(id = UiR.drawable.album_art),
+      contentDescription = stringResource(id = StringsR.string.cover),
+    )
+  }
 }

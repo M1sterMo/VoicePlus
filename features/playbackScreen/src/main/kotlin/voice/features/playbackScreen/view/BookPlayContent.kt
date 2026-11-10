@@ -38,6 +38,8 @@ internal fun BookPlayContent(
         bookId = bookId,
         sharedTransitionScope = sharedTransitionScope,
         cover = viewState.cover,
+        bookJacket = viewState.bookJacket,
+        playing = viewState.playing,
         onPlayClick = onPlayClick,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
@@ -61,9 +63,15 @@ internal fun BookPlayContent(
           )
         }
         Spacer(modifier = Modifier.size(20.dp))
+        BookProgressRow(
+          progress = viewState.bookProgress,
+          timeLeft = viewState.bookTimeLeft,
+          playbackSpeed = viewState.playbackSpeed,
+        )
         SliderRow(
           duration = viewState.duration,
           playedTime = viewState.playedTime,
+          playbackSpeed = viewState.playbackSpeed,
           onSeek = onSeek,
         )
         Spacer(modifier = Modifier.size(16.dp))
@@ -82,6 +90,8 @@ internal fun BookPlayContent(
         sharedTransitionScope = sharedTransitionScope,
         onPlayClick = onPlayClick,
         cover = viewState.cover,
+        bookJacket = viewState.bookJacket,
+        playing = viewState.playing,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
           .fillMaxWidth()
@@ -99,9 +109,15 @@ internal fun BookPlayContent(
         )
       }
       Spacer(modifier = Modifier.size(20.dp))
+      BookProgressRow(
+        progress = viewState.bookProgress,
+        timeLeft = viewState.bookTimeLeft,
+        playbackSpeed = viewState.playbackSpeed,
+      )
       SliderRow(
         duration = viewState.duration,
         playedTime = viewState.playedTime,
+        playbackSpeed = viewState.playbackSpeed,
         onSeek = onSeek,
       )
       Spacer(modifier = Modifier.size(16.dp))

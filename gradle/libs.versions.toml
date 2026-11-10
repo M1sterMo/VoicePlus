@@ -30,6 +30,7 @@ retrofit-scalars = { module = "com.squareup.retrofit2:converter-scalars", versio
 retrofit-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 robolectric = "org.robolectric:robolectric:4.17"
 coil = "io.coil-kt:coil-compose:2.7.0"
+palette = "androidx.palette:palette:1.0.0"
 appCompat = "androidx.appcompat:appcompat:1.8.0"
 androidxCore = "androidx.core:core-ktx:1.19.0"
 kotlin-pluginForGradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
