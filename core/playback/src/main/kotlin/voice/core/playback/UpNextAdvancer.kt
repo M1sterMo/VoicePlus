@@ -41,11 +41,16 @@ class UpNextAdvancer(
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {
-    if (playbackState != Player.STATE_ENDED || player?.playWhenReady != true || endsChapterSleepTimer()) return
+    if (playbackState != Player.STATE_ENDED || player?.playWhenReady != true) return
     scope.launch {
-      val current = currentBookStore.data.first()
-      val next = upNextStore.data.first()
-        .firstNotNullOfOrNull { id -> bookRepository.get(id).takeIf { id != current } } ?: return@launch
+      val ended = currentBookStore.data.first() ?: return@launch
+      if (endsChapterSleepTimer(ended)) return@launch
+      val queued = upNextStore.data.first().filter { it != ended }
+        .associateWith { id -> bookRepository.get(id)?.takeIf { it.content.isActive } }
+      // A book that left the library is gone from Up next too, where it could no longer be removed.
+      val gone = queued.filterValues { it == null }.keys
+      if (gone.isNotEmpty()) upNextStore.updateData { it - gone }
+      val next = queued.values.firstNotNullOfOrNull { it } ?: return@launch
       // Queueing a finished book means listening again: resumed at its end it would finish at once.
       // Same "finished" rule as the library's Completed books.
       if (next.position >= next.duration - FINISHED_WITHIN_MS) {
@@ -60,9 +65,9 @@ class UpNextAdvancer(
    * so the end of the book is its last boundary. If that was the final chapter the timer counted,
    * the listener asked to stop here.
    */
-  private fun endsChapterSleepTimer(): Boolean {
+  private fun endsChapterSleepTimer(book: BookId): Boolean {
     if (sleepTimer.state.value !is SleepTimerState.Enabled.WithEndOfChapter) return false
-    sleepTimer.onChapterBoundaryReached(boundaryId = "end")
+    sleepTimer.onChapterBoundaryReached(boundaryId = "${book.value}:end")
     return sleepTimer.state.value == SleepTimerState.Disabled
   }
 }

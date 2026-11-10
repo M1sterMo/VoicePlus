@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -34,6 +35,8 @@ class UpNextAdvancerTest {
   private val player = mockk<Player>(relaxed = true) {
     every { playWhenReady } returns true
   }
+  private val currentBook = MemoryDataStore<BookId?>(current)
+  private lateinit var upNext: MemoryDataStore<List<BookId>>
   private val books = mutableMapOf<BookId, Book>()
   private val repo = mockk<BookRepository>().also { repo ->
     coEvery { repo.get(any()) } answers { if (firstArg<BookId>() == gone) null else books.getOrPut(firstArg()) { testBook(firstArg()) } }
@@ -73,11 +76,15 @@ class UpNextAdvancerTest {
   }
 
   @Test
-  fun `books no longer in the library are skipped`() = runTest {
-    advancer(listOf(gone, second)).onPlaybackStateChanged(Player.STATE_ENDED)
+  fun `books no longer in the library are skipped and leave the queue`() = runTest {
+    val removed = BookId("removed")
+    books[removed] = testBook(removed).update { it.copy(isActive = false) }
+
+    advancer(listOf(gone, removed, second)).onPlaybackStateChanged(Player.STATE_ENDED)
     runCurrent()
 
     verify(exactly = 1) { playerController.playPauseForBook(second) }
+    upNext.data.first() shouldBe listOf(second)
   }
 
   @Test
@@ -121,10 +128,26 @@ class UpNextAdvancerTest {
     sleepTimer.state.value shouldBe SleepTimerState.Enabled.WithEndOfChapter(chaptersRemaining = 1)
   }
 
+  @Test
+  fun `a chapter timer counts the end of each book it runs through`() = runTest {
+    sleepTimer.state.value = SleepTimerState.Enabled.WithEndOfChapter(chaptersRemaining = 2)
+    val advancer = advancer(listOf(first, second))
+
+    advancer.onPlaybackStateChanged(Player.STATE_ENDED)
+    runCurrent()
+    currentBook.updateData { first }
+    advancer.onPlaybackStateChanged(Player.STATE_ENDED)
+    runCurrent()
+
+    verify(exactly = 1) { playerController.playPauseForBook(first) }
+    verify(exactly = 0) { playerController.playPauseForBook(second) }
+    sleepTimer.state.value shouldBe SleepTimerState.Disabled
+  }
+
   private fun TestScope.advancer(queue: List<BookId>): UpNextAdvancer {
     return UpNextAdvancer(
-      upNextStore = MemoryDataStore(queue),
-      currentBookStore = MemoryDataStore(current),
+      upNextStore = MemoryDataStore(queue).also { upNext = it },
+      currentBookStore = currentBook,
       bookRepository = repo,
       playerController = playerController,
       sleepTimer = sleepTimer,
@@ -150,8 +173,12 @@ private class FakeSleepTimer : SleepTimer {
   }
 
   override fun reset() = Unit
+
+  // Like the real timer, a boundary counts once.
+  private val counted = mutableSetOf<String>()
   override fun onChapterBoundaryReached(boundaryId: String) {
     val current = state.value as? SleepTimerState.Enabled.WithEndOfChapter ?: return
+    if (!counted.add(boundaryId)) return
     state.value =
       if (current.chaptersRemaining > 1) current.copy(chaptersRemaining = current.chaptersRemaining - 1) else SleepTimerState.Disabled
   }
