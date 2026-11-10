@@ -202,15 +202,13 @@ class LibrarySessionCallback(
       }
     }
 
-    val connectionResult = super.onConnect(session, controller)
-    val sessionCommands = connectionResult.availableSessionCommands
+    // Media3 1.11 turns the default onConnect into a placeholder without commands, so the defaults
+    // are named here instead of taken from super. Otherwise the app can't control its own player.
+    val sessionCommands = ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
       .buildUpon()
       .add(SessionCommand(CustomCommand.CUSTOM_COMMAND_ACTION, Bundle.EMPTY))
       .build()
-    return ConnectionResult.accept(
-      sessionCommands,
-      connectionResult.availablePlayerCommands,
-    )
+    return ConnectionResult.accept(sessionCommands, ConnectionResult.DEFAULT_PLAYER_COMMANDS)
   }
 
   private suspend fun prepareCurrentBook() {
