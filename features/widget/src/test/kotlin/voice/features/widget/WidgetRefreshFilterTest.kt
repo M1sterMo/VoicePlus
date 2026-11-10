@@ -32,6 +32,15 @@ class WidgetRefreshFilterTest {
   }
 
   @Test
+  fun `advancing a whole percent of the book refreshes the widget`() {
+    // Two 10-minute chapters, so 1% of the book is 12s. Both positions are in the second mark.
+    val before = book(positionInChapter = 6_000)
+    val after = book(positionInChapter = 13_000)
+
+    widgetRelevantFieldsEqual(before, after) shouldBe false
+  }
+
+  @Test
   fun `crossing a chapter mark refreshes the widget`() {
     // Same chapter, but a different mark: the widget shows the mark's name.
     val before = book(positionInChapter = 1_000)
@@ -62,7 +71,7 @@ class WidgetRefreshFilterTest {
   ) = Chapter(
     id = ChapterId(id),
     name = "Chapter $id",
-    duration = 60_000,
+    duration = 600_000,
     fileLastModified = Instant.EPOCH,
     markData = marks,
   )

@@ -103,5 +103,7 @@ internal fun widgetRelevantFieldsEqual(
     // Compare the mark's startMs too: two marks in the same chapter can share a raw name but
     // resolve to different overrides, so a same-named mark crossing must still refresh.
     previous.currentMark.startMs == current.currentMark.startMs &&
-    (previous.currentMark.name ?: "") == (current.currentMark.name ?: "")
+    (previous.currentMark.name ?: "") == (current.currentMark.name ?: "") &&
+    // The progress bar moves in whole percent, so only those steps need a redraw.
+    previous.progressPercent() == current.progressPercent()
 }

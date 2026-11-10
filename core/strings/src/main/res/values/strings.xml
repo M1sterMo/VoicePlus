@@ -16,6 +16,13 @@
     <string name="widget_config_opacity">Background opacity: %1$d%%</string>
     <string name="widget_config_text_size">Text size: %1$sx</string>
     <string name="widget_config_apply">Apply</string>
+    <string name="widget_previous_chapter">Previous chapter</string>
+    <string name="widget_next_chapter">Next chapter</string>
+    <string name="widget_no_book">No book selected</string>
+    <string name="widget_config_cover_shape">Cover shape</string>
+    <string name="widget_config_cover_square">Square</string>
+    <string name="widget_config_cover_book">Book</string>
+    <string name="widget_config_chapter_buttons">Previous and next chapter buttons</string>
     <string name="previous_track">Previous track</string>
     <string name="next_track">Next track</string>
     <string name="skip_silence">Skip Silence</string>
