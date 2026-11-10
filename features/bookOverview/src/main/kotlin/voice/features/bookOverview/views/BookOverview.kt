@@ -302,6 +302,15 @@ fun BookOverviewScreen(
       scrollState.restore(viewState.layoutMode, listState, gridState, keys)
     }
   }
+  // Queueing a first book adds the Up next shelf above the top row, and lazy lists keep the row that
+  // was first in place, which would leave the new shelf just off screen. Follow it when near the top.
+  val upNextRows = sections.find { it.upNext }?.let { 1 + it.entries.size }
+  LaunchedEffect(upNextRows != null) {
+    if (upNextRows != null) {
+      if (listState.firstVisibleItemIndex <= upNextRows) listState.animateScrollToItem(0)
+      if (gridState.firstVisibleItemIndex <= upNextRows) gridState.animateScrollToItem(0)
+    }
+  }
   LaunchedEffect(viewState.isLoading, openSeries, seriesEntries.map { it.key }) {
     if (!viewState.isLoading && openSeries != null && seriesEntries.none { it.key == openSeries }) openSeries = null
   }
