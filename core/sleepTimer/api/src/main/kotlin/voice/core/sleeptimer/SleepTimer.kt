@@ -12,7 +12,8 @@ interface SleepTimer {
   /**
    * @param boundaryId identifies the chapter boundary that was crossed. Boundaries fire again when
    * playback re-crosses them, so the timer counts each one only once per armed timer — otherwise
-   * skipping back over a boundary you already passed would burn a second chapter.
+   * skipping back over a boundary you already passed would burn a second chapter. It names the
+   * book too, since a timer can run on into the next book in Up next.
    */
   fun onChapterBoundaryReached(boundaryId: String)
 }

@@ -399,7 +399,7 @@ class VoicePlayer(
             book.content.currentChapterIndex,
             book.content.positionInChapter,
           )
-          registerChapterMarkCallbacks(book.chapters)
+          registerChapterMarkCallbacks(book.id, book.chapters)
         }
       } else {
         Logger.w("Unexpected mediaId=$mediaId")
@@ -407,7 +407,10 @@ class VoicePlayer(
     }
   }
 
-  private fun registerChapterMarkCallbacks(chapters: List<Chapter>) {
+  private fun registerChapterMarkCallbacks(
+    bookId: BookId,
+    chapters: List<Chapter>,
+  ) {
     if (player is ExoPlayer) {
       val boundaryHandler = PlayerMessage.Target { _, payload ->
         if (payload is ChapterPausePayload) {
@@ -420,7 +423,7 @@ class VoicePlayer(
           Logger.v("Chapter mark reached at $payload, pausing as per sleep timer")
           // These messages are registered with setDeleteAfterDelivery(false) and so fire again if
           // playback re-crosses the mark; the id lets the timer count each boundary only once.
-          sleepTimer.onChapterBoundaryReached(boundaryId = "${payload.chapterIndex}:${payload.positionMs}")
+          sleepTimer.onChapterBoundaryReached(boundaryId = "${bookId.value}:${payload.chapterIndex}:${payload.positionMs}")
           if (sleepTimer.state.value == SleepTimerState.Disabled) {
             // Direct writes are safe: this handler runs on the media3 main looper, same as the recorder.
             // Flags first: stash where listening actually stopped BEFORE the boundary seek moves the
