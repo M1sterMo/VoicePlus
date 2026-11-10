@@ -143,8 +143,8 @@ class WidgetUpdater(
     // A 40dp button plus its 8dp spacing, both across the row and above it.
     val buttonSize = context.dpToPxRounded(48F)
     val progressRow = context.dpToPxRounded(12F)
-    val titleRow = Paint().apply { textSize = titleSize }.fontSpacing.roundToInt()
-    val summaryRow = Paint().apply { textSize = summarySize }.fontSpacing.roundToInt()
+    val titleRow = textLineHeight(titleSize)
+    val summaryRow = textLineHeight(summarySize)
     val availableHeight = if (sizeKnown) height - 2 * padding else Int.MAX_VALUE
     remoteViews.setVisible(R.id.buttons, true)
     remoteViews.setVisible(R.id.title, availableHeight >= buttonSize + titleRow)
@@ -226,6 +226,12 @@ private fun RemoteViews.setVisible(
   visible: Boolean,
 ) {
   setViewVisibility(viewId, if (visible) View.VISIBLE else View.GONE)
+}
+
+/** A one-line TextView's height, font padding included. */
+private fun textLineHeight(textSize: Float): Int {
+  val metrics = Paint().apply { this.textSize = textSize }.fontMetricsInt
+  return metrics.bottom - metrics.top
 }
 
 internal fun Book.progressPercent(): Int = if (duration > 0) (position * 100 / duration).toInt() else 0
