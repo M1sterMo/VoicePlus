@@ -1,6 +1,7 @@
 package voice.features.playbackScreen.view
 
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -9,16 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
@@ -42,7 +45,8 @@ internal fun Cover(
   playing: Boolean,
   glow: Boolean = true,
 ) {
-  val glowStrength by animateFloatAsState(
+  // Both are read only while drawing the shadow, so the slow spring doesn't recompose the cover.
+  val glowStrength = animateFloatAsState(
     targetValue = when {
       !glow -> 0f
       playing -> 1f
@@ -51,15 +55,22 @@ internal fun Cover(
     animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
     label = "coverGlow",
   )
-  val glowColor = rememberCoverColor(cover.takeIf { glow }) ?: MaterialTheme.colorScheme.primary
+  // Fades in from transparent, so the artwork's colour doesn't replace a fallback as it arrives.
+  val glowColor = animateColorAsState(
+    targetValue = rememberCoverColor(cover.takeIf { glow }) ?: MaterialTheme.colorScheme.primary,
+    label = "coverGlowColor",
+  )
   // The jacket's corner radius matches BookshelfCover's.
   val shape = RoundedCornerShape(if (bookJacket) 3.dp else 20.dp)
   val glowAndDoubleTap = Modifier
     // A coloured drop shadow: the platform elevation shadow is too faint to carry a colour.
-    .dropShadow(
-      shape,
-      Shadow(radius = 48.dp, spread = 6.dp, color = glowColor.copy(alpha = 0.85f * glowStrength), offset = DpOffset(0.dp, 16.dp)),
-    )
+    .dropShadow(shape) {
+      radius = 48.dp.toPx()
+      spread = 6.dp.toPx()
+      offset = Offset(0f, 16.dp.toPx())
+      color = glowColor.value
+      alpha = 0.85f * glowStrength.value
+    }
     .pointerInput(Unit) {
       detectTapGestures(
         onDoubleTap = {
@@ -68,11 +79,18 @@ internal fun Cover(
       )
     }
   if (bookJacket) {
+    val coverLabel = stringResource(id = StringsR.string.cover)
     BookshelfCover(
       bookId = bookId,
       cover = cover,
-      modifier = glowAndDoubleTap,
-      sharedTransitionScope = sharedTransitionScope,
+      // The whole jacket is the shared element, so the glow travels with it like the square cover's.
+      modifier = Modifier
+        .sharedBookCover(bookId, sharedTransitionScope)
+        .then(glowAndDoubleTap)
+        .semantics {
+          contentDescription = coverLabel
+          role = Role.Image
+        },
     )
   } else {
     AsyncImage(
