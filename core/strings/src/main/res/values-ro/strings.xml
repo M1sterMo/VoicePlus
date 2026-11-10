@@ -56,7 +56,6 @@
         <item quantity="few">%d fișiere audio</item>
         <item quantity="other">%d fișiere audio</item>
     </plurals>
-    <string name="folder_type_title">Cum sunt structurate fișierele dumneavoastră?</string>
     <string name="voice_intro_first_book">Adaugă directorul cu cărțile tale și poți să începi!</string>
     <string name="migration_hint_title">Accesarea pozițiilor cărților vechi</string>
     <string name="migration_hint_confirm">Am înțeles</string>
@@ -80,8 +79,6 @@
     <string name="notification_sleep_timer_enable">Activează oprirea temporizată</string>
     <string name="notification_sleep_timer_disable">Dezactivează oprirea temporizată</string>
     <string name="book_header_completed">Cărți citite</string>
-    <string name="folder_type_book_example_header">În acest fel, au fost detectate următoarele cărți</string>
-    <string name="folder_type_no_books">Voice nu a găsit nicio carte. Există fișiere audio?</string>
     <string name="migration_hint_content">Din cauza modificărilor din versiunile noi de Android, este necesar să alegeți directorul dumneavoastră cu cărți audio folosind selectorul de sistem.\n\nApăsați pe iconița de mai sus pentru a vedea vechile poziții ale cărților.</string>
     <string name="bookmark_just_now">Acum</string>
     <string name="migration_detail_content_added_at">Adăugat la</string>
@@ -111,7 +108,6 @@
     <string name="review.request.button.no">Nu, mulțumesc</string>
     <string name="folder_mode_author">Modul Autor: Fiecare subdirector reprezintă un autor, iar în fiecare sub-subdirector găsim câte-o carte.</string>
     <string name="select_folder_title_onboarding">Adaugă prima ta carte</string>
-    <string name="select_folder_type_file">Fișier</string>
     <string name="onboarding.button_next">Mai departe</string>
     <string name="review.feedback.content">Puteți să ne oferiți un feedback? Apreciem orice fel de sugestii deoarece ne ajută să îmbunătățim experiența tuturor.</string>
     <string name="review.feedback.button.yes">Trimite feedback</string>
@@ -124,8 +120,6 @@
     <string name="sleep_timer.title">Vise plăcute! 🌙</string>
     <string name="sleep_timer.button.increment">Mai lungă</string>
     <string name="sleep_timer.button.decrement">Mai scurtă</string>
-    <string name="select_folder_type_folder">Director</string>
-    <string name="select_folder_subtitle">Doriți să adăugați o carte bazată pe un singur fișier sau pe un director?</string>
     <string name="onboarding_welcome_title">Acesta este Voice.</string>
     <string name="onboarding_welcome_subtitle">Player-ul tău personal de cărți audio - să parcurgem împreună un scurt ghid.</string>
     <string name="onboarding.completion.title">Ai parcurs cu succes acest ghid.</string>

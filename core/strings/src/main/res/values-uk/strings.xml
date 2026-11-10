@@ -71,7 +71,6 @@
     <string name="pref_get_support">Підтримка</string>
     <string name="pref_app_version">Версія</string>
     <string name="folder_mode_root">Книжковий режим верхнього рівня: підкаталоги – це книги</string>
-    <string name="folder_type_title">Як структуровані ваші файли?</string>
     <string name="folder_mode_single">Режим однієї книги: один каталог відповідає одній книзі</string>
     <plurals name="folder_type_file_count">
         <item quantity="one">%d аудіофайл</item>
@@ -79,8 +78,6 @@
         <item quantity="many">%d аудіофайлів</item>
         <item quantity="other">%d аудіофайлів</item>
     </plurals>
-    <string name="folder_type_book_example_header">Пошук книг</string>
-    <string name="folder_type_no_books">Voice не виявив жодної книги. Тут є аудіофайли?</string>
     <string name="migration_detail_content_position_current_file_title">Поточний файл</string>
     <string name="migration_detail_content_position_current_file_position">Позиція в файлі</string>
     <string name="migration_detail_content_position_current_chapter_title">Поточна частина</string>
@@ -121,13 +118,10 @@
     <string name="cover_search_template_with_author">Обкладинка аудіокниги %1$s автора %2$s</string>
     <string name="cover_search.icon_recent">Недавній запит</string>
     <string name="cover_search.author">Автор</string>
-    <string name="select_folder_type_file">Файл</string>
     <string name="onboarding_welcome_title">Ласкаво просимо до Voice!</string>
     <string name="onboarding_welcome_subtitle">Ваш особистий кишеньковий програвач аудіокниг. Налаштуймо його.</string>
-    <string name="select_folder_subtitle">Ви хочете додати книгу як окремий файл або каталог?</string>
     <string name="onboarding.completion.next_button">Розпочати слухати</string>
     <string name="folder_mode_author">Режим «Автор–Книга»: підкаталоги це автори, під-підкаталоги – книги</string>
-    <string name="select_folder_type_folder">Каталог</string>
     <string name="onboarding.explanation.subtitle">За допомогою Voice ви можете додавати книги як окремі файли, або зібрані у каталогах. Вибір за вами!</string>
     <string name="review.request.content">Ваш відгук важливий для нас! Якщо ви маєте час, оцініть нас і поділіться враженнями. Це допомагає нам робити виправлення та пропонувати кращу якість прослуховування.</string>
     <string name="sleep_timer.title">На добраніч! 🌙</string>

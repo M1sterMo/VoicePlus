@@ -80,15 +80,10 @@
         <item quantity="one">%d hangfájl</item>
         <item quantity="other">%d hangfájl</item>
     </plurals>
-    <string name="folder_type_no_books">Voice nem talált egy könyvet se. Léteznek erre hangfájlok?</string>
-    <string name="folder_type_title">Hogyan vannak elrendezve a hangfájlok?</string>
     <string name="migration_detail_content_position_current_chapter_position">Pozició a fejezetben</string>
     <string name="generic_error_message">Valami balul sült el 😢</string>
     <string name="generic_error_retry">Újra</string>
     <string name="storage_bug_button">Hozzáférés engedélyezése</string>
-    <string name="select_folder_type_file">Fájl</string>
-    <string name="select_folder_type_folder">Mappa</string>
-    <string name="select_folder_subtitle">Hogyan kívánja hozzáadni a könyvet: egyedi fájlként vagy hangfájlmappaként?</string>
     <string name="onboarding_welcome_title">Üdv a Voice-ban!</string>
     <string name="onboarding.button_next">Tovább</string>
     <string name="onboarding.explanation.title">Az ön könyvtára, az ön döntései</string>
@@ -126,6 +121,5 @@
     <string name="sleep_timer.button.decrement">Rövidebb</string>
     <string name="storage_bug_subtitle">Egyes eszközökön, egy rendszerapplikációnak hiányzanak bizonyos hozzáférések a külső tárolóhoz. Ezek a hozzáférések lényegesek ahhoz hogy Voice sikeresen tudja felolvasni az ön könyvjeit.</string>
     <string name="review.request.content">Mi értékeljük az ön vélemenyét! Ha van egy pillanata, ossza meg velünk az ön tapasztalatát és hagyjon egy értékelést. Segít minket jobbátenni mások tapasztalatát.</string>
-    <string name="folder_type_book_example_header">Ezzel az akcióval ezeket a könyveket találtuk meg</string>
     <string name="sleep_timer.button.increment">Hosszabb</string>
 </resources>

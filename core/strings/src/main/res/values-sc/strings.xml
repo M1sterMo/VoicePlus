@@ -5,8 +5,6 @@
     <string name="onboarding_welcome_subtitle">Su leghidore de butzaca de audiolibros personale tuo. Preparamus·nos.</string>
     <string name="media_session_root">Totu sos audiolibros</string>
     <string name="storage_bug_subtitle">Pro unos cantos dispositivos, un\'aplicatzione de sistema non tenet s\'autorizatzione netzessària pro atzèdere a sa memòria esterna. Bisòngiat a tènnere custu atzessu pro chi Voice potzat lèghere sos audiolibros tuos.</string>
-    <string name="select_folder_type_folder">Cartella</string>
-    <string name="select_folder_type_file">Documentu</string>
     <string name="onboarding_welcome_title">Bene bènnidu a Voice!</string>
     <string name="onboarding.explanation.subtitle">Cun Voice, podes agiùnghere libros comente documentos individuales o los organizare in cartellas. Issèbera tue!</string>
     <string name="review.request.button.yes">Vota como</string>
@@ -56,7 +54,6 @@
         <item quantity="one">%d documentu àudio</item>
         <item quantity="other">%d documentos àudio</item>
     </plurals>
-    <string name="folder_type_title">Comente sunt istruturados sos documentos tuos?</string>
     <string name="bookmark_just_now">Como como</string>
     <string name="voice_intro_first_book">Agiunghimus sa cartella de audiolibros tua in manera chi potzas incumintzare a ascurtare!</string>
     <string name="migration_hint_title">Atzedende a sas positziones betzas de su libru</string>
@@ -78,7 +75,6 @@
     <string name="storage_bug_title">Permissu netzessàriu</string>
     <string name="select_folder_title_onboarding">Agiunghe su primu audiolibru tuo</string>
     <string name="select_folder_title_default">Agiunghe sos audiolibros tuos</string>
-    <string name="select_folder_subtitle">Boles annànghere unu documentu sìngulu comente libru o cartella?</string>
     <string name="onboarding.button_next">Imbeniente</string>
     <string name="onboarding.completion.title">Ses prontu!</string>
     <string name="onboarding.completion.next_button">Incumintza a ascurtare</string>
@@ -115,8 +111,6 @@
     <string name="folder_mode_single">Modalidade libru sìngulu: una cartella bolet nàrrere unu libru.</string>
     <string name="folder_mode_author">Modalidade autore-libru: Sas sutacartella sunt autores, sas suta-sutacartellas sunt libros.</string>
     <string name="migration_detail_content_position">Positzione</string>
-    <string name="folder_type_book_example_header">Custu diat causare su rilevamentu de sos libros chi sighint</string>
-    <string name="folder_type_no_books">Voice no at pòdidu rilevare perunu libru. Bi sunt documentos àudio?</string>
     <string name="onboarding.completion.subtitle">Su primu audiolibru tuo est prontu pro sa riprodutzione. Gosa·ti su biàgiu tuo cun Voice!</string>
     <string name="delete_book_dialog_content">Custu at a iscantzellare sos documentos in su dispositivu tuo.</string>
     <string name="migration_detail_content_bookmarks">Sinnalibros</string>

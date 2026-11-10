@@ -4,7 +4,6 @@
     <string name="pref_auto_rewind_title">הרצה אוטומטית</string>
     <string name="next_track">רצועה הבאה</string>
     <string name="cover_search.author">מחבר</string>
-    <string name="folder_type_book_example_header">זה יוביל לגילוי הספרים הבאים</string>
     <string name="review.request.content">המשוב שלך חשוב לנו! אם יש לך רגע פנוי, דרג אותנו ושתפו אותנו בחווייתך. זה עוזר לנו לשפר את החוויה ולהציע חוויית האזנה טובה יותר.</string>
     <string name="more">עוד</string>
     <string name="pref_get_support">תמיכה</string>
@@ -62,8 +61,6 @@
         <item quantity="two">%d קבצי שמע</item>
         <item quantity="other">%d קבצי שמע</item>
     </plurals>
-    <string name="folder_type_no_books">Voice לא זיהה ספרים. האם יש קבצי שמע?</string>
-    <string name="folder_type_title">איך הקבצים שלך מסודרים?</string>
     <string name="bookmark_just_now">ממש עכשיו</string>
     <string name="migration_hint_confirm">מובן</string>
     <string name="migration_detail_title">מיקומי ספרים ישנים</string>
@@ -94,9 +91,6 @@
     <string name="storage_bug_button">הענקת הרשאה</string>
     <string name="select_folder_title_onboarding">הוסף את הקולספר הראשון שלך</string>
     <string name="select_folder_title_default">הוסף קולספר.ים</string>
-    <string name="select_folder_type_file">קובץ</string>
-    <string name="select_folder_type_folder">תיקייה</string>
-    <string name="select_folder_subtitle">האם ברצונך להוסיף קובץ בודד כספר או כתיקייה?</string>
     <string name="onboarding_welcome_title">ברוכים הבאים ל-Voice!</string>
     <string name="onboarding_welcome_subtitle">נגן ספרי הקולספרים האישי שלך בכיס. בואו נתאים את Voice אליכם.</string>
     <string name="onboarding.button_next">הבא</string>

@@ -45,7 +45,6 @@
     <string name="mark_as_completed">Označiť za ukončené</string>
     <string name="pause">Pozastaviť</string>
     <string name="pref_help_translating">Pomôcť s prekladom</string>
-    <string name="folder_type_no_books">Aplikácia nenašla žiadne knihy. Sú tam nejaké audio súbory?</string>
     <string name="pref_app_version">Verzia aplikácie</string>
     <string name="cover_search.author">Autor</string>
     <string name="pref_report_issue">Nahlásiť problém</string>
@@ -57,14 +56,11 @@
     </plurals>
     <string name="more">Viac</string>
     <string name="bookmark_just_now">Práve teraz</string>
-    <string name="folder_type_title">Ako sú organizované vaše súbory?</string>
     <string name="mark_as_current">Označiť za aktuálne</string>
     <string name="play">Prehrať</string>
     <string name="volume_boost">Zvýrazniť hlasitosť</string>
     <string name="sleep_timer.title">Sladké sny! 🌙</string>
     <string name="review.request.button.no">Nie, ďakujem</string>
-    <string name="select_folder_type_file">Súbor</string>
-    <string name="select_folder_type_folder">Adresár</string>
     <string name="playback.current_chapter">Aktuálna kapitola</string>
     <string name="delete_book_dialog_deletion_confirmation">Vymazať moje súbory</string>
     <string name="delete_book_dialog_title">Vymazať knihu</string>

@@ -53,9 +53,6 @@
     <plurals name="folder_type_file_count">
         <item quantity="other">%d个声音文件</item>
     </plurals>
-    <string name="folder_type_book_example_header">这样操作将找到以下有声书</string>
-    <string name="folder_type_no_books">Voice没有找到任何有声书。声音文件是否存在？</string>
-    <string name="folder_type_title">您的文件是如何组织的？</string>
     <string name="bookmark_just_now">刚才</string>
     <string name="voice_intro_first_book">首先添加有声书文件夹，然后就可以开始听书啦！</string>
     <string name="migration_hint_title">正在读取旧书位置</string>
@@ -94,12 +91,9 @@
     <string name="storage_bug_subtitle">对于某些设备，系统应用程序缺少访问外部存储的必要权限。此访问对于Voice阅读您的有声读物至关重要。</string>
     <string name="cover_search.author">作者</string>
     <string name="generic_error_message">发生了错误😢</string>
-    <string name="select_folder_subtitle">你想将单个文件添加为书本还是文件夹？</string>
-    <string name="select_folder_type_folder">文件夹</string>
     <string name="folder_mode_author">作者-书籍模式：子文件夹为作者，子文件夹下的文件夹为书籍。</string>
     <string name="select_folder_title_default">添加你的有声书</string>
     <string name="storage_bug_button">给予权限</string>
-    <string name="select_folder_type_file">文件</string>
     <string name="onboarding_welcome_title">欢迎使用Voice！</string>
     <string name="onboarding_welcome_subtitle">你的个人口袋有声读物播放器。现在来进行配置吧。</string>
     <string name="select_folder_title_onboarding">添加你的第一本有声书</string>

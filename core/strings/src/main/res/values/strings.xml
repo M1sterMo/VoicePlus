@@ -275,9 +275,41 @@
         <item quantity="one">%d audio file</item>
         <item quantity="other">%d audio files</item>
     </plurals>
-    <string name="folder_type_book_example_header">This would lead to the following books being detected</string>
-    <string name="folder_type_no_books">VoicePlus could not detect any books. Are there any audio files?</string>
-    <string name="folder_type_title">How are your files structured?</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. The whole folder is one book. -->
+    <string name="folder_mode_single_option">%s is one book</string>
+    <!-- Explains the option where a folder is one book: all its audio files become chapters, including those in disc folders. -->
+    <string name="folder_mode_single_summary">Its files become chapters, even in folders like CD 1 and CD 2.</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. Each subfolder or audio file in it is a book. -->
+    <string name="folder_mode_root_option">Every folder or file in %s is a book</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. Its subfolders are authors, their subfolders are books. -->
+    <string name="folder_mode_author_option">Folders in %s are authors</string>
+    <!-- Badge on the option for finding books that matches the picked folder best. -->
+    <string name="folder_mode_guess">Looks like yours</string>
+    <!-- Title of the sheet with the options for how books are found in a folder. %s is the folder name. -->
+    <string name="folder_mode_sheet_title">How is %s organized?</string>
+    <!-- Number of books an option for finding books would lead to. -->
+    <plurals name="folder_mode_book_count">
+        <item quantity="one">%d book</item>
+        <item quantity="other">%d books</item>
+    </plurals>
+    <!-- Title while a picked folder is looked through. %s is the folder name. -->
+    <string name="folder_review_loading">Looking through %s…</string>
+    <!-- Title once the books in a picked folder are found. -->
+    <plurals name="folder_review_title">
+        <item quantity="one">%d book</item>
+        <item quantity="other">%d books</item>
+    </plurals>
+    <!-- Button that adds a picked folder with the books found in it. -->
+    <plurals name="folder_review_action_add">
+        <item quantity="one">Add %d book</item>
+        <item quantity="other">Add %d books</item>
+    </plurals>
+    <!-- Text button that shows the options for how books are found in a picked folder. -->
+    <string name="folder_review_action_change">Change how books are found</string>
+    <!-- Title when a picked folder has no audio files. %s is the folder name. -->
+    <string name="folder_review_empty_title">No audio files in %s</string>
+    <!-- Subtitle when a picked folder has no audio files. -->
+    <string name="folder_review_empty_subtitle">Pick the folder that has your audiobooks in it.</string>
     <string name="bookmark_just_now">Just now</string>
     <string name="voice_intro_first_book">Let\'s add your audiobook folder so you can start listening!</string>
     <string name="migration_hint_title">Accessing old Book positions</string>
@@ -316,9 +348,12 @@
     <string name="storage_bug_button">Grant permission</string>
     <string name="select_folder_title_onboarding">Add Your First Audiobook</string>
     <string name="select_folder_title_default">Add your Audiobook(s)</string>
-    <string name="select_folder_type_file">File</string>
-    <string name="select_folder_type_folder">Folder</string>
-    <string name="select_folder_subtitle">Would you like to add a single file as a book or a folder?</string>
+    <!-- Subtitle on the add content screen. Explains that picking a folder works for one book as well as for a whole library. -->
+    <string name="folder_add_subtitle">Pick the folder with your audiobooks. It can hold a single book or your whole library.</string>
+    <!-- Main button on the add content screen that opens the system folder picker. Also shown when a picked folder has no audio files. -->
+    <string name="folder_add_action_folder">Choose a folder</string>
+    <!-- Text button on the add content screen for adding one audio file instead of a folder. -->
+    <string name="folder_add_action_file">Add a single file instead</string>
     <string name="onboarding_welcome_title">Welcome to VoicePlus!</string>
     <string name="onboarding_welcome_subtitle">Your personal pocket audiobook player. Let\'s get you set up.</string>
     <string name="onboarding.button_next">Next</string>

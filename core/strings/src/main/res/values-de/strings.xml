@@ -55,9 +55,6 @@
         <item quantity="one">%d Audiodatei</item>
         <item quantity="other">%d Audiodateien</item>
     </plurals>
-    <string name="folder_type_book_example_header">Dies würde dazu führen, dass die folgenden Bücher erkannt werden</string>
-    <string name="folder_type_no_books">Voice konnte keine Bücher erkennen. Gibt es hier Audio-Dateien?</string>
-    <string name="folder_type_title">Wie sind deine Dateien organisiert?</string>
     <string name="bookmark_just_now">Gerade eben</string>
     <string name="voice_intro_first_book">Füge Deinen Hörbuchordner hinzu, damit Du mit dem Hören beginnen kannst!</string>
     <string name="migration_hint_title">Zugriff auf alte Buchpositionen</string>
@@ -102,9 +99,6 @@
     <string name="cover_search.author">Autor</string>
     <string name="select_folder_title_onboarding">Füge Dein erstes Hörbuch hinzu</string>
     <string name="select_folder_title_default">Füge Deine Hörbücher hinzu</string>
-    <string name="select_folder_type_file">Datei</string>
-    <string name="select_folder_type_folder">Ordner</string>
-    <string name="select_folder_subtitle">Möchtest Du eine einzelne Datei als Buch oder Ordner hinzufügen?</string>
     <string name="onboarding_welcome_title">Willkommen bei Voice!</string>
     <string name="onboarding.explanation.title">Deine Bibliothek, Deine Wahl</string>
     <string name="onboarding.completion.title">Du bist fertig!</string>

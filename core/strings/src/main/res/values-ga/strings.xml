@@ -25,7 +25,6 @@
     <string name="pick_book_cover">Clúdach ón gcóras comhad</string>
     <string name="pref_report_issue">Tuairiscigh fadhb</string>
     <string name="pref_theme_dark">Téama Dorcha</string>
-    <string name="folder_type_title">Cén struchtúr atá ar do chuid comhad?</string>
     <string name="migration_detail_content_added_at">Curtha leis ag</string>
     <string name="migration_detail_content_position_current_chapter_position">Seasamh sa chaibidil</string>
     <string name="migration_delete_dialog_title">Scrios Poist</string>
@@ -42,7 +41,6 @@
     <string name="migration_detail_title">Seasamh leabhar sean</string>
     <string name="review.feedback.button.yes">Seol Aiseolas</string>
     <string name="storage_bug_title">Cead ag teastáil</string>
-    <string name="select_folder_subtitle">Ar mhaith leat comhad amháin a chur leis mar leabhar nó mar fhillteán?</string>
     <string name="onboarding.completion.title">Tá tú Socraithe go léir!</string>
     <string name="onboarding.completion.next_button">Tosaigh Éisteacht</string>
     <string name="sleep_timer.title">Codladh sámh! 🌙</string>
@@ -70,7 +68,6 @@
         <item quantity="other">%d soicindí</item>
     </plurals>
     <string name="pref_use_grid">Bain úsáid as leagan amach na greille</string>
-    <string name="select_folder_type_file">Comhad</string>
     <string name="migration_delete_dialog_action_keep">Coinnigh</string>
     <string name="onboarding.button_next">Ar aghaidh</string>
     <string name="onboarding.explanation.title">Do Leabharlann, Do Bhealach Féin</string>
@@ -97,8 +94,6 @@
         <item quantity="many">%d comhaid fuaime</item>
         <item quantity="other">%d comhaid fuaime</item>
     </plurals>
-    <string name="folder_type_book_example_header">D’fhágfadh sin go mbraithfí na leabhair seo a leanas</string>
-    <string name="folder_type_no_books">Níorbh fhéidir le Voice aon leabhar a bhrath. An bhfuil aon chomhaid fuaime ann?</string>
     <string name="bookmark_just_now">Anois féin</string>
     <string name="voice_intro_first_book">Cuirimis d’fhillteán closleabhar leis ionas gur féidir leat tosú ag éisteacht!</string>
     <string name="migration_hint_title">Teacht ar phoist na Seanleabhar</string>
@@ -127,7 +122,6 @@
     <string name="media_session_recent">le déanaí</string>
     <string name="select_folder_title_onboarding">Cuir Do Chéad Leabhar Closleabhar leis</string>
     <string name="select_folder_title_default">Cuir do Closleabhair leis</string>
-    <string name="select_folder_type_folder">Fillteán</string>
     <string name="onboarding.completion.subtitle">Tá do chéad chlosleabhar réidh le himirt. Bain sult as do thuras le Voice!</string>
     <string name="review.request.title">Taitneamh a bhaint as Guth?</string>
     <string name="review.request.content">Tá d\'aiseolas tábhachtach dúinn! Má tá nóiméad agat, déan rátáil orainn agus roinn do thaithí. Cuidíonn sé linn feabhsúcháin a dhéanamh agus eispéireas éisteachta níos fearr a thairiscint.</string>

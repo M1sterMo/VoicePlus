@@ -6,16 +6,20 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.launchMolecule
 import app.cash.turbine.test
-import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import voice.core.common.DispatcherProvider
+import voice.core.data.folders.AudiobookFolders
+import voice.core.data.folders.FolderType
 import voice.core.documentfile.FileBasedDocumentFactory
+import voice.navigation.Destination
+import voice.navigation.Navigator
 import voice.navigation.Origin
 
 @RunWith(AndroidJUnit4::class)
@@ -25,57 +29,48 @@ class SelectFolderTypeViewModelTest {
   val temporaryFolder = TemporaryFolder()
 
   @Test
-  fun test() = runTest {
+  fun `starts with the guess and adds the folder in the selected mode`() = runTest {
     val audiobookFolder = temporaryFolder.newFolder("audiobooks")
     with(temporaryFolder) {
-      newFile("audiobooks/FirstBook.mp3")
+      newFile("audiobooks/FirstBook.m4b")
       newFolder("audiobooks/SecondBook")
       newFile("audiobooks/SecondBook/1.mp3")
       newFile("audiobooks/SecondBook/2.mp3")
     }
+    val audiobookFolders = mockk<AudiobookFolders>(relaxed = true)
+    val navigator = mockk<Navigator>(relaxed = true)
     val viewModel = SelectFolderTypeViewModel(
       dispatcherProvider = DispatcherProvider(coroutineContext, coroutineContext, coroutineContext),
-      audiobookFolders = mockk(),
-      navigator = mockk(),
+      audiobookFolders = audiobookFolders,
+      navigator = navigator,
       documentFileFactory = FileBasedDocumentFactory,
       uri = audiobookFolder.toUri(),
       documentFile = DocumentFile.fromFile(audiobookFolder),
-      origin = Origin.Default,
+      origin = Origin.Onboarding,
     )
-    viewModel.setFolderMode(FolderMode.Audiobooks)
 
     backgroundScope.launchMolecule(RecompositionMode.Immediate) {
       viewModel.viewState()
     }.test {
-      suspend fun expectItem(
-        folderMode: FolderMode,
-        vararg books: SelectFolderTypeViewState.Book,
-      ) {
-        with(awaitItem()) {
-          this.books.shouldContainExactlyInAnyOrder(books.toList())
-          this.selectedFolderMode shouldBe folderMode
-        }
+      var state = awaitItem()
+      while (state.loading || state.folderName.isEmpty()) state = awaitItem()
+      state.folderName shouldBe "audiobooks"
+      state.guessedMode shouldBe FolderMode.Audiobooks
+      state.selectedMode shouldBe FolderMode.Audiobooks
+      state.books.map { it.name }.sorted() shouldBe listOf("FirstBook", "SecondBook")
+
+      viewModel.selectMode(FolderMode.SingleBook)
+      with(awaitItem()) {
+        selectedMode shouldBe FolderMode.SingleBook
+        guessedMode shouldBe FolderMode.Audiobooks
+        books shouldBe listOf(SelectFolderTypeViewState.Book("audiobooks", author = null, fileCount = 3))
       }
-      expectItem(FolderMode.Audiobooks)
+    }
 
-      expectItem(
-        FolderMode.Audiobooks,
-        SelectFolderTypeViewState.Book("FirstBook", 1),
-        SelectFolderTypeViewState.Book("SecondBook", 2),
-      )
-
-      viewModel.setFolderMode(FolderMode.SingleBook)
-
-      expectItem(
-        FolderMode.SingleBook,
-        SelectFolderTypeViewState.Book("FirstBook", 1),
-        SelectFolderTypeViewState.Book("SecondBook", 2),
-      )
-
-      expectItem(
-        FolderMode.SingleBook,
-        SelectFolderTypeViewState.Book("audiobooks", 3),
-      )
+    viewModel.add()
+    verify {
+      audiobookFolders.add(audiobookFolder.toUri(), FolderType.SingleFolder)
+      navigator.goTo(Destination.OnboardingCompletion)
     }
   }
 }

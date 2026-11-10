@@ -59,9 +59,6 @@
         <item quantity="many">%d plików audio</item>
         <item quantity="other">%d plików audio</item>
     </plurals>
-    <string name="folder_type_book_example_header">Będzie to skutkowało wykryciem następujących książek</string>
-    <string name="folder_type_no_books">Voice nie wykrył żadnych książek. Czy na pewno są tam pliki audio?</string>
-    <string name="folder_type_title">Jaka jest struktura twoich plików?</string>
     <string name="bookmark_just_now">Przed chwilą</string>
     <string name="voice_intro_first_book">Dodajmy twój folder z audiobookami aby rozpocząć słuchanie!</string>
     <string name="migration_hint_title">Sprawdzanie starych pozycji książek</string>
@@ -100,10 +97,8 @@
     <string name="cover_search_template_with_author">Okładka audiobooka %1$s autorstwa %2$s</string>
     <string name="cover_search.author">Autor</string>
     <string name="review.feedback.button.no">Anuluj</string>
-    <string name="select_folder_subtitle">Chcesz dodać książkę w formie pojedynczego pliku czy folderu?</string>
     <string name="sleep_timer.title">Słodkich snów! 🌙</string>
     <string name="onboarding.button_next">Dalej</string>
-    <string name="select_folder_type_folder">Folder</string>
     <string name="onboarding.completion.subtitle">Twój pierwszy audiobook jest gotowy do odtworzenia. Ciesz się podróżą z aplikacją Voice!</string>
     <string name="folder_mode_author">Tryb autor-książka: Podfoldery to autorzy a dalsze podfoldery to książki.</string>
     <string name="storage_bug_title">Wymagany dostęp</string>
@@ -111,7 +106,6 @@
     <string name="review.feedback.title">Przykro nam to słyszeć!</string>
     <string name="onboarding.explanation.title">Twoja Biblioteka, Twój Wybór</string>
     <string name="review.request.button.yes">Oceń Teraz</string>
-    <string name="select_folder_type_file">Plik</string>
     <string name="onboarding_welcome_title">Witaj w Voice!</string>
     <plurals name="minutes">
         <item quantity="one">%d minuta</item>

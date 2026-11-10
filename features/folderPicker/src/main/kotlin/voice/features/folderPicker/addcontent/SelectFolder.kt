@@ -66,11 +66,11 @@ internal fun SelectFolder(
           Spacer(modifier = Modifier.size(4.dp))
           Text(
             modifier = Modifier.padding(horizontal = 24.dp),
-            text = stringResource(StringsR.string.select_folder_subtitle),
+            text = stringResource(StringsR.string.folder_add_subtitle),
             style = MaterialTheme.typography.bodyLarge,
           )
           Spacer(modifier = Modifier.size(24.dp))
-          SelectFolderButtonRow(onAdd)
+          ContentTypeChoices(onAdd = onAdd, modifier = Modifier.padding(horizontal = 24.dp))
         }
       }
     },

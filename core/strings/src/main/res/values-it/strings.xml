@@ -56,9 +56,6 @@
     </plurals>
     <string name="folder_mode_root">Modalità libro di primo livello: le sottocartelle sono libri</string>
     <string name="folder_mode_single">Modalità libro singolo: una cartella equivale a un libro.</string>
-    <string name="folder_type_book_example_header">Questo porterebbe al rilevamento dei seguenti libri</string>
-    <string name="folder_type_no_books">Voice non ha rilevato alcun libro. Ci sono file audio?</string>
-    <string name="folder_type_title">Come sono organizzati i tuoi file?</string>
     <string name="migration_hint_title">Accesso alle vecchie posizioni del libro</string>
     <string name="migration_hint_confirm">Ho capito</string>
     <string name="migration_detail_content_name">Nome</string>
@@ -112,9 +109,6 @@
     <string name="cover_search.icon_recent">Interrogazione recente</string>
     <string name="select_folder_title_onboarding">Aggiungi il tuo primo audiolibro</string>
     <string name="select_folder_title_default">Aggiungi il tuo audiolibro(i)</string>
-    <string name="select_folder_type_file">File</string>
-    <string name="select_folder_type_folder">Cartella</string>
-    <string name="select_folder_subtitle">Vuoi aggiungere un singolo file come un libro o una cartella?</string>
     <string name="onboarding_welcome_title">Benvenuto in Voice!</string>
     <string name="onboarding_welcome_subtitle">Il tuo lettore di audiolibri tascabile personale. Ti prepariamo.</string>
     <string name="onboarding.button_next">Avanti</string>

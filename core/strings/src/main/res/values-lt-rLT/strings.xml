@@ -58,9 +58,6 @@
         <item quantity="many">%d garsinių failų</item>
         <item quantity="other">%d garsinių failų</item>
     </plurals>
-    <string name="folder_type_book_example_header">Tai leistų aptikti šias knygas</string>
-    <string name="folder_type_no_books">„Voice“ nepavyko aptikti jokių knygų. Ar viduje yra garsinių failų?</string>
-    <string name="folder_type_title">Kokia jūsų failų struktūra?</string>
     <string name="bookmark_just_now">Ką tik</string>
     <string name="voice_intro_first_book">Jei norite pradėti klausytis, pridėkite garsinių knygų aplanką!</string>
     <string name="migration_hint_title">Skaitomos senosios pozicijos knygose</string>

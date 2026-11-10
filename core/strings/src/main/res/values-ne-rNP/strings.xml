@@ -43,7 +43,6 @@
         <item quantity="one">%d अडियो फाइल</item>
         <item quantity="other">%d अडियो फाइलहरू</item>
     </plurals>
-    <string name="folder_type_title">तपाईंको फाइलहरू कसरी संरचित छन्?</string>
     <string name="migration_detail_content_root">रूट फोल्डर</string>
     <string name="search_hint">तपाईं के खोज्दै हुनुन्छ?</string>
     <string name="notification_sleep_timer_disable">सुत्ने-टाइमर असक्षम गर्नुहोस्</string>
@@ -86,8 +85,6 @@
     <string name="folder_mode_single">एकल पुस्तक मोड: एउटा फोल्डर एक पुस्तक बराबर।</string>
     <string name="folder_mode_author">लेखक-पुस्तक मोड: सबफोल्डरहरू लेखकहरू हुन्, उप-सबफोल्डरहरू पुस्तक हुन्।</string>
     <string name="cover_search.icon_recent">हालको खोजी</string>
-    <string name="folder_type_book_example_header">यसले निम्न पुस्तकहरू पत्ता लगाउन नेतृत्व गर्नेछ</string>
-    <string name="folder_type_no_books">Voice ले कुनै पनि पुस्तकहरू पत्ता लगाउन सकेन। के त्यहाँ कुनै अडियो फाइलहरू छन्?</string>
     <string name="edit_book_title">पुस्तक सम्पादन गर्नुहोस्</string>
     <string name="cover_search.author">लेखक</string>
     <string name="voice_intro_first_book">तपाईंको अडियोबूक फोल्डर थप्नुहोस् ताकि तपाईं सुन्न सुरु गर्न सक्नुहुन्छ!</string>
@@ -99,10 +96,7 @@
     <string name="select_folder_title_onboarding">आफ्नो पहिलो अडियोबूक थप्नुहोस्</string>
     <string name="select_folder_title_default">आफ्नो अडियोबूक(हरू) थप्नुहोस्</string>
     <string name="migration_delete_dialog_content">एकचोटि तपाईंले पुरानो ठाउँहरू मेटाउनुभएपछि तपाईं आफ्नो पुरानो प्लेब्याक ठाउँहरू पुन: प्राप्त गर्न सक्षम हुनुहुने छैन।</string>
-    <string name="select_folder_type_file">फाइल</string>
-    <string name="select_folder_type_folder">फोल्डर</string>
     <string name="onboarding_welcome_title">Voice मा तपाईंलाई स्वागत छ!</string>
-    <string name="select_folder_subtitle">के तपाईं एउटा एकल फाइललाई पुस्तक वा फोल्डर को रूपमा थप्न चाहनुहुन्छ?</string>
     <string name="onboarding_welcome_subtitle">तपाईंको व्यक्तिगत पकेट अडियोबूक प्लेयर। तपाईलाई सेट अप गरौं।</string>
     <string name="onboarding.explanation.title">तपाईंको पुस्तकालय, तपाईंको इच्छा अनुसार</string>
     <string name="onboarding.explanation.subtitle">Voice को साथ, तपाईंले पुस्तकहरूलाई व्यक्तिगत फाइलहरूको रूपमा थप्न वा फोल्डरहरूमा व्यवस्थित गर्न सक्नुहुन्छ। तपाईं छान्नुहोस्!</string>

@@ -55,9 +55,6 @@
         <item quantity="one">%d audiobestand</item>
         <item quantity="other">%d audiobestanden</item>
     </plurals>
-    <string name="folder_type_book_example_header">Hierdoor worden de volgende boeken opgenomen</string>
-    <string name="folder_type_no_books">Er zijn geen boeken aangetroffen. Zijn er audiobestanden aanwezig?</string>
-    <string name="folder_type_title">Hoe zijn de bestanden onderverdeeld?</string>
     <string name="bookmark_just_now">Zojuist</string>
     <string name="voice_intro_first_book">Laten we je luisterboekmap toevoegen om te beginnen met luisteren!</string>
     <string name="migration_hint_title">Oude leeslocaties</string>
@@ -94,7 +91,6 @@
     <string name="pause">Pauzeer</string>
     <string name="cover_search_template_no_author">%s luisterboekomslag</string>
     <string name="cover_search_template_with_author">%1$s door %2$s luisterboekomslag</string>
-    <string name="select_folder_type_file">Bestand</string>
     <string name="select_folder_title_default">Voeg Luisterboek(en) toe</string>
     <string name="folder_mode_author">Auteur-boek mode: Subfolders zijn auteurs, sub-subfolders bevatten boeken.</string>
     <string name="storage_bug_subtitle">Voor sommige toestellen mist een systeem applicatie toegang tot de externe opslag. Deze toegang is essentieel voor Voice om de je luisterboeken te kunnen lezen.</string>
@@ -117,12 +113,10 @@
     <string name="cover_search.author">Auteur</string>
     <string name="onboarding_welcome_title">Welkom bij Voice!</string>
     <string name="onboarding.button_next">Volgende</string>
-    <string name="select_folder_type_folder">Map</string>
     <string name="onboarding.explanation.subtitle">Met Voice kan je individuele boeken toevoegen of ze organiseren in folders. Jij kiest!</string>
     <string name="onboarding.explanation.title">Jouw bibliotheek, jouw manier</string>
     <string name="onboarding.completion.next_button">Begin te luisteren</string>
     <string name="cover_search.icon_recent">Recente zoekopdracht</string>
-    <string name="select_folder_subtitle">Wil je een enkel bestand toevoegen als een boek of een folder?</string>
     <string name="onboarding.completion.subtitle">Je eerste luisterboek is klaar om af te spelen. Geniet van je ervaring met Voice!</string>
     <string name="review.request.content">Je menig is van belang voor ons. Neem even de tijd, beoordeeld ons en deel je ervaring. Dit helpt ons verbeteringen aan te brengen en een betere ervaring aan te bieden.</string>
     <string name="onboarding.completion.title">Je bent helemaal klaar!</string>
