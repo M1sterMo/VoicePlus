@@ -21,6 +21,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +64,8 @@ import voice.core.playback.session.MediaItemProvider
 import voice.core.playback.session.search.book
 import voice.core.playback.session.toMediaIdOrNull
 import voice.core.playback.toLivePlaybackState
+import voice.core.sleeptimer.SleepTimer
+import voice.core.sleeptimer.SleepTimerState
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -155,6 +158,8 @@ class VoicePlayerTest {
     coEvery { get(bookId) } answers { currentBook }
     coEvery { updateBook(any(), any()) } just Runs
   }
+  private val sleepTimerState = MutableStateFlow<SleepTimerState>(SleepTimerState.Disabled)
+  private val sleepTimer = mockk<SleepTimer>(relaxed = true) { every { state } returns sleepTimerState }
   private val chapterMarkChangeNotifier = ChapterMarkChangeNotifier()
   private val playbackIntentHolder = PlaybackIntentHolder(ApplicationProvider.getApplicationContext())
   private val player = VoicePlayer(
@@ -172,7 +177,7 @@ class VoicePlayerTest {
     mediaItemProvider = mediaItemProvider,
     volumeGain = volumeGain,
     globalVolumeGainStore = globalVolumeGainStore,
-    sleepTimer = mockk(relaxed = true),
+    sleepTimer = sleepTimer,
     intentHolder = playbackIntentHolder,
     listeningEventRecorder = mockk(relaxed = true),
     chapterMarkChangeNotifier = chapterMarkChangeNotifier,
@@ -370,6 +375,24 @@ class VoicePlayerTest {
 
     player.seekBack()
     player.shouldHavePosition(0, 0)
+  }
+
+  @Test
+  fun `chapter boundaries name their book so a chapter timer counts them in every book`() = scope.runTest {
+    sleepTimerState.value = SleepTimerState.Enabled.WithEndOfChapter(chaptersRemaining = 3)
+    setMediaItems(
+      listOf(
+        chapter(
+          ChapterMark(startMs = 0, endMs = 999, name = null),
+          ChapterMark(startMs = 1_000, endMs = 2_000, name = null),
+        ),
+      ),
+    )
+    player.prepare()
+    player.play()
+    TestPlayerRunHelper.playUntilPosition(internalPlayer, 0, 1_500)
+
+    verify { sleepTimer.onChapterBoundaryReached("${bookId.value}:0:1000") }
   }
 
   @Test

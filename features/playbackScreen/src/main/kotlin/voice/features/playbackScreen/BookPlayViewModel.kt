@@ -33,7 +33,6 @@ import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.CoverGlowStore
-import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.GridModeStore
 import voice.core.data.store.PlaybackToolbarActionsStore
@@ -66,8 +65,6 @@ class BookPlayViewModel(
   private val player: PlayerController,
   private val sleepTimer: SleepTimer,
   private val playStateManager: PlayStateManager,
-  @CurrentBookStore
-  private val currentBookStoreId: DataStore<BookId?>,
   private val navigator: Navigator,
   private val bookmarkRepository: BookmarkRepo,
   private val characterRepo: BookCharacterRepo,
@@ -94,13 +91,6 @@ class BookPlayViewModel(
 
   private val _dialogState = mutableStateOf<BookPlayDialogViewState?>(null)
   internal val dialogState: State<BookPlayDialogViewState?> get() = _dialogState
-
-  init {
-    scope.launch {
-      player.pauseIfCurrentBookDifferentFrom(bookId)
-      currentBookStoreId.updateData { bookId }
-    }
-  }
 
   @Composable
   fun viewState(): BookPlayViewState? {

@@ -62,7 +62,6 @@ class BookPlayViewModelTest {
   private val scope = TestScope()
   private val sleepTimerDataStore = MemoryDataStore(SleepTimerPreference.Default.copy(duration = 5.minutes))
   private val book = book()
-  private val currentBookStoreId = MemoryDataStore<BookId?>(book.id)
   private val globalVolumeGainStore = MemoryDataStore<Float?>(null)
   private val sleepTimer = mockk<SleepTimer> {
     val stateFlow = MutableStateFlow<SleepTimerState>(SleepTimerState.Disabled)
@@ -106,7 +105,6 @@ class BookPlayViewModelTest {
     player = player,
     sleepTimer = sleepTimer,
     playStateManager = playStateManager,
-    currentBookStoreId = currentBookStoreId,
     navigator = mockk(),
     bookmarkRepository = bookmarkRepository,
     characterRepo = mockk<BookCharacterRepo> {
@@ -577,7 +575,6 @@ class BookPlayViewModelTest {
         every { flow } returns playStateFlow
         every { playState } returns playStateFlow.value
       },
-      currentBookStoreId = MemoryDataStore(book.id),
       navigator = mockk(),
       bookmarkRepository = mockk(),
       characterRepo = mockk {
