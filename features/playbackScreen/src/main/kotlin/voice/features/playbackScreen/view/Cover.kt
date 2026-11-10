@@ -2,7 +2,7 @@ package voice.features.playbackScreen.view
 
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +12,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
@@ -40,11 +42,11 @@ internal fun Cover(
   playing: Boolean,
   glow: Boolean = true,
 ) {
-  val glowElevation by animateDpAsState(
+  val glowStrength by animateFloatAsState(
     targetValue = when {
-      !glow -> 0.dp
-      playing -> 28.dp
-      else -> 4.dp
+      !glow -> 0f
+      playing -> 1f
+      else -> 0.4f
     },
     animationSpec = spring(stiffness = Spring.StiffnessVeryLow),
     label = "coverGlow",
@@ -53,8 +55,11 @@ internal fun Cover(
   // The jacket's corner radius matches BookshelfCover's.
   val shape = RoundedCornerShape(if (bookJacket) 3.dp else 20.dp)
   val glowAndDoubleTap = Modifier
-    // Not clipped: the jacket draws its own page edge and drop shadow past its corners.
-    .shadow(glowElevation, shape, clip = false, ambientColor = glowColor, spotColor = glowColor)
+    // A coloured drop shadow: the platform elevation shadow is too faint to carry a colour.
+    .dropShadow(
+      shape,
+      Shadow(radius = 48.dp, spread = 6.dp, color = glowColor.copy(alpha = 0.85f * glowStrength), offset = DpOffset(0.dp, 16.dp)),
+    )
     .pointerInput(Unit) {
       detectTapGestures(
         onDoubleTap = {
