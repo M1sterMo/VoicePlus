@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item android:id="@android:id/background">
+    <shape>
+      <corners android:radius="2dp" />
+      <solid android:color="@color/widget_progress_track" />
+    </shape>
+  </item>
+  <!-- scale rather than clip, so the filled part keeps its rounded end -->
+  <item android:id="@android:id/progress">
+    <scale
+      android:scaleGravity="start|center_vertical"
+      android:scaleWidth="100%">
+      <shape>
+        <corners android:radius="2dp" />
+        <solid android:color="@color/widget_primary" />
+      </shape>
+    </scale>
+  </item>
+</layer-list>

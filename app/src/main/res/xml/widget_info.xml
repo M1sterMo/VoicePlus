@@ -4,7 +4,7 @@
   android:description="@string/widget_compact_description"
   android:initialLayout="@layout/widget_compact"
   android:minWidth="250dp"
-  android:minHeight="48dp"
+  android:minHeight="110dp"
   android:minResizeWidth="48dp"
   android:minResizeHeight="48dp"
   android:resizeMode="horizontal|vertical"
