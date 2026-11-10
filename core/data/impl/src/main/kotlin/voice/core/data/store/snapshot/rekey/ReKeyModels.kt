@@ -1,13 +1,11 @@
 package voice.core.data.store.snapshot.rekey
 
-import voice.core.data.BookCharacter
 import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Bookmark
 import voice.core.data.ChapterId
 import voice.core.data.ChapterNameOverride
 import voice.core.data.ListeningSession
-import voice.core.data.store.snapshot.BookCharacterDto
 import voice.core.data.store.snapshot.BookContentDto
 import voice.core.data.store.snapshot.BookmarkDto
 import voice.core.data.store.snapshot.ChapterNameOverrideDto
@@ -52,7 +50,6 @@ internal data class SnapshotBook(
   val bookmarks: List<BookmarkDto>,
   val overrides: List<ChapterNameOverrideDto>,
   val sessions: List<ListeningSessionDto>,
-  val characters: List<BookCharacterDto>,
 )
 
 /** A freshly-scanned chapter under its new (post-re-grant) [newId], with its fresh duration. */
@@ -97,7 +94,6 @@ internal data class MatchedBook(
   val bookmarks: List<Bookmark>,
   val overrides: List<ChapterNameOverride>,
   val sessions: List<ListeningSession>,
-  val characters: List<BookCharacter>,
   val sourceLastPlayedAt: Instant,
 )
 

@@ -458,21 +458,28 @@ class DataBaseMigratorTest {
     }
     helper.runMigrationsAndValidate(name, AppDb.VERSION, true, *allMigrations()).use { db ->
       db.query(
-        "SELECT bookId, name, seriesId, sortOrder, updatedAt FROM book_character ORDER BY seriesId, sortOrder, bookId",
+        "SELECT bookId, name, seriesId, sortOrder, updatedAt, ownerBookId FROM book_character ORDER BY seriesId, sortOrder, bookId",
       ).use { cursor ->
         buildList {
           while (cursor.moveToNext()) {
             add(
-              listOf(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getInt(3), cursor.getString(4)),
+              listOf(
+                cursor.getString(0),
+                cursor.getString(1),
+                cursor.getString(2),
+                cursor.getInt(3),
+                cursor.getString(4),
+                cursor.getString(5),
+              ),
             )
           }
         }
       } shouldBe listOf(
-        listOf("gone", "Lost", null, 0, "2021"),
-        listOf("other", "Hari", null, 0, "2021"),
-        listOf("dune1", "Chani", "dune", 0, "2021"),
-        listOf("dune1", "Paul", "dune", 1, "2021"),
-        listOf("messiah", "Hayt", "dune", 2, "2021"),
+        listOf("gone", "Lost", null, 0, "2021", "gone"),
+        listOf("other", "Hari", null, 0, "2021", "other"),
+        listOf("dune1", "Chani", "dune", 0, "2021", null),
+        listOf("dune1", "Paul", "dune", 1, "2021", null),
+        listOf("messiah", "Hayt", "dune", 2, "2021", null),
       )
     }
   }

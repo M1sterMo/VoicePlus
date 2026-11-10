@@ -11,9 +11,8 @@ import voice.core.data.BookCharacter
 import voice.core.data.BookId
 import voice.core.data.LibraryPlacement
 
-// A book in a series reads its series' shared list; any other book reads the characters it owns.
-private const val LIST_OF_BOOK =
-  "seriesId IS (SELECT seriesId FROM libraryPlacement WHERE bookId = :bookId) AND (seriesId IS NOT NULL OR bookId = :bookId)"
+// A book in a series reads its series' shared list; any other book reads its own list.
+private const val LIST_OF_BOOK = "seriesId = (SELECT seriesId FROM libraryPlacement WHERE bookId = :bookId) OR ownerBookId = :bookId"
 
 @Dao
 public interface BookCharacterDao {
@@ -21,13 +20,14 @@ public interface BookCharacterDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   public suspend fun insert(character: BookCharacter)
 
-  @Insert
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
   public suspend fun insert(characters: List<BookCharacter>)
 
   /** Inserts a new character into the list its book currently shows. */
   @Transaction
   public suspend fun add(character: BookCharacter) {
-    insert(character.copy(seriesId = seriesOf(character.bookId)))
+    val seriesId = seriesOf(character.bookId)
+    insert(character.copy(seriesId = seriesId, ownerBookId = character.bookId.takeIf { seriesId == null }))
   }
 
   @Query("SELECT seriesId FROM libraryPlacement WHERE bookId = :bookId")
@@ -63,8 +63,8 @@ public interface BookCharacterDao {
   public suspend fun seriesList(seriesId: String): List<BookCharacter>
 
   @Query(
-    """SELECT c.* FROM book_character c JOIN libraryPlacement p ON p.bookId = c.bookId
-    WHERE c.seriesId IS NULL AND p.seriesId IS NOT NULL ORDER BY p.seriesPosition, c.sortOrder, c.createdAt""",
+    """SELECT c.* FROM book_character c JOIN libraryPlacement p ON p.bookId = c.ownerBookId
+    WHERE p.seriesId IS NOT NULL ORDER BY p.seriesPosition, c.sortOrder, c.createdAt""",
   )
   public suspend fun ownListsOfSeriesMembers(): List<BookCharacter>
 
@@ -81,19 +81,36 @@ public interface BookCharacterDao {
    * one of each exact duplicate (same name and description).
    */
   @Transaction
-  public suspend fun followSeries(before: List<LibraryPlacement>) {
+  public suspend fun followSeries(before: List<LibraryPlacement> = emptyList()) {
     val seriesNow = placements().associate { it.bookId to it.seriesId }
     before.filter { it.seriesId != null && it.bookId in seriesNow && seriesNow[it.bookId] != it.seriesId }.forEach { left ->
-      insert(seriesList(left.seriesId!!).map { it.copy(id = 0, bookId = BookId(left.bookId), seriesId = null) })
+      insert(seriesList(left.seriesId!!).map { it.copy(id = 0, seriesId = null, ownerBookId = BookId(left.bookId)) })
     }
     deleteListsOfEmptySeries()
-    ownListsOfSeriesMembers().groupBy { seriesNow.getValue(it.bookId.value)!! }.forEach { (seriesId, joining) ->
+    ownListsOfSeriesMembers().groupBy { seriesNow.getValue(it.ownerBookId!!.value)!! }.forEach { (seriesId, joining) ->
       val seen = mutableSetOf<Pair<String, String>>()
       val (kept, duplicates) = (seriesList(seriesId) + joining).partition { seen.add(it.name to it.description) }
       delete(duplicates.map { it.id })
-      update(kept.mapIndexed { index, character -> character.copy(seriesId = seriesId, sortOrder = index) })
+      update(kept.mapIndexed { index, character -> character.copy(sortOrder = index, seriesId = seriesId, ownerBookId = null) })
     }
   }
+
+  /** Turns the table, holding [current], back into [saved], matching rows by id. */
+  @Transaction
+  public suspend fun restore(
+    current: List<BookCharacter>,
+    saved: List<BookCharacter>,
+  ) {
+    delete(current.map { it.id } - saved.map { it.id }.toSet())
+    insert(saved - current.toSet())
+  }
+
+  /** A restore found the book that [old] identified under the id [new]. */
+  @Query("UPDATE book_character SET bookId = :new WHERE bookId = :old")
+  public suspend fun reKeyOrigin(
+    old: BookId,
+    new: BookId,
+  )
 
   @Query("SELECT * FROM book_character")
   public suspend fun all(): List<BookCharacter>

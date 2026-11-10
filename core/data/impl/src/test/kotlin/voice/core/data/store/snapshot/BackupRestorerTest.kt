@@ -302,6 +302,40 @@ class BackupRestorerTest {
     characters.characters(BookId("b")).first().map { it.name } shouldBe listOf("Paul", "Leto")
   }
 
+  @Test
+  fun `restoring a backup from before a grouping does not duplicate the book's characters`() = runTest {
+    listOf("a", "b").forEach { contentRepo.put(book(it, active = true)) }
+    BookCharacterRepoImpl(db.bookCharacterDao()).upsert(character("a", "Paul"))
+    val snapshot = snapshotOf("a", "b").copy(
+      schemaVersion = LibrarySnapshot.SCHEMA_VERSION,
+      characters = db.bookCharacterDao().all().map { it.toDto() },
+      organisation = LibraryOrganisationRepoImpl(db).get(),
+    )
+    LibraryOrganisationRepoImpl(db).saveSeries(null, "Dune", listOf(BookId("a"), BookId("b")))
+
+    restorer().applyDirect(snapshot) shouldBe 2
+
+    val characters = BookCharacterRepoImpl(db.bookCharacterDao())
+    characters.characters(BookId("a")).first().map { it.name } shouldBe listOf("Paul")
+    characters.characters(BookId("b")).first().map { it.name } shouldBe listOf("Paul")
+  }
+
+  @Test
+  fun `a backup from before shared lists does not bring back an edited series character`() = runTest {
+    listOf("a", "b").forEach { contentRepo.put(book(it, active = true)) }
+    val organisation = LibraryOrganisationRepoImpl(db)
+    organisation.saveSeries(null, "Dune", listOf(BookId("a"), BookId("b")))
+    val characters = BookCharacterRepoImpl(db.bookCharacterDao())
+    characters.upsert(character("a", "Paul").copy(description = "Emperor"))
+    val stale = character("a", "Paul").copy(description = "Duke").toDto().copy(ownerBookId = null)
+
+    restorer().applyDirect(
+      snapshotOf("a", "b").copy(schemaVersion = 7, characters = listOf(stale), organisation = organisation.get()),
+    ) shouldBe 2
+
+    characters.characters(BookId("b")).first().map { it.description } shouldBe listOf("Emperor")
+  }
+
   private fun character(
     book: String,
     name: String,

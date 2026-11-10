@@ -141,7 +141,9 @@ class SeriesCharactersTest {
 
     names("c") shouldBe listOf("Paul", "Leto")
     names("a") shouldBe listOf("Paul", "Leto")
-    list("c").all { it.seriesId == null && it.bookId.value == "c" } shouldBe true
+    list("c").all { it.seriesId == null && it.ownerBookId?.value == "c" } shouldBe true
+    // Copies remember the book each character was added in.
+    list("c").map { it.bookId.value } shouldBe listOf("a", "c")
 
     add("c", "Ghanima")
     characters.delete(list("a").first().id)
@@ -190,18 +192,48 @@ class SeriesCharactersTest {
     organisation.saveSeries(other, "Foundation", listOf("c", "d", "b").map(::BookId))
 
     names("d") shouldBe listOf("Hari", "Paul")
+    list("d").map { it.bookId.value } shouldBe listOf("c", "a")
     names("a") shouldBe listOf("Paul")
   }
 
-  @Test fun `undoing a grouping leaves each book with the merged list`() = runTest {
+  @Test fun `undoing a grouping puts each book's own list back`() = runTest {
     seed("a", "b")
     add("a", "Paul")
     add("b", "Leto")
+    val before = db.bookCharacterDao().all()
     val change = organisation.saveSeries(null, "Dune", listOf("a", "b").map(::BookId))
 
     organisation.undo(change) shouldBe true
 
+    db.bookCharacterDao().all() shouldBe before
+  }
+
+  @Test fun `undoing a move between series puts both series' lists back`() = runTest {
+    seed("a", "b", "c")
+    val dune = group("a", "b")
+    add("a", "Paul")
+    val foundation = organisation.saveSeries(null, "Foundation", listOf(BookId("c"))).after.series.single { it.name == "Foundation" }.id
+    add("c", "Hari")
+    val before = db.bookCharacterDao().all()
+    val change = organisation.saveSeries(foundation, "Foundation", listOf("c", "b").map(::BookId))
+    names("c") shouldBe listOf("Hari", "Paul")
+
+    organisation.undo(change) shouldBe true
+
+    db.bookCharacterDao().all() shouldBe before
+    names("b") shouldBe listOf("Paul")
+    names("c") shouldBe listOf("Hari")
+    organisation.get().placements.single { it.bookId == "b" }.seriesId shouldBe dune
+  }
+
+  @Test fun `undo is refused once a list it would restore has been edited`() = runTest {
+    seed("a", "b")
+    add("a", "Paul")
+    val change = organisation.saveSeries(null, "Dune", listOf("a", "b").map(::BookId))
+    add("b", "Leto")
+
+    organisation.undo(change) shouldBe false
+
     names("a") shouldBe listOf("Paul", "Leto")
-    names("b") shouldBe listOf("Paul", "Leto")
   }
 }
