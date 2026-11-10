@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
 import voice.core.ui.ImmutableFile
+import voice.core.ui.formatTime
 import voice.core.ui.sharedBookCover
 import voice.features.bookOverview.overview.BookOverviewItemViewState
 import voice.features.bookOverview.overview.BookOverviewLayoutMode
@@ -259,6 +260,7 @@ internal fun ListBookRow(
 @Composable
 internal fun BookOverviewItemViewState.statusLabel(): String {
   return when {
+    showLength -> formatTime(durationMs)
     !finished -> stringResource(StringsR.string.book_time_left, remainingTime)
     finishedOn != null -> stringResource(StringsR.string.book_finished_on, finishedOn)
     else -> stringResource(StringsR.string.book_header_completed)

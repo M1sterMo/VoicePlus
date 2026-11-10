@@ -550,4 +550,6 @@ private val ShelfSort.label: String @Composable get() = when (this) {
   ShelfSort.TITLE -> stringResource(StringsR.string.library_sort_title)
   ShelfSort.AUTHOR -> stringResource(StringsR.string.library_sort_author)
   ShelfSort.RECENTLY_ADDED -> stringResource(StringsR.string.library_recently_added)
+  ShelfSort.SHORTEST -> stringResource(StringsR.string.library_sort_shortest)
+  ShelfSort.LONGEST -> stringResource(StringsR.string.library_sort_longest)
 }

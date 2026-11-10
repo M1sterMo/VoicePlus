@@ -20,7 +20,7 @@ public data class LibraryShelf(
 }
 
 @Serializable
-public enum class ShelfSort { MANUAL, TITLE, AUTHOR, RECENTLY_ADDED }
+public enum class ShelfSort { MANUAL, TITLE, AUTHOR, RECENTLY_ADDED, SHORTEST, LONGEST }
 
 @Serializable
 @Entity(tableName = "librarySeries")

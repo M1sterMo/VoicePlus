@@ -527,6 +527,8 @@
     <string name="library_sort_title">Title</string>
     <string name="library_sort_author">Author</string>
     <string name="library_recently_added">Recently added</string>
+    <string name="library_sort_shortest">Shortest first</string>
+    <string name="library_sort_longest">Longest first</string>
     <string name="library_organise_shelf">Organise %1$s</string>
     <string name="library_expanded">Expanded</string>
     <string name="library_collapsed">Collapsed</string>

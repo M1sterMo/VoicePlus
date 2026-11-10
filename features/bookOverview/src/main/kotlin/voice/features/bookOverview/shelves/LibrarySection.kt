@@ -1,6 +1,7 @@
 package voice.features.bookOverview.shelves
 
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import voice.core.common.comparator.NaturalOrderComparator
 import voice.core.data.BookId
 import voice.core.data.LibraryOrganisation
@@ -62,7 +63,9 @@ internal fun librarySections(
             ShelfFilter.COMPLETED -> book.value.finished
           }
         }
-        LibraryEntry(group?.name, visible, shelf.id, key, group?.id, ordered)
+        val byLength = shelf.sort == ShelfSort.SHORTEST || shelf.sort == ShelfSort.LONGEST
+        val shown = if (byLength) visible.map { book -> derivedStateOf { book.value.copy(showLength = true) } } else visible
+        LibraryEntry(group?.name, shown, shelf.id, key, group?.id, ordered)
       }.filter { it.books.isNotEmpty() }
       val comparator = when (shelf.sort) {
         ShelfSort.MANUAL -> compareBy<LibraryEntry> { placements[it.books.first().value.id]?.position ?: Int.MAX_VALUE }
@@ -71,6 +74,9 @@ internal fun librarySections(
           entry.allBooks.mapNotNull { it.value.author?.takeIf(String::isNotBlank) }.distinct().singleOrNull()
         }.thenBy(NaturalOrderComparator.stringComparator) { it.title }
         ShelfSort.RECENTLY_ADDED -> compareByDescending<LibraryEntry> { it.allBooks.maxOf { book -> book.value.addedAt } }
+        // A series stack counts as one item as long as all its books together.
+        ShelfSort.SHORTEST -> compareBy<LibraryEntry> { it.allBooks.sumOf { book -> book.value.durationMs } }
+        ShelfSort.LONGEST -> compareByDescending<LibraryEntry> { it.allBooks.sumOf { book -> book.value.durationMs } }
       }.thenBy { it.itemId }
       if (entries.isNotEmpty() || shelf.id != LibraryShelf.OTHER) {
         add(LibrarySection(shelf.id, shelf, entries.sortedWith(comparator), homes[shelf.id].orEmpty().size))

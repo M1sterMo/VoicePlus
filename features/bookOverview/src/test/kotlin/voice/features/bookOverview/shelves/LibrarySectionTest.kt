@@ -151,4 +151,38 @@ class LibrarySectionTest {
     after.entries.single().books.map { it.value.id } shouldBe before.entries.single().books.map { it.value.id }
     after.count shouldBe 3
   }
+
+  @Test fun `length sorts count a series as all its books together and show full lengths`() {
+    fun timed(
+      id: String,
+      minutes: Long,
+    ) = mutableStateOf(
+      BookOverviewItemViewState(id, null, null, 0f, BookId(id), "1h", durationMs = minutes * 60_000),
+    )
+    val short = timed("short", 30)
+    val long = timed("long", 300)
+    val partA = timed("partA", 100)
+    val partB = timed("partB", 100)
+    val all = listOf(short, long, partA, partB).associateBy { it.value.id }
+    fun sorted(sort: ShelfSort) = librarySections(
+      all,
+      emptyList(),
+      LibraryOrganisation(
+        listOf(LibraryShelf.Other, LibraryShelf("s", "S", 0, sort)),
+        listOf(LibrarySeries("pair", "Pair")),
+        listOf(
+          LibraryPlacement("short", "s", 0),
+          LibraryPlacement("long", "s", 1),
+          LibraryPlacement("partA", "s", 2, "pair", 0),
+          LibraryPlacement("partB", "s", 2, "pair", 1),
+        ),
+      ),
+      ShelfFilter.ALL,
+    ).single().entries
+
+    sorted(ShelfSort.SHORTEST).map { it.itemId } shouldBe listOf("book:short", "series:pair", "book:long")
+    sorted(ShelfSort.LONGEST).map { it.itemId } shouldBe listOf("book:long", "series:pair", "book:short")
+    sorted(ShelfSort.SHORTEST).flatMap { it.books }.all { it.value.showLength } shouldBe true
+    sorted(ShelfSort.TITLE).flatMap { it.books }.none { it.value.showLength } shouldBe true
+  }
 }

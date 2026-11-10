@@ -28,6 +28,9 @@ data class BookOverviewItemViewState(
   val seriesPart: String? = null,
   val importedSeries: String? = null,
   val addedAt: Long = 0L,
+  val durationMs: Long = 0L,
+  /** In a shelf sorted by length the row shows the book's full length, which is what it is sorted by. */
+  val showLength: Boolean = false,
 )
 
 /**
@@ -51,6 +54,7 @@ internal fun Book.toItemViewState(finishedAt: Instant? = null): BookOverviewItem
     seriesPart = content.part,
     importedSeries = content.series,
     addedAt = content.addedAt.toEpochMilli(),
+    durationMs = duration,
   )
 }
 
