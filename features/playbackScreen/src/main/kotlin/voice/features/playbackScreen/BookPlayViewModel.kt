@@ -147,6 +147,8 @@ class BookPlayViewModel(
       duration = currentMark.durationMs.milliseconds,
       playedTime = positionInCurrentMark.milliseconds,
       playbackSpeed = book.content.playbackSpeed,
+      bookProgress = (book.position.toFloat() / book.duration).coerceIn(0F, 1F),
+      bookTimeLeft = (book.duration - book.position).coerceAtLeast(0).milliseconds,
       cover = book.content.cover?.let(::ImmutableFile),
       skipSilence = book.content.skipSilence,
       characterCount = characterCount,

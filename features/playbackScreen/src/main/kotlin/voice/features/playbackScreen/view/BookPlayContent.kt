@@ -61,6 +61,11 @@ internal fun BookPlayContent(
           )
         }
         Spacer(modifier = Modifier.size(20.dp))
+        BookProgressRow(
+          progress = viewState.bookProgress,
+          timeLeft = viewState.bookTimeLeft,
+          playbackSpeed = viewState.playbackSpeed,
+        )
         SliderRow(
           duration = viewState.duration,
           playedTime = viewState.playedTime,
@@ -100,6 +105,11 @@ internal fun BookPlayContent(
         )
       }
       Spacer(modifier = Modifier.size(20.dp))
+      BookProgressRow(
+        progress = viewState.bookProgress,
+        timeLeft = viewState.bookTimeLeft,
+        playbackSpeed = viewState.playbackSpeed,
+      )
       SliderRow(
         duration = viewState.duration,
         playedTime = viewState.playedTime,

@@ -439,6 +439,32 @@ class BookPlayViewModelTest {
   }
 
   @Test
+  fun `book progress covers the whole book and its time left follows playback speed`() = scope.runTest {
+    val viewModel = viewModel(
+      livePlaybackFlow = MutableStateFlow(
+        LivePlaybackState(
+          bookId = book.id,
+          chapterId = book.currentChapter.id,
+          positionMs = book.content.positionInChapter,
+          isPlaying = false,
+          playbackSpeed = 2F,
+        ),
+      ),
+    )
+
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+      viewModel.viewState()
+    }.test {
+      var state = awaitItem()
+      while (state == null) state = awaitItem()
+      // Two 5-minute chapters, 2:30 into the second.
+      state.bookProgress shouldBe 0.75F
+      state.bookTimeLeft shouldBe 2.5.minutes
+      state.bookTimeLeft.atSpeed(state.playbackSpeed) shouldBe 75.seconds
+    }
+  }
+
+  @Test
   fun `viewState falls back to manager play state when live playback is unavailable`() = scope.runTest {
     val viewModel = viewModel(
       livePlaybackFlow = MutableStateFlow(null),

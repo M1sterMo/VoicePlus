@@ -124,6 +124,8 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       duration = 10.minutes,
       playedTime = 3.minutes,
       playbackSpeed = 1F,
+      bookProgress = 0.42F,
+      bookTimeLeft = 109.minutes,
       playing = true,
       skipSilence = true,
       sleepTimerState = BookPlayViewState.SleepTimerViewState.Disabled,

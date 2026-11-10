@@ -507,4 +507,6 @@
     <string name="library_empty_shelf">Empty shelf</string>
     <string name="library_series_saved">Series saved</string>
     <string name="library_series_ungrouped">Books ungrouped</string>
+    <string name="book_progress_completed">%1$d%% completed</string>
+    <string name="book_time_left">%1$s left</string>
 </resources>

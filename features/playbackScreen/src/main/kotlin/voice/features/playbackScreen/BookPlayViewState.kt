@@ -16,6 +16,10 @@ data class BookPlayViewState(
   val playedTime: Duration,
   val duration: Duration,
   val playbackSpeed: Float,
+  /** Whole-book progress, 0–1. */
+  val bookProgress: Float,
+  /** Whole-book audio time left; the view converts it to listening time at [playbackSpeed]. */
+  val bookTimeLeft: Duration,
   val playing: Boolean,
   val cover: ImmutableFile?,
   val skipSilence: Boolean,
