@@ -7,6 +7,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import voice.core.common.rootGraphAs
 import voice.core.data.ThemeColor
 
@@ -30,5 +32,7 @@ internal fun <T> themeSetting(
 ): T {
   if (LocalInspectionMode.current) return default
   val flow = remember { rootGraphAs<SharedGraph>().store().data }
-  return flow.collectAsState(initial = default, context = Dispatchers.Unconfined).value
+  // UIAppStartInitializer has loaded these stores, so this returns from memory without a default-coloured frame.
+  val initial = remember { runBlocking { flow.first() } }
+  return flow.collectAsState(initial = initial, context = Dispatchers.Unconfined).value
 }
