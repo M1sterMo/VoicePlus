@@ -119,6 +119,7 @@ internal class OsWipeRestorer(
     // 5. Persist the matched books, keyed entirely to the new ids. Atomic; additive; freshness-aware.
     val liveById = liveBooks.associateBy { it.id.value }
     appDb.transaction {
+      val placementsBefore = organisationDao.placements()
       organisationDao.restore(snapshot, result.matched.associate { it.sourceId to it.content.id.value })
       // A previous partial run may have kept a then-unmatched book's sessions under its dead old id
       // (see the unmatched block below). Those raw rows carry dead chapter ids and unclamped
@@ -190,6 +191,13 @@ internal class OsWipeRestorer(
           val session = dto.toListeningSession()
           if (seenSessionKeys.add(session.naturalKey())) listeningSessionDao.insert(session.copy(id = 0))
         }
+      // A series' shared list outlives the book a character was added in: keep those characters
+      // under their old book id, which no restored series contains, so they show no origin chip.
+      snapshot.characters.filter { it.seriesId != null && it.bookId !in matchedSourceIds }.forEach { dto ->
+        val character = dto.toBookCharacter()
+        if (seenCharacterKeys.add(character.naturalKey())) bookCharacterDao.insert(character.copy(id = 0))
+      }
+      bookCharacterDao.followSeries(placementsBefore)
     }
 
     // Translate the hidden set onto the new ids: the snapshot's hidden ids died with the wipe, and
@@ -283,6 +291,6 @@ internal class OsWipeRestorer(
 // with a fresh id and dedup on these keys instead.
 internal fun ListeningSession.naturalKey(): String = "${bookId.value}|${startedAt.toEpochMilli()}|$startPositionMs"
 
-internal fun BookCharacter.naturalKey(): String = "${bookId.value}|$name|${createdAt.toEpochMilli()}"
+internal fun BookCharacter.naturalKey(): String = "${bookId.value}|$name|${createdAt.toEpochMilli()}|$seriesId"
 
 internal fun ListeningEvent.naturalKey(): String = "${bookId.value}|${at.toEpochMilli()}|$type|$positionMs"

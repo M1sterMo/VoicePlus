@@ -32,6 +32,7 @@ public class LibraryOrganisationRepoImpl(private val db: AppDb) : LibraryOrganis
     val before = dao.get()
     val after = update(before)
     dao.replace(before, after)
+    db.bookCharacterDao().followSeries(before.placements)
     LibraryChange(before, after)
   }
 
@@ -189,6 +190,7 @@ public class LibraryOrganisationRepoImpl(private val db: AppDb) : LibraryOrganis
     // A later edit may have put another item on a newly created shelf; do not orphan it on undo.
     if (runCatching { restored.validate() }.isFailure) return@transaction false
     dao.replace(current, restored)
+    db.bookCharacterDao().followSeries(current.placements)
     true
   }
 }

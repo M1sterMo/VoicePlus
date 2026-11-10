@@ -13,7 +13,7 @@ internal constructor(private val dao: BookCharacterDao) : BookCharacterRepo {
 
   override suspend fun upsert(character: BookCharacter) {
     if (character.id == 0L) {
-      dao.insert(character)
+      dao.add(character)
     } else {
       dao.update(character)
     }

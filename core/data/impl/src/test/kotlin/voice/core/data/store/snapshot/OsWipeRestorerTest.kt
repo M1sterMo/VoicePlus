@@ -19,8 +19,12 @@ import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
+import voice.core.data.LibraryOrganisation
+import voice.core.data.LibraryPlacement
+import voice.core.data.LibrarySeries
 import voice.core.data.ListeningSession
 import voice.core.data.MediaScanWaiter
+import voice.core.data.repo.BookCharacterRepoImpl
 import voice.core.data.repo.BookContentRepoImpl
 import voice.core.data.repo.BookRepositoryImpl
 import voice.core.data.repo.ChapterRepoImpl
@@ -225,6 +229,44 @@ class OsWipeRestorerTest {
     val restored = db.bookCharacterDao().all().single()
     restored.bookId shouldBe BookId(newUri("primary:Books/Dune"))
     restored.name shouldBe "Paul"
+  }
+
+  @Test
+  fun `a series list is restored whole even when a character's origin book is not found`() = runTest {
+    val books = listOf("Dune", "Messiah", "Ghost").map { snapshotBookOf("primary:Books/$it", listOf("01.mp3"), "01.mp3", 0, 0) }
+    fun character(
+      book: String,
+      name: String,
+    ) = BookCharacterDto(
+      id = 0,
+      bookId = oldUri("primary:Books/$book"),
+      name = name,
+      description = "",
+      createdAtEpochMillis = 1,
+      updatedAtEpochMillis = 1,
+      sortOrder = if (book == "Dune") 0 else 1,
+      seriesId = "s",
+    )
+    val organisation = LibraryOrganisation(
+      series = listOf(LibrarySeries("s", "Dune")),
+      placements = books.mapIndexed { index, (dto, _) -> LibraryPlacement(dto.id, position = 0, seriesId = "s", seriesPosition = index) },
+    )
+    onScan = { listOf("Dune", "Messiah").forEach { scanInBook("primary:Books/$it", listOf("01.mp3")) } }
+
+    restorer().run(
+      snapshotOf(
+        books.map {
+          it.first
+        },
+        books.flatMap { it.second },
+        characters = listOf(character("Dune", "Paul"), character("Ghost", "Leto")),
+      )
+        .copy(organisation = organisation),
+    )
+
+    val list = BookCharacterRepoImpl(db.bookCharacterDao()).characters(BookId(newUri("primary:Books/Messiah"))).first()
+    list.map { it.name } shouldBe listOf("Paul", "Leto")
+    list.map { it.bookId.value } shouldBe listOf(newUri("primary:Books/Dune"), oldUri("primary:Books/Ghost"))
   }
 
   @Test

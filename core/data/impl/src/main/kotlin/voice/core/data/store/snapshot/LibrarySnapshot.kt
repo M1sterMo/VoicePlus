@@ -53,7 +53,8 @@ internal data class LibrarySnapshot(
     // v5 adds the user-chosen order within a manual series group.
     // v6 adds home shelves, stable series identity and independent manual/shelf ordering.
     // v7 preserves whether the user explicitly edited a book title.
-    const val SCHEMA_VERSION = 7
+    // v8 adds character lists shared by a series.
+    const val SCHEMA_VERSION = 8
   }
 }
 
@@ -111,6 +112,7 @@ internal data class BookCharacterDto(
   val sortOrder: Int = 0,
   val createdAtEpochMillis: Long,
   val updatedAtEpochMillis: Long,
+  val seriesId: String? = null,
 )
 
 @Serializable
@@ -238,6 +240,7 @@ internal fun BookCharacter.toDto() = BookCharacterDto(
   sortOrder = sortOrder,
   createdAtEpochMillis = createdAt.toEpochMilli(),
   updatedAtEpochMillis = updatedAt.toEpochMilli(),
+  seriesId = seriesId,
 )
 
 internal fun BookCharacterDto.toBookCharacter() = BookCharacter(
@@ -248,6 +251,7 @@ internal fun BookCharacterDto.toBookCharacter() = BookCharacter(
   sortOrder = sortOrder,
   createdAt = Instant.ofEpochMilli(createdAtEpochMillis),
   updatedAt = Instant.ofEpochMilli(updatedAtEpochMillis),
+  seriesId = seriesId,
 )
 
 internal fun ChapterNameOverride.toDto() = ChapterNameOverrideDto(chapterId, markStartMs, bookId, name)

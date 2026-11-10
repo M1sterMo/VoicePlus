@@ -163,6 +163,11 @@
     <string name="character_delete_title">Delete character?</string>
     <string name="character_delete_confirmation">This action can’t be undone.</string>
     <string name="character_position_label">Position (1–%1$d)</string>
+    <plurals name="character_list_shared">
+        <item quantity="one">Shared across %1$s · %2$d book</item>
+        <item quantity="other">Shared across %1$s · %2$d books</item>
+    </plurals>
+    <string name="character_origin_book">Book %1$d</string>
     <string name="listening_log">Listening Log</string>
     <string name="listening_log_clear_history">Clear History</string>
     <string name="listening_log_empty">No listening sessions yet.\nStart playing to track your progress.</string>
