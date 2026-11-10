@@ -44,8 +44,14 @@ class UpNextAdvancer(
     if (playbackState != Player.STATE_ENDED || player?.playWhenReady != true || endsChapterSleepTimer()) return
     scope.launch {
       val current = currentBookStore.data.first()
-      val next = upNextStore.data.first().firstOrNull { it != current && bookRepository.get(it) != null } ?: return@launch
-      playerController.playPauseForBook(next)
+      val next = upNextStore.data.first()
+        .firstNotNullOfOrNull { id -> bookRepository.get(id).takeIf { id != current } } ?: return@launch
+      // Queueing a finished book means listening again: resumed at its end it would finish at once.
+      // Same "finished" rule as the library's Completed books.
+      if (next.position >= next.duration - FINISHED_WITHIN_MS) {
+        bookRepository.updateBook(next.id) { it.copy(currentChapter = next.chapters.first().id, positionInChapter = 0) }
+      }
+      playerController.playPauseForBook(next.id)
     }
   }
 
@@ -60,3 +66,5 @@ class UpNextAdvancer(
     return sleepTimer.state.value == SleepTimerState.Disabled
   }
 }
+
+private const val FINISHED_WITHIN_MS = 5_000L

@@ -11,11 +11,17 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import voice.core.data.Book
+import voice.core.data.BookContent
 import voice.core.data.BookId
+import voice.core.data.Chapter
+import voice.core.data.ChapterId
 import voice.core.data.repo.BookRepository
+import voice.core.playback.session.search.book
 import voice.core.sleeptimer.SleepTimer
 import voice.core.sleeptimer.SleepTimerMode
 import voice.core.sleeptimer.SleepTimerState
+import java.time.Instant
 
 class UpNextAdvancerTest {
 
@@ -28,8 +34,13 @@ class UpNextAdvancerTest {
   private val player = mockk<Player>(relaxed = true) {
     every { playWhenReady } returns true
   }
+  private val books = mutableMapOf<BookId, Book>()
   private val repo = mockk<BookRepository>().also { repo ->
-    coEvery { repo.get(any()) } answers { if (firstArg<BookId>() == gone) null else mockk() }
+    coEvery { repo.get(any()) } answers { if (firstArg<BookId>() == gone) null else books.getOrPut(firstArg()) { testBook(firstArg()) } }
+    coEvery { repo.updateBook(any(), any()) } answers {
+      val id = firstArg<BookId>()
+      books[id] = books.getValue(id).update(secondArg<(BookContent) -> BookContent>())
+    }
   }
 
   @Test
@@ -38,6 +49,27 @@ class UpNextAdvancerTest {
     runCurrent()
 
     verify(exactly = 1) { playerController.playPauseForBook(first) }
+  }
+
+  @Test
+  fun `a finished queued book starts again from the beginning`() = runTest {
+    books[first] = testBook(first, positionInChapter = 599_000L)
+
+    advancer(listOf(first)).onPlaybackStateChanged(Player.STATE_ENDED)
+    runCurrent()
+
+    books.getValue(first).position shouldBe 0L
+    verify(exactly = 1) { playerController.playPauseForBook(first) }
+  }
+
+  @Test
+  fun `a book in progress resumes where it was`() = runTest {
+    books[first] = testBook(first, positionInChapter = 300_000L)
+
+    advancer(listOf(first)).onPlaybackStateChanged(Player.STATE_ENDED)
+    runCurrent()
+
+    books.getValue(first).position shouldBe 300_000L
   }
 
   @Test
@@ -100,6 +132,15 @@ class UpNextAdvancerTest {
     ).also { it.attachTo(player) }
   }
 }
+
+private fun testBook(
+  id: BookId,
+  positionInChapter: Long = 0L,
+) = book(
+  id = id,
+  positionInChapter = positionInChapter,
+  chapters = listOf(Chapter(ChapterId("${id.value}-chapter"), "chapter", 600_000L, Instant.EPOCH, emptyList())),
+)
 
 private class FakeSleepTimer : SleepTimer {
   override val state = MutableStateFlow<SleepTimerState>(SleepTimerState.Disabled)
