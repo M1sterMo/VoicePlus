@@ -107,7 +107,11 @@ class WidgetUpdater(
     val height = widgetHeight(opts)
     // Until the launcher reports a size, show everything and let the host scale the cover.
     val sizeKnown = width > 0 && height > 0
-    val padding = context.dpToPxRounded(12F)
+    val gap = context.dpToPxRounded(12F)
+    val buttonHeight = context.dpToPxRounded(40F)
+    // 12dp normally; a widget too short for that (older ones could be resized down to 48dp) gets
+    // less, evenly, so the 40dp buttons still fit whole.
+    val padding = if (sizeKnown) gap.coerceAtMost((height - buttonHeight) / 2).coerceAtLeast(0) else gap
     val coverHeight = (if (sizeKnown) height - 2 * padding else context.dpToPxRounded(96F)).coerceAtLeast(1)
     val coverWidth = (coverHeight * configStore.getCoverShape(widgetId).aspectRatio).roundToInt().coerceAtLeast(1)
     val scale = configStore.getTextScale(widgetId)
@@ -116,6 +120,7 @@ class WidgetUpdater(
 
     val remoteViews = RemoteViews(context.packageName, R.layout.widget_compact)
     remoteViews.setInt(R.id.widgetBackground, "setImageAlpha", configStore.getAlpha(widgetId))
+    remoteViews.setViewPadding(R.id.content, padding, padding, padding, padding)
     remoteViews.setTextViewTextSize(R.id.title, TypedValue.COMPLEX_UNIT_PX, titleSize)
     remoteViews.setTextViewTextSize(R.id.summary, TypedValue.COMPLEX_UNIT_PX, summarySize)
     remoteViews.setOnClickPendingIntent(R.id.wholeWidget, mainActivityIntentProvider.toCurrentBook())
@@ -128,7 +133,7 @@ class WidgetUpdater(
       // No book, so nothing wires the controls up: leaving them visible offers buttons that do
       // nothing (and that TalkBack still announces).
       remoteViews.setTextViewText(R.id.title, context.getString(StringsR.string.widget_no_book))
-      remoteViews.setVisible(R.id.title, true)
+      remoteViews.setVisible(R.id.text, true)
       remoteViews.setVisible(R.id.summary, false)
       remoteViews.setVisible(R.id.progress, false)
       remoteViews.setVisible(R.id.buttons, false)
@@ -147,11 +152,12 @@ class WidgetUpdater(
     val summaryRow = textLineHeight(summarySize)
     val availableHeight = if (sizeKnown) height - 2 * padding else Int.MAX_VALUE
     remoteViews.setVisible(R.id.buttons, true)
-    remoteViews.setVisible(R.id.title, availableHeight >= buttonSize + titleRow)
+    // Hiding the whole text block, not just the title, also drops the gap so the buttons centre.
+    remoteViews.setVisible(R.id.text, availableHeight >= buttonSize + titleRow)
     remoteViews.setVisible(R.id.progress, availableHeight >= buttonSize + titleRow + progressRow)
     remoteViews.setVisible(R.id.summary, availableHeight >= buttonSize + titleRow + progressRow + summaryRow)
 
-    val buttonSlots = if (sizeKnown) (width - coverWidth - 3 * padding) / buttonSize else 5
+    val buttonSlots = if (sizeKnown) (width - coverWidth - 2 * padding - gap) / buttonSize else 5
     val chapterButtons = configStore.getChapterButtons(widgetId) && buttonSlots >= 5
     remoteViews.setVisible(R.id.previousChapter, chapterButtons)
     remoteViews.setVisible(R.id.nextChapter, chapterButtons)

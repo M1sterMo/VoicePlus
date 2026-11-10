@@ -16,9 +16,11 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import voice.core.data.Book
 import voice.core.data.BookId
+import voice.core.data.GridMode
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.store.CurrentBookStore
+import voice.core.data.store.GridModeStore
 import voice.core.data.store.SeekTimeStore
 import voice.core.initializer.AppInitializer
 import voice.core.playback.ChapterMarkChangeNotifier
@@ -30,6 +32,9 @@ class TriggerWidgetOnChange(
   private val currentBookStore: DataStore<BookId?>,
   @SeekTimeStore
   private val seekTimeStore: DataStore<Int>,
+  // Widgets without a chosen cover shape follow the library layout.
+  @GridModeStore
+  private val gridModeStore: DataStore<GridMode>,
   private val repo: BookRepository,
   private val chapterNameOverrideRepo: ChapterNameOverrideRepo,
   private val chapterMarkChangeNotifier: ChapterMarkChangeNotifier,
@@ -59,6 +64,7 @@ class TriggerWidgetOnChange(
       overridesChanged(),
       chapterMarkChangeNotifier.flow,
       seekTimeStore.data.distinctUntilChanged().map { },
+      gridModeStore.data.distinctUntilChanged().map { },
     )
   }
 
