@@ -67,6 +67,7 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import voice.core.data.BookContent
 import voice.core.data.BookId
+import voice.core.ui.rememberBookReorderState
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
@@ -87,7 +88,7 @@ internal fun SeriesEditorSheet(
   var confirmUngroup by rememberSaveable { mutableStateOf(false) }
   val editing = state.originalName != null
   val listState = rememberLazyListState()
-  val reorder = rememberSeriesReorderState(listState, onMove)
+  val reorder = rememberBookReorderState(listState, onMove)
   val focusManager = LocalFocusManager.current
   LaunchedEffect(adding) {
     focusManager.clearFocus()
