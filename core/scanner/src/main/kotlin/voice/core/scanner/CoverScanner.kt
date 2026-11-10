@@ -13,6 +13,15 @@ import voice.core.data.toUri
 import voice.core.logging.api.Logger
 import java.io.IOException
 
+// Windows Media Player saves a small Folder.jpg next to the files, so it comes last
+private val coverNames = listOf("cover", "front", "folder")
+
+/** Sort key that puts an image named like a cover before the other images of a book folder. */
+internal fun coverRank(fileName: String?): Int {
+  val rank = coverNames.indexOf(fileName?.substringBeforeLast('.')?.lowercase())
+  return if (rank == -1) coverNames.size else rank
+}
+
 @Inject
 internal class CoverScanner(
   private val context: Context,
@@ -53,8 +62,10 @@ internal class CoverScanner(
       return@withContext false
     }
 
-    documentFile.listFiles().forEach { child ->
-      if (child.isFile && child.canRead() && child.type?.startsWith("image/") == true) {
+    documentFile.listFiles()
+      .filter { child -> child.isFile && child.canRead() && child.type?.startsWith("image/") == true }
+      .sortedBy { child -> coverRank(child.name) }
+      .forEach { child ->
         val coverFile = coverSaver.newBookCoverFile()
         val worked = try {
           context.contentResolver.openInputStream(child.uri)?.use { input ->
@@ -76,7 +87,6 @@ internal class CoverScanner(
         }
         coverFile.delete()
       }
-    }
 
     false
   }

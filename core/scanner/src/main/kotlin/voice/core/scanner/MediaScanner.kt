@@ -46,9 +46,7 @@ internal class MediaScanner(
               if (author.isFile) {
                 listOf(author)
               } else {
-                author.children.flatMap {
-                  author.children
-                }
+                author.children
               }
             }
           }
@@ -110,7 +108,17 @@ internal class MediaScanner(
 
     val parseResult = chapterParser.parse(file, forceReParse)
     val chapters = parseResult.chapters
-    if (chapters.isEmpty()) return
+    if (chapters.isEmpty()) {
+      // A folder that still lists entries but holds no audio lost its files for real, like after
+      // deleting them with a file manager, so the book can't play and leaves the library. An empty
+      // or unreadable folder is left alone: that is what a dropped permission or an unmounted volume
+      // looks like, and its books must not be blanked. Progress stays stored either way.
+      if (file.isDirectory && file.children.isNotEmpty() && file.audioFileCount() == 0) {
+        val content = contentRepo.get(BookId(file.uri))
+        if (content?.isActive == true) contentRepo.put(content.copy(isActive = false))
+      }
+      return
+    }
 
     val content = bookParser.parseAndStore(
       chapters = chapters,

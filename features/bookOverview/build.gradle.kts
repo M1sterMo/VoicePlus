@@ -16,6 +16,7 @@ dependencies {
   implementation(projects.core.featureflag)
 
   implementation(libs.lifecycle)
+  implementation(libs.lifecycle.compose)
   implementation(libs.graphicsShapes)
   implementation(libs.documentFile)
 
