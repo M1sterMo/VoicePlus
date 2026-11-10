@@ -1,0 +1,13 @@
+Up next queue: books you queue play one after another.
+
+Character lists are shared across a series.
+
+Refreshed listening stats with dated finishes and a sheet for each book.
+
+Library: sort by length, hold to drag, quicker buttons and time left.
+
+Player: book progress, speed-adjusted chapter times, book-style cover and a glow in the cover's colours.
+
+Restyled widget, simpler adding of books, and theme and colour choices.
+
+Fixes for M4B chapters and finish dates.

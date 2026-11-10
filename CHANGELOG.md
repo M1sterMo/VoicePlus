@@ -1,5 +1,20 @@
 # VoicePlus Changelog
 
+## v1.30 — Up Next, Shared Characters & Refreshed Stats
+
+- Up next: queue books to play one after another, from the book menu or the queue view, which shows what's playing and what's next.
+- Character lists are shared by every book in a series, with a "Book N" tag showing where each character was added.
+- Listening stats: refreshed page and a new sheet for each finished book; books marked completed now get a finish date, which can be changed.
+- Library: sort by book length, hold and drag to reorder or move books, add and settings buttons on the top bar, and "left" after the time remaining.
+- Player: book progress and time left above the chapter bar, chapter times that follow playback speed, a book-style cover in Books view, and a glow in the cover's colours.
+- Restyled widget with square or book covers and optional chapter buttons.
+- Simpler adding of books, with a step that finds and counts the books in a folder.
+- Appearance: light, dark or system theme, colour choices and pictured layout options.
+- M4B files with chapters on a separate track or packed into one chunk now show all chapters — thanks [@lecrackzor](https://github.com/lecrackzor).
+- Eight smaller scanner, playback and library fixes.
+
+---
+
 ## v1.29 — Shelves, Series & Book View
 
 - Book-inspired covers, personal shelves and series stacks, with two or three books per row.
