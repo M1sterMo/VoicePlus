@@ -24,6 +24,7 @@ data class BookPlayViewState(
   val cover: ImmutableFile?,
   /** Draw the cover as a 2:3 book jacket, matching the library's Books layout. */
   val bookJacket: Boolean,
+  val coverGlow: Boolean,
   val skipSilence: Boolean,
   val characterCount: Int,
   val editChapterNamesVisible: Boolean,

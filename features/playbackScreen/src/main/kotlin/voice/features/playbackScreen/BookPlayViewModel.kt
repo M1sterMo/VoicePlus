@@ -32,6 +32,7 @@ import voice.core.data.repo.BookRepository
 import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
+import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.GridModeStore
@@ -82,6 +83,8 @@ class BookPlayViewModel(
   private val globalVolumeGainStore: DataStore<Float?>,
   @GridModeStore
   private val gridModeStore: DataStore<GridMode>,
+  @CoverGlowStore
+  private val coverGlowStore: DataStore<Boolean>,
   @Assisted
   private val bookId: BookId,
 ) : RetainedViewModel(MainScope(dispatcherProvider)) {
@@ -124,6 +127,7 @@ class BookPlayViewModel(
       ?: return null
     // Held like the toolbar, so a Books-layout user never sees the square cover flash first.
     val gridMode = remember { gridModeStore.data }.collectAsState(initial = null).value ?: return null
+    val coverGlow = remember { coverGlowStore.data }.collectAsState(initial = null).value ?: return null
 
     val currentMark = book.currentChapter.markForPosition(book.content.positionInChapter)
     val positionInCurrentMark = if (isPlaying && currentMark.durationMs > 0) {
@@ -157,6 +161,7 @@ class BookPlayViewModel(
       bookTimeLeft = (book.duration - book.position).coerceAtLeast(0).milliseconds,
       cover = book.content.cover?.let(::ImmutableFile),
       bookJacket = gridMode == GridMode.BOOKS,
+      coverGlow = coverGlow,
       skipSilence = book.content.skipSilence,
       characterCount = characterCount,
       // Gate on chapter MARKS (what the editor actually lists), not raw markData — otherwise the

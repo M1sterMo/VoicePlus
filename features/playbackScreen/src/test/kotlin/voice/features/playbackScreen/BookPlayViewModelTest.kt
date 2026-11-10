@@ -121,6 +121,7 @@ class BookPlayViewModelTest {
     toolbarActionsStore = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
     globalVolumeGainStore = globalVolumeGainStore,
     gridModeStore = MemoryDataStore(GridMode.FOLLOW_DEVICE),
+    coverGlowStore = MemoryDataStore(true),
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
   )
@@ -591,6 +592,7 @@ class BookPlayViewModelTest {
       toolbarActionsStore = toolbarActionsStore,
       globalVolumeGainStore = globalVolumeGainStore,
       gridModeStore = MemoryDataStore(gridMode),
+      coverGlowStore = MemoryDataStore(true),
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
     )
