@@ -46,6 +46,7 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import voice.core.common.rootGraphAs
 import voice.core.ui.VoiceTheme
+import voice.features.folderPicker.rememberFolderPicker
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import voice.navigation.Origin
@@ -90,6 +91,7 @@ fun SelectFolderType(
     onModeSelect = viewModel::selectMode,
     onAddClick = viewModel::add,
     onBackClick = viewModel::onCloseClick,
+    onChooseAnotherFolder = viewModel::chooseAnotherFolder,
   )
 }
 
@@ -99,6 +101,7 @@ private fun SelectFolderType(
   onModeSelect: (FolderMode) -> Unit,
   onAddClick: () -> Unit,
   onBackClick: () -> Unit,
+  onChooseAnotherFolder: (Uri) -> Unit,
 ) {
   var showModes by rememberSaveable { mutableStateOf(false) }
   Scaffold(
@@ -109,7 +112,7 @@ private fun SelectFolderType(
           IconButton(onClick = onBackClick) {
             Icon(
               imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-              contentDescription = stringResource(StringsR.string.close),
+              contentDescription = stringResource(StringsR.string.navigate_back),
             )
           }
         },
@@ -120,7 +123,7 @@ private fun SelectFolderType(
         viewState = viewState,
         onAddClick = onAddClick,
         onChangeClick = { showModes = true },
-        onChooseAnotherFolder = onBackClick,
+        onChooseAnotherFolder = rememberFolderPicker(onChooseAnotherFolder),
       )
     },
   ) { contentPadding ->
@@ -253,6 +256,7 @@ private fun SelectFolderTypePreview() {
       onModeSelect = {},
       onAddClick = {},
       onBackClick = {},
+      onChooseAnotherFolder = {},
     )
   }
 }
