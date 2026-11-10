@@ -1,6 +1,8 @@
 package voice.core.ui
 
 import android.app.Application
+import android.app.UiModeManager
+import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.datastore.core.DataStore
 import coil.Coil
@@ -38,15 +40,18 @@ class UIAppStartInitializer(
     // lets VoiceTheme read both from memory for its first frame.
     runBlocking {
       themeColorStore.data.first()
-      applyNightMode(themeModeStore.data.first())
+      applyNightMode(application, themeModeStore.data.first())
     }
     themeModeStore.data
       .distinctUntilChanged()
-      .onEach(::applyNightMode)
+      .onEach { applyNightMode(application, it) }
       .launchIn(scope)
   }
 
-  private fun applyNightMode(themeMode: ThemeMode) {
+  private fun applyNightMode(
+    application: Application,
+    themeMode: ThemeMode,
+  ) {
     AppCompatDelegate.setDefaultNightMode(
       when (themeMode) {
         ThemeMode.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
@@ -54,5 +59,16 @@ class UIAppStartInitializer(
         ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
       },
     )
+    // The system draws the launch splash before the app runs; on Android 12+ it can be told the
+    // app's own mode, so a dark app on a light phone doesn't open on a white splash.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      application.getSystemService(UiModeManager::class.java).setApplicationNightMode(
+        when (themeMode) {
+          ThemeMode.SYSTEM -> UiModeManager.MODE_NIGHT_AUTO
+          ThemeMode.LIGHT -> UiModeManager.MODE_NIGHT_NO
+          ThemeMode.DARK -> UiModeManager.MODE_NIGHT_YES
+        },
+      )
+    }
   }
 }
