@@ -37,38 +37,51 @@
       android:layout_weight="1"
       android:orientation="vertical">
 
-      <TextView
-        android:id="@+id/title"
+      <!-- Weighted so that, when the widget is too short, this block gives up space and the
+           buttons below keep their full size. -->
+      <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
-        android:maxLines="1"
-        android:textColor="@color/widget_text_primary"
-        android:textSize="@dimen/widget_title_size"
-        tools:text="Audiobook title" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        tools:ignore="NestedWeights">
 
-      <TextView
-        android:id="@+id/summary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="@color/widget_text_secondary"
-        android:textSize="@dimen/widget_summary_size"
-        tools:text="Current chapter" />
+        <TextView
+          android:id="@+id/title"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:textColor="@color/widget_text_primary"
+          android:textSize="@dimen/widget_title_size"
+          tools:text="Audiobook title" />
 
-      <ProgressBar
-        android:id="@+id/progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginTop="8dp"
-        android:max="100"
-        android:maxHeight="4dp"
-        android:minHeight="4dp"
-        android:progressDrawable="@drawable/widget_progress"
-        tools:progress="40" />
+        <TextView
+          android:id="@+id/summary"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:maxLines="1"
+          android:textColor="@color/widget_text_secondary"
+          android:textSize="@dimen/widget_summary_size"
+          tools:text="Current chapter" />
+
+        <ProgressBar
+          android:id="@+id/progress"
+          style="?android:attr/progressBarStyleHorizontal"
+          android:layout_width="match_parent"
+          android:layout_height="4dp"
+          android:layout_marginTop="8dp"
+          android:max="100"
+          android:maxHeight="4dp"
+          android:minHeight="4dp"
+          android:progressBackgroundTint="@color/widget_progress_track"
+          android:progressDrawable="@drawable/widget_progress"
+          android:progressTint="@color/widget_primary"
+          tools:progress="40" />
+      </LinearLayout>
 
       <LinearLayout
         android:id="@+id/buttons"

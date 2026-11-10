@@ -38,37 +38,50 @@
       android:layout_weight="1"
       android:orientation="vertical">
 
-      <TextView
-        android:id="@+id/title"
+      <!-- Weighted so that, when the widget is too short, this block gives up space and the
+           buttons below keep their full size. -->
+      <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
-        android:maxLines="1"
-        android:text="The Count of Monte Cristo"
-        android:textColor="@color/widget_text_primary"
-        android:textSize="@dimen/widget_title_size" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        tools:ignore="NestedWeights">
 
-      <TextView
-        android:id="@+id/summary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="Chapter 05 - Marseille"
-        android:textColor="@color/widget_text_secondary"
-        android:textSize="@dimen/widget_summary_size" />
+        <TextView
+          android:id="@+id/title"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
+          android:maxLines="1"
+          android:text="The Count of Monte Cristo"
+          android:textColor="@color/widget_text_primary"
+          android:textSize="@dimen/widget_title_size" />
 
-      <ProgressBar
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:layout_marginTop="8dp"
-        android:max="100"
-        android:maxHeight="4dp"
-        android:minHeight="4dp"
-        android:progress="40"
-        android:progressDrawable="@drawable/widget_progress" />
+        <TextView
+          android:id="@+id/summary"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ellipsize="end"
+          android:maxLines="1"
+          android:text="Chapter 05 - Marseille"
+          android:textColor="@color/widget_text_secondary"
+          android:textSize="@dimen/widget_summary_size" />
+
+        <ProgressBar
+          style="?android:attr/progressBarStyleHorizontal"
+          android:layout_width="match_parent"
+          android:layout_height="4dp"
+          android:layout_marginTop="8dp"
+          android:max="100"
+          android:maxHeight="4dp"
+          android:minHeight="4dp"
+          android:progress="40"
+          android:progressBackgroundTint="@color/widget_progress_track"
+          android:progressDrawable="@drawable/widget_progress"
+          android:progressTint="@color/widget_primary" />
+      </LinearLayout>
 
       <LinearLayout
         android:layout_width="match_parent"

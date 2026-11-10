@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The layout also sets progressTint/progressBackgroundTint to these colours, so a host theme
+     can't tint the track into the progress colour. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
   <item android:id="@android:id/background">
     <shape>
@@ -6,15 +8,12 @@
       <solid android:color="@color/widget_progress_track" />
     </shape>
   </item>
-  <!-- scale rather than clip, so the filled part keeps its rounded end -->
   <item android:id="@android:id/progress">
-    <scale
-      android:scaleGravity="start|center_vertical"
-      android:scaleWidth="100%">
+    <clip>
       <shape>
         <corners android:radius="2dp" />
         <solid android:color="@color/widget_primary" />
       </shape>
-    </scale>
+    </clip>
   </item>
 </layer-list>
