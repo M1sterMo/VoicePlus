@@ -16,6 +16,7 @@ dependencies {
   implementation(projects.features.sleepTimer)
 
   implementation(libs.coil)
+  implementation(libs.palette)
   implementation(libs.androidxCore)
   implementation(libs.navigation3.ui)
 

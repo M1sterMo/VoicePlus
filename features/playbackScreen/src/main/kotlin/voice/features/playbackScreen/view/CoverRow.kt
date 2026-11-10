@@ -26,6 +26,7 @@ internal fun CoverRow(
   sharedTransitionScope: SharedTransitionScope?,
   cover: ImmutableFile?,
   bookJacket: Boolean,
+  playing: Boolean,
   sleepTimerState: BookPlayViewState.SleepTimerViewState,
   onPlayClick: () -> Unit,
   modifier: Modifier = Modifier,
@@ -38,6 +39,7 @@ internal fun CoverRow(
       onDoubleClick = onPlayClick,
       cover = cover,
       bookJacket = bookJacket,
+      playing = playing,
     )
     when (sleepTimerState) {
       BookPlayViewState.SleepTimerViewState.Disabled -> {

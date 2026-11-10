@@ -39,6 +39,7 @@ internal fun BookPlayContent(
         sharedTransitionScope = sharedTransitionScope,
         cover = viewState.cover,
         bookJacket = viewState.bookJacket,
+        playing = viewState.playing,
         onPlayClick = onPlayClick,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
@@ -90,6 +91,7 @@ internal fun BookPlayContent(
         onPlayClick = onPlayClick,
         cover = viewState.cover,
         bookJacket = viewState.bookJacket,
+        playing = viewState.playing,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
           .fillMaxWidth()
