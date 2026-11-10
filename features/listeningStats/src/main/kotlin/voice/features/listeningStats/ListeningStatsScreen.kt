@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavEntry
 import coil.compose.AsyncImage
 import dev.zacsweers.metro.AppScope
@@ -286,6 +288,8 @@ private fun UnitTile(
         style = valueStyle,
         color = MaterialTheme.colorScheme.primary,
         maxLines = 1,
+        // Long values ("200h 15m") shrink to fit a narrow tile instead of being cut off.
+        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = valueStyle.fontSize),
       )
       Text(
         text = unit,
@@ -531,7 +535,12 @@ private fun RecordTile(
     shape = MaterialTheme.shapes.large,
   ) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-      Text(value, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+      Text(
+        text = value,
+        style = MaterialTheme.typography.titleLarge,
+        maxLines = 1,
+        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize),
+      )
       Text(
         text = label,
         style = MaterialTheme.typography.bodySmall,
@@ -665,9 +674,11 @@ private fun FinishedBookDetailsSheet(
   onChangeFinishDate: (LocalDate) -> Unit,
 ) {
   var pickingDate by remember { mutableStateOf(false) }
+  val speedFormat = remember { DecimalFormat("0.##") }
   if (pickingDate) {
     FinishDatePicker(
       initial = book.finishedDate ?: LocalDate.now(),
+      after = book.finishDateFloor,
       onPick = {
         pickingDate = false
         onChangeFinishDate(it)
@@ -759,7 +770,7 @@ private fun FinishedBookDetailsSheet(
               if (book.sessionCount > 0) {
                 add(stringResource(StringsR.string.listening_stats_longest_session) to formatDuration(book.longestSessionMs))
                 add(stringResource(StringsR.string.listening_stats_avg_session) to formatDuration(book.listenedMs / book.sessionCount))
-                add(stringResource(StringsR.string.playback_speed) to "${DecimalFormat("0.##").format(book.playbackSpeed)}×")
+                add(stringResource(StringsR.string.playback_speed) to "${speedFormat.format(book.playbackSpeed)}×")
               }
               book.firstListenedDateLabel?.let { add(stringResource(StringsR.string.listening_stats_first_listened) to it) }
               // An unknown count (a finish from before tracking) is left out rather than guessed.
@@ -821,7 +832,7 @@ private fun DayBars(book: FinishedBookStats) {
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
       val formatter = monthDayFormatter()
-      listOfNotNull(book.firstListenedDate, book.finishedDate).forEach {
+      listOfNotNull(book.readStartDate, book.finishedDate).forEach {
         Text(it.format(formatter), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
@@ -832,6 +843,7 @@ private fun DayBars(book: FinishedBookStats) {
 @Composable
 private fun FinishDatePicker(
   initial: LocalDate,
+  after: LocalDate?,
   onPick: (LocalDate) -> Unit,
   onDismiss: () -> Unit,
 ) {
@@ -839,8 +851,10 @@ private fun FinishDatePicker(
   val state = rememberDatePickerState(
     initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
     selectableDates = object : SelectableDates {
-      override fun isSelectableDate(utcTimeMillis: Long) =
-        Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() <= LocalDate.now()
+      override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+        val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        return date <= LocalDate.now() && (after == null || date > after)
+      }
     },
   )
   DatePickerDialog(
@@ -862,7 +876,7 @@ private fun FinishDatePicker(
 
 /** Days from the first listen to the finish, counting both; null when either end is unknown. */
 private fun FinishedBookStats.daysToFinish(): Int? {
-  val start = firstListenedDate ?: return null
+  val start = readStartDate ?: return null
   val end = finishedDate ?: return null
   return (end.toEpochDay() - start.toEpochDay() + 1).toInt().takeIf { it > 0 }
 }

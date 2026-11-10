@@ -16,6 +16,7 @@ import voice.features.bookOverview.bottomSheet.BottomSheetItemViewModel
 import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.overview.BookOverviewCategory
 import voice.features.bookOverview.overview.category
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
@@ -106,13 +107,16 @@ class EditBookCategoryViewModel(
     )
   }
 
-  /** Un-marking on the day of the mark undoes a mistaken tap; a finish from an earlier day stays history. */
+  /**
+   * Un-marking moments after marking undoes a mistaken tap. Later it is a re-listen starting, and the
+   * finish stays history.
+   */
   private suspend fun forgetMarksFrom(
     bookId: BookId,
     now: Instant,
   ) {
     sessionRepo.sessions(bookId).first()
-      .filter { it.isCompletionMark && sameDay(it.endedAt, now) }
+      .filter { it.isCompletionMark && Duration.between(it.endedAt, now) < UNDO_WINDOW }
       .forEach { sessionRepo.deleteSession(it) }
   }
 
@@ -124,3 +128,5 @@ class EditBookCategoryViewModel(
     return a.atZone(zone).toLocalDate() == b.atZone(zone).toLocalDate()
   }
 }
+
+private val UNDO_WINDOW: Duration = Duration.ofMinutes(15)

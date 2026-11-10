@@ -253,7 +253,8 @@ private fun finishedBooks(
       // A book marked completed before marks were recorded is dated by the finished copy's last
       // listen, which is when it was finished in all but name. Finishes from before tracking, and
       // listening on another copy of the title, stay undated.
-      val latestCompletion = completions.maxByOrNull { it.endedAt }
+      val byRecency = completions.sortedByDescending { it.endedAt }
+      val latestCompletion = byRecency.firstOrNull()
       val completedAt = latestCompletion?.endedAt
         ?: copySessions.filter { (copy, _) -> copy.isCompleted }.flatMap { it.second }.filterNot { it.isCompletionMark }
           .maxOfOrNull { it.endedAt }
@@ -262,6 +263,10 @@ private fun finishedBooks(
       if (copies.none { it.isCompleted } && completions.isEmpty()) return@mapNotNull null
       val finishedOn = completedAt?.atZone(zone)?.toLocalDate()
       val firstListened = allSessions.minOfOrNull { it.startedAt }?.atZone(zone)?.toLocalDate()
+      // A re-read starts after the previous finish; measure this read, not the very first one.
+      val previousFinish = byRecency.getOrNull(1)?.endedAt
+      val readStart = allSessions.filter { previousFinish == null || it.startedAt > previousFinish }
+        .minOfOrNull { it.startedAt }?.atZone(zone)?.toLocalDate()
       val primary = copies.firstOrNull { it.isCompleted } ?: copies.first()
       FinishedBookStats(
         name = name,
@@ -275,13 +280,16 @@ private fun finishedBooks(
         finishedDate = finishedOn,
         finishedDateLabel = finishedOn?.format(dateFormatter),
         longestSessionMs = allSessions.maxOfOrNull { it.durationMs } ?: 0L,
-        dailyMs = dailySpan(allSessions, zone, firstListened, finishedOn),
+        readStartDate = readStart,
+        dailyMs = dailySpan(allSessions, zone, readStart, finishedOn),
         playbackSpeed = primary.playbackSpeed,
         bookId = primary.id,
         lastChapter = primary.lastChapter,
         // A finish reached by listening is a fact; a hand-marked or inferred one can be corrected.
         finishMark = latestCompletion?.takeIf { it.isCompletionMark },
         canChangeFinishDate = latestCompletion == null || latestCompletion.isCompletionMark,
+        // A finish reached by listening is fixed, so a moved mark cannot go back past it.
+        finishDateFloor = completions.filterNot { it.isCompletionMark }.maxOfOrNull { it.endedAt }?.atZone(zone)?.toLocalDate(),
       )
     }
     // compareByDescending flips the comparator, so nullsFirst ends up putting undated books last.
@@ -303,7 +311,7 @@ private fun dailySpan(
   return generateSequence(from) { it.plusDays(1) }.takeWhile { it <= to }.map { totals[it] ?: 0L }.toList()
 }
 
-private const val MAX_CHART_DAYS = 60
+private const val MAX_CHART_DAYS = 31
 
 /** Pre-end-reason sessions that demonstrably reached the final chapter's end. */
 private fun legacyCompletionSessions(
@@ -458,6 +466,8 @@ data class FinishedBookStats(
   val lastChapter: ChapterId? = null,
   val finishMark: ListeningSession? = null,
   val canChangeFinishDate: Boolean = false,
+  val finishDateFloor: LocalDate? = null,
+  val readStartDate: LocalDate? = null,
 )
 
 data class ListeningStatsViewState(

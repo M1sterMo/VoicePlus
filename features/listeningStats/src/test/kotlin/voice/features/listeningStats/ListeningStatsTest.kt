@@ -545,4 +545,22 @@ class ListeningStatsTest {
     )
     stats(sessions).bestDayOfWeek shouldBe "Monday"
   }
+
+  @Test
+  fun `a re-read is measured from its own first listen and cannot be re-dated before a listened finish`() {
+    val id = BookId("content://book")
+    val sessions = listOf(
+      session(today.minusDays(400), startHour = 9, durationMinutes = 60, bookId = id),
+      session(today.minusDays(390), startHour = 9, durationMinutes = 60, bookId = id, endReason = ListeningSessionEndReason.EndOfBook.id),
+      session(today.minusDays(4), startHour = 9, durationMinutes = 60, bookId = id),
+      session(today, startHour = 8, durationMinutes = 0, bookId = id, endReason = ListeningSessionEndReason.MarkedCompleted.id),
+    )
+
+    val book = stats(sessions).finishedBooks.single()
+    book.readStartDate shouldBe today.minusDays(4)
+    book.dailyMs.size shouldBe 5
+    book.firstListenedDate shouldBe today.minusDays(400)
+    book.canChangeFinishDate shouldBe true
+    book.finishDateFloor shouldBe today.minusDays(390)
+  }
 }
