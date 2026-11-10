@@ -241,6 +241,16 @@ class BookOverviewViewModel(
   }
 
   fun onBookClick(id: BookId) {
+    openPlayer(id)
+  }
+
+  /**
+   * Opening a book makes it the current one, here rather than in the player, which follows the
+   * current book and so must not claim it back when a stale player screen is restored.
+   */
+  private fun openPlayer(id: BookId) {
+    playerController.pauseIfCurrentBookDifferentFrom(id)
+    scope.launch { currentBookStoreDataStore.updateData { id } }
     navigator.goTo(Destination.Playback(id))
   }
 
@@ -271,7 +281,7 @@ class BookOverviewViewModel(
       }
     }
     searchActive = false
-    navigator.goTo(Destination.Playback(id))
+    openPlayer(id)
   }
 
   fun playPause() {
