@@ -96,10 +96,12 @@ class BookOverviewViewModel(
       .collectAsState(initial = null).value
     val finishedAt = remember {
       sessionRepo.allSessions().map { sessions ->
+        // Same rule as the stats screen: the last completion, else the last listen, so the two agree.
         sessions
-          .filter { it.isCompletion }
-          .groupBy({ it.bookId }, { it.endedAt })
-          .mapValues { (_, endings) -> endings.max() }
+          .groupBy { it.bookId }
+          .mapValues { (_, bookSessions) ->
+            (bookSessions.filter { it.isCompletion }.ifEmpty { bookSessions }).maxOf { it.endedAt }
+          }
       }
     }.collectAsState(initial = emptyMap()).value
     val currentBookId = remember { currentBookStoreDataStore.data }

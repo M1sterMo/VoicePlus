@@ -128,8 +128,25 @@ private fun Settings(
       contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      item(key = "appearance") {
+      item(key = "top") {
         SettingsGroup {
+          ListItem(
+            modifier = Modifier.clickable { listener.openListeningStats() },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            leadingContent = {
+              Icon(Icons.Outlined.BarChart, contentDescription = null)
+            },
+            headlineContent = {
+              Text(stringResource(StringsR.string.listening_stats))
+            },
+            supportingContent = {
+              Text(stringResource(StringsR.string.settings_listening_stats_summary))
+            },
+            trailingContent = {
+              Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+            },
+          )
+          SettingsDivider()
           AppearanceSettingsRow(viewState) {
             showAppearanceSettings = true
           }
@@ -139,23 +156,6 @@ private fun Settings(
       item(key = "library") {
         SettingsSection(stringResource(StringsR.string.settings_section_library)) {
           SettingsGroup {
-            ListItem(
-              modifier = Modifier.clickable { listener.openListeningStats() },
-              colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-              leadingContent = {
-                Icon(Icons.Outlined.BarChart, contentDescription = null)
-              },
-              headlineContent = {
-                Text(stringResource(StringsR.string.listening_stats))
-              },
-              supportingContent = {
-                Text(stringResource(StringsR.string.settings_listening_stats_summary))
-              },
-              trailingContent = {
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null)
-              },
-            )
-            SettingsDivider()
             ListItem(
               modifier = Modifier.clickable { listener.openBackup() },
               colors = ListItemDefaults.colors(containerColor = Color.Transparent),

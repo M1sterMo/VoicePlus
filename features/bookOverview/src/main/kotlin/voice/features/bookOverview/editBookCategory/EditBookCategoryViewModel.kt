@@ -8,6 +8,7 @@ import voice.core.data.ChapterId
 import voice.core.data.ListeningSession
 import voice.core.data.ListeningSessionEndReason
 import voice.core.data.isCompletion
+import voice.core.data.isCompletionMark
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ListeningSessionRepo
 import voice.features.bookOverview.bottomSheet.BottomSheetItem
@@ -74,7 +75,7 @@ class EditBookCategoryViewModel(
         lastPlayedAt = if (completing) now else it.lastPlayedAt,
       )
     }
-    if (completing) recordCompletion(book.id, currentChapter, positionInChapter, now)
+    if (completing) recordCompletion(book.id, currentChapter, positionInChapter, now) else forgetMarksFrom(book.id, now)
   }
 
   /**
@@ -88,9 +89,8 @@ class EditBookCategoryViewModel(
     positionMs: Long,
     now: Instant,
   ) {
-    val zone = ZoneId.systemDefault()
     val lastFinish = sessionRepo.sessions(bookId).first().firstOrNull { it.isCompletion }
-    if (lastFinish?.endedAt?.atZone(zone)?.toLocalDate() == now.atZone(zone).toLocalDate()) return
+    if (lastFinish != null && sameDay(lastFinish.endedAt, now)) return
     sessionRepo.addSession(
       ListeningSession(
         bookId = bookId,
@@ -104,5 +104,23 @@ class EditBookCategoryViewModel(
         endReason = ListeningSessionEndReason.MarkedCompleted.id,
       ),
     )
+  }
+
+  /** Un-marking on the day of the mark undoes a mistaken tap; a finish from an earlier day stays history. */
+  private suspend fun forgetMarksFrom(
+    bookId: BookId,
+    now: Instant,
+  ) {
+    sessionRepo.sessions(bookId).first()
+      .filter { it.isCompletionMark && sameDay(it.endedAt, now) }
+      .forEach { sessionRepo.deleteSession(it) }
+  }
+
+  private fun sameDay(
+    a: Instant,
+    b: Instant,
+  ): Boolean {
+    val zone = ZoneId.systemDefault()
+    return a.atZone(zone).toLocalDate() == b.atZone(zone).toLocalDate()
   }
 }
