@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
+import voice.core.ui.BookshelfCover
 import voice.core.ui.ImmutableFile
 import voice.core.ui.sharedBookCover
 import voice.core.strings.R as StringsR
@@ -25,23 +26,34 @@ internal fun Cover(
   sharedTransitionScope: SharedTransitionScope?,
   onDoubleClick: () -> Unit,
   cover: ImmutableFile?,
+  bookJacket: Boolean,
 ) {
-  AsyncImage(
-    modifier = Modifier
-      .fillMaxSize()
-      .sharedBookCover(bookId, sharedTransitionScope)
-      .pointerInput(Unit) {
-        detectTapGestures(
-          onDoubleTap = {
-            onDoubleClick()
-          },
-        )
-      }
-      .clip(RoundedCornerShape(20.dp)),
-    contentScale = ContentScale.Crop,
-    model = cover?.file,
-    placeholder = painterResource(id = UiR.drawable.album_art),
-    error = painterResource(id = UiR.drawable.album_art),
-    contentDescription = stringResource(id = StringsR.string.cover),
-  )
+  val doubleTap = Modifier.pointerInput(Unit) {
+    detectTapGestures(
+      onDoubleTap = {
+        onDoubleClick()
+      },
+    )
+  }
+  if (bookJacket) {
+    BookshelfCover(
+      bookId = bookId,
+      cover = cover,
+      modifier = doubleTap,
+      sharedTransitionScope = sharedTransitionScope,
+    )
+  } else {
+    AsyncImage(
+      modifier = Modifier
+        .fillMaxSize()
+        .sharedBookCover(bookId, sharedTransitionScope)
+        .then(doubleTap)
+        .clip(RoundedCornerShape(20.dp)),
+      contentScale = ContentScale.Crop,
+      model = cover?.file,
+      placeholder = painterResource(id = UiR.drawable.album_art),
+      error = painterResource(id = UiR.drawable.album_art),
+      contentDescription = stringResource(id = StringsR.string.cover),
+    )
+  }
 }

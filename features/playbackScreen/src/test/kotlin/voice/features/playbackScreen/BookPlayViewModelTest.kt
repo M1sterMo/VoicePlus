@@ -33,6 +33,7 @@ import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
+import voice.core.data.GridMode
 import voice.core.data.ListeningEventType
 import voice.core.data.MarkData
 import voice.core.data.PlaybackToolbarAction
@@ -119,6 +120,7 @@ class BookPlayViewModelTest {
     sleepTimerPreferenceStore = sleepTimerDataStore,
     toolbarActionsStore = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
     globalVolumeGainStore = globalVolumeGainStore,
+    gridModeStore = MemoryDataStore(GridMode.FOLLOW_DEVICE),
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
   )
@@ -465,6 +467,19 @@ class BookPlayViewModelTest {
   }
 
   @Test
+  fun `the cover is a book jacket only in the Books library layout`() = scope.runTest {
+    for (gridMode in GridMode.entries) {
+      backgroundScope.launchMolecule(RecompositionMode.Immediate) {
+        viewModel(gridMode = gridMode).viewState()
+      }.test {
+        var state = awaitItem()
+        while (state == null) state = awaitItem()
+        state.bookJacket shouldBe (gridMode == GridMode.BOOKS)
+      }
+    }
+  }
+
+  @Test
   fun `viewState falls back to manager play state when live playback is unavailable`() = scope.runTest {
     val viewModel = viewModel(
       livePlaybackFlow = MutableStateFlow(null),
@@ -545,6 +560,7 @@ class BookPlayViewModelTest {
     livePlaybackFlow: MutableStateFlow<LivePlaybackState?> = MutableStateFlow(null),
     playStateFlow: MutableStateFlow<PlayStateManager.PlayState> = MutableStateFlow(PlayStateManager.PlayState.Paused),
     toolbarActionsStore: MemoryDataStore<Set<PlaybackToolbarAction>> = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
+    gridMode: GridMode = GridMode.FOLLOW_DEVICE,
   ): BookPlayViewModel {
     return BookPlayViewModel(
       bookRepository = mockk {
@@ -574,6 +590,7 @@ class BookPlayViewModelTest {
       sleepTimerPreferenceStore = sleepTimerDataStore,
       toolbarActionsStore = toolbarActionsStore,
       globalVolumeGainStore = globalVolumeGainStore,
+      gridModeStore = MemoryDataStore(gridMode),
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
     )
