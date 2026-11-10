@@ -193,6 +193,20 @@ class ShelfViewModel(
     change(StringsR.string.library_moved) { repo.move(move.books, shelfId) }
   }
 
+  /** Moves [itemId] into [targetId]'s place in the shelf's own order. */
+  internal fun reorderByDrag(
+    organisation: LibraryOrganisation,
+    shelfId: String,
+    itemId: String,
+    targetId: String,
+  ) {
+    val ids = organisation.itemOrder(shelfId).toMutableList()
+    val to = ids.indexOf(targetId)
+    if (to == -1 || !ids.remove(itemId)) return
+    ids.add(to, itemId)
+    change(StringsR.string.library_order_saved) { repo.reorder(shelfId, ids) }
+  }
+
   internal fun dropOnShelf(
     books: Set<BookId>,
     shelfId: String,

@@ -20,11 +20,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -119,6 +121,7 @@ internal fun ShelfLibraryBar(
         } else if (model.organising) {
           TextButton(onClick = model::finishOrganising) { Text(stringResource(StringsR.string.series_done_adding)) }
         } else {
+          IconButton(onClick = onImport) { Icon(Icons.Outlined.Add, stringResource(StringsR.string.library_add_audiobooks)) }
           IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, stringResource(StringsR.string.library_search)) }
           IconButton(onClick = { model.dialog = ShelfDialog.Filter }) {
             Icon(
@@ -131,47 +134,45 @@ internal fun ShelfLibraryBar(
               },
             )
           }
+          IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, stringResource(StringsR.string.action_settings)) }
         }
-        Box {
-          IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreHoriz, stringResource(StringsR.string.library_options)) }
-          DropdownMenu(menu, onDismissRequest = { menu = false }) {
-            fun action(block: () -> Unit): () -> Unit = {
-              menu = false
-              block()
-            }
-            if (model.selecting) {
-              DropdownMenuItem(text = {
-                Text(stringResource(StringsR.string.library_add_to_series))
-              }, enabled = model.selected.isNotEmpty(), onClick = action(onAddToSeries))
-            } else if (model.organising) {
-              DropdownMenuItem(
-                text = { Text(stringResource(StringsR.string.library_new_shelf)) },
-                onClick = action {
-                  model.dialog =
-                    ShelfDialog.Name(null)
-                },
-              )
-              DropdownMenuItem(
-                text = { Text(stringResource(StringsR.string.library_reorder_shelves)) },
-                enabled = organisation.shelves.size > 2,
-                onClick = action {
-                  model.beginOrder(
-                    null,
-                    organisation.shelves.filterNot {
-                      it.id == LibraryShelf.OTHER
-                    }.sortedBy { it.position }.map { it.id },
-                  )
-                },
-              )
-              DropdownMenuItem(text = {
-                Text(stringResource(StringsR.string.library_select_books))
-              }, onClick = action(model::beginSelection))
-            } else {
-              DropdownMenuItem(text = {
-                Text(stringResource(StringsR.string.library_organise))
-              }, onClick = action(model::beginOrganising))
-              DropdownMenuItem(text = { Text(stringResource(StringsR.string.series_add_books)) }, onClick = action(onImport))
-              DropdownMenuItem(text = { Text(stringResource(StringsR.string.action_settings)) }, onClick = action(onSettings))
+        // Only selecting and organising have extra actions; the plain library has none left to hide.
+        if (model.selecting || model.organising) {
+          Box {
+            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreHoriz, stringResource(StringsR.string.library_options)) }
+            DropdownMenu(menu, onDismissRequest = { menu = false }) {
+              fun action(block: () -> Unit): () -> Unit = {
+                menu = false
+                block()
+              }
+              if (model.selecting) {
+                DropdownMenuItem(text = {
+                  Text(stringResource(StringsR.string.library_add_to_series))
+                }, enabled = model.selected.isNotEmpty(), onClick = action(onAddToSeries))
+              } else if (model.organising) {
+                DropdownMenuItem(
+                  text = { Text(stringResource(StringsR.string.library_new_shelf)) },
+                  onClick = action {
+                    model.dialog =
+                      ShelfDialog.Name(null)
+                  },
+                )
+                DropdownMenuItem(
+                  text = { Text(stringResource(StringsR.string.library_reorder_shelves)) },
+                  enabled = organisation.shelves.size > 2,
+                  onClick = action {
+                    model.beginOrder(
+                      null,
+                      organisation.shelves.filterNot {
+                        it.id == LibraryShelf.OTHER
+                      }.sortedBy { it.position }.map { it.id },
+                    )
+                  },
+                )
+                DropdownMenuItem(text = {
+                  Text(stringResource(StringsR.string.library_select_books))
+                }, onClick = action(model::beginSelection))
+              }
             }
           }
         }
@@ -306,6 +307,10 @@ internal fun ShelfControls(
               model.beginOrder(dialog.id, all?.entries.orEmpty().map { it.itemId })
             }
             ShelfAction(stringResource(StringsR.string.series_add_books)) { model.addToShelf(dialog.id) }
+            ShelfAction(stringResource(StringsR.string.library_organise)) {
+              model.dismiss()
+              model.beginOrganising()
+            }
             if (dialog.id != LibraryShelf.OTHER) {
               ShelfAction(stringResource(StringsR.string.library_rename)) { model.dialog = ShelfDialog.Name(dialog.id, name(dialog.id)) }
               ShelfAction(stringResource(StringsR.string.library_remove_shelf)) { model.dialog = ShelfDialog.Remove(dialog.id) }

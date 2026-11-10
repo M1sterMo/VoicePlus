@@ -168,7 +168,7 @@ internal fun GridBooks(
               onSelect = onSelect,
               modifier = Modifier.animateItem(),
               compactBooks = compactBooks,
-              dragState = dragState.takeIf { organising },
+              dragState = dragState,
               onOrganise = if (organising) onOrganise else null,
             )
           }

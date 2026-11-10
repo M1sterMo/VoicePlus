@@ -61,6 +61,7 @@ import kotlinx.coroutines.launch
 import voice.core.common.rootGraphAs
 import voice.core.data.BookId
 import voice.core.data.LibraryOrganisation
+import voice.core.data.ShelfSort
 import voice.core.ui.PlayButton
 import voice.core.ui.VoiceTheme
 import voice.features.bookOverview.bottomSheet.BottomSheetContent
@@ -213,14 +214,23 @@ fun BookOverviewScreen(
   var seriesOrigin by rememberSaveable { mutableStateOf(floatArrayOf(0f, 0f, 0f, 0f)) }
   val listState = remember { scrollState.newListState() }
   val gridState = remember { scrollState.newGridState() }
-  val libraryDrag = rememberLibraryShelfDragState(shelfViewModel::dropOnShelf)
-
   // The app stays alive in the background, so books copied meanwhile are found when it comes back.
   // Opening the library also lands here; the view model's cooldown keeps this from re-walking often.
   LifecycleEventEffect(Lifecycle.Event.ON_START) {
     bookOverviewViewModel.attach()
   }
   val viewState = bookOverviewViewModel.state()
+  val libraryDrag = rememberLibraryShelfDragState(
+    onDrop = shelfViewModel::dropOnShelf,
+    // Dragging can only reorder a shelf kept in the listener's own order, with every book showing.
+    canReorder = { shelfId ->
+      shelfViewModel.filter == ShelfFilter.ALL &&
+        viewState.organisation?.shelves?.find { it.id == shelfId }?.sort == ShelfSort.MANUAL
+    },
+    onReorder = { shelfId, itemId, targetId ->
+      viewState.organisation?.let { shelfViewModel.reorderByDrag(it, shelfId, itemId, targetId) }
+    },
+  )
   DisposableEffect(viewState.layoutMode, listState, gridState) {
     onDispose {
       scrollState.captureIfNoRestorePending(viewState.layoutMode, listState, gridState)
@@ -330,7 +340,7 @@ fun BookOverviewScreen(
       selected = shelfViewModel.selected,
       onSelect = { shelfViewModel.toggle(it, viewState.organisation ?: LibraryOrganisation()) },
       organising = shelfViewModel.organising,
-      dragState = libraryDrag.takeIf { shelfViewModel.organising },
+      dragState = libraryDrag.takeIf { !shelfViewModel.selecting },
       onOrganise = shelfViewModel::chooseShelf,
       onSettingsClick = {
         scrollState.capture(viewState.layoutMode, listState, gridState)

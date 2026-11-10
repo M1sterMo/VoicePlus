@@ -1,10 +1,14 @@
 package voice.features.bookOverview.shelves
 
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -16,9 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -56,22 +63,41 @@ internal fun LibraryEntryTile(
     onDispose { dragState?.unregisterEntry(entry.key) }
   }
   val moving = dragState?.let { it.dragged == entry.itemId || it.returning == entry.itemId } == true
+  // Holding a book lifts it; letting go without moving still opens its menu, as a long press did.
+  val holdMenu: (() -> Unit)? = when {
+    selecting || onOrganise != null -> null
+    entry.seriesName != null -> onSeriesLongClick?.let { { it(entry.allBooks.first().value.id) } }
+    else -> onBookLongClick?.let { { it(entry.books.single().value.id) } }
+  }
+  val touchSlop = LocalViewConfiguration.current.touchSlop
   val dragModifier = if (dragState == null) {
     Modifier
   } else {
     Modifier
       .onGloballyPositioned {
         bounds = it.boundsInRoot()
-        dragState.registerEntry(entry.key, entry.sectionId, bounds)
+        dragState.registerEntry(entry.key, entry.sectionId, entry.itemId, bounds)
       }
-      .pointerInput(entry.key, dragState) {
-        detectDragGesturesAfterLongPress(
-          onDragStart = { local -> dragState.start(entry.itemId, ids, entry.sectionId, bounds.topLeft + local) },
-          onDragEnd = dragState::drop,
-          onDragCancel = dragState::cancel,
-        ) { change, delta ->
-          change.consume()
-          dragState.drag(delta)
+      .pointerInput(entry.key, dragState, holdMenu) {
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          val press = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+          dragState.start(entry.itemId, ids, entry.sectionId, bounds.topLeft + press.position)
+          // After the hold this gesture owns the finger: it reads events before the row does and consumes
+          // them, so the row never turns the release into a tap.
+          while (true) {
+            val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == press.id } ?: break
+            val delta = change.positionChange()
+            change.consume()
+            if (!change.pressed) break
+            dragState.drag(delta)
+          }
+          if (dragState.offset.getDistance() < touchSlop) {
+            dragState.cancel()
+            holdMenu?.invoke()
+          } else {
+            dragState.drop()
+          }
         }
       }
       .zIndex(if (moving) 2f else 0f)
@@ -87,7 +113,12 @@ internal fun LibraryEntryTile(
         }
       }
   }
-  Box(modifier.then(dragModifier).then(if (entry.seriesName == null) Modifier.testTag(entry.key) else Modifier)) {
+  val target = if (dragState?.hoveredEntry == entry.itemId) {
+    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.large)
+  } else {
+    Modifier
+  }
+  Box(modifier.then(dragModifier).then(target).then(if (entry.seriesName == null) Modifier.testTag(entry.key) else Modifier)) {
     if (entry.seriesName != null) {
       SeriesCard(
         entry,
@@ -100,7 +131,7 @@ internal fun LibraryEntryTile(
         },
         onLongClick = when {
           selecting -> toggle
-          onOrganise != null -> null
+          onOrganise != null || dragState != null -> null
           else -> onSeriesLongClick?.let { { it(entry.allBooks.first().value.id) } }
         },
         listMode = layout == BookOverviewLayoutMode.List,
@@ -121,7 +152,7 @@ internal fun LibraryEntryTile(
       }
       val longClick: ((BookId) -> Unit)? = when {
         selecting -> ({ toggle() })
-        onOrganise != null -> null
+        onOrganise != null || dragState != null -> null
         else -> onBookLongClick
       }
       val scope = sharedTransitionScope.takeIf { entry.key == activeCoverKey }

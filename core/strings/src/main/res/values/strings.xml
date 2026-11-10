@@ -261,6 +261,7 @@
     <string name="book_header_current">Current</string>
     <string name="book_header_not_started">Not started Yet</string>
     <string name="book_header_completed">Completed</string>
+    <string name="book_time_left">%1$s left</string>
     <string name="book_finished_on">Finished %1$s</string>
     <string name="book_header_expand_section">Expand %1$s</string>
     <string name="book_header_collapse_section">Collapse %1$s</string>

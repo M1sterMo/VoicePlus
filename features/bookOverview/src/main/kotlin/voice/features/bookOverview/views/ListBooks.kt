@@ -147,7 +147,7 @@ internal fun ListBooks(
               selected = selected,
               onSelect = onSelect,
               modifier = Modifier.animateItem(),
-              dragState = dragState.takeIf { organising },
+              dragState = dragState,
               onOrganise = if (organising) onOrganise else null,
             )
           }
@@ -259,7 +259,7 @@ internal fun ListBookRow(
 @Composable
 internal fun BookOverviewItemViewState.statusLabel(): String {
   return when {
-    !finished -> remainingTime
+    !finished -> stringResource(StringsR.string.book_time_left, remainingTime)
     finishedOn != null -> stringResource(StringsR.string.book_finished_on, finishedOn)
     else -> stringResource(StringsR.string.book_header_completed)
   }
