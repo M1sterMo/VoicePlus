@@ -49,6 +49,7 @@ import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.search.BookSearchViewState
 import voice.navigation.Destination
 import voice.navigation.Navigator
+import voice.navigation.Origin
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
@@ -238,6 +239,10 @@ class BookOverviewViewModel(
 
   fun onBookFolderClick() {
     navigator.goTo(Destination.FolderPicker)
+  }
+
+  fun onAddBooksClick() {
+    navigator.goTo(Destination.AddContent(Origin.Default))
   }
 
   fun onSearchActiveChange(active: Boolean) {

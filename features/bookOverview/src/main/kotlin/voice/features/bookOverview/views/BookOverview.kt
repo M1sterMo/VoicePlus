@@ -323,7 +323,7 @@ fun BookOverviewScreen(
           viewState.organisation ?: LibraryOrganisation(),
           onSearch = { bookOverviewViewModel.onSearchActiveChange(true) },
           onSettings = bookOverviewViewModel::onSettingsClick,
-          onImport = bookOverviewViewModel::onBookFolderClick,
+          onImport = bookOverviewViewModel::onAddBooksClick,
           onAddToSeries = {
             seriesViewModel.create(shelfViewModel.selected.toList())
             shelfViewModel.cancelSelection()
