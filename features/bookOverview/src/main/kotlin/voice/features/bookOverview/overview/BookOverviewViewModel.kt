@@ -48,6 +48,7 @@ import voice.core.scanner.MediaScanTrigger
 import voice.core.search.BookSearch
 import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.search.BookSearchViewState
+import voice.features.upNext.moved
 import voice.navigation.Destination
 import voice.navigation.Navigator
 import voice.navigation.Origin
@@ -252,6 +253,13 @@ class BookOverviewViewModel(
     playerController.pauseIfCurrentBookDifferentFrom(id)
     scope.launch { currentBookStoreDataStore.updateData { id } }
     navigator.goTo(Destination.Playback(id))
+  }
+
+  fun moveInUpNext(
+    id: BookId,
+    target: BookId,
+  ) {
+    scope.launch { upNextStore.updateData { it.moved(id, target) } }
   }
 
   fun onBookFolderClick() {

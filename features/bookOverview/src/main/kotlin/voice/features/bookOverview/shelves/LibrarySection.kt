@@ -12,6 +12,11 @@ import voice.features.bookOverview.series.LibraryEntry
 
 internal const val UP_NEXT = "upnext"
 
+private const val BOOK_ITEM = "book:"
+
+/** The book behind a single-book entry's item id. */
+internal fun bookOfItem(itemId: String): BookId = BookId(itemId.removePrefix(BOOK_ITEM))
+
 internal enum class ShelfFilter { ALL, NOT_STARTED, COMPLETED }
 
 internal data class LibrarySection(
@@ -44,7 +49,7 @@ internal fun librarySections(
     }
     if (currentEntries.isNotEmpty()) add(LibrarySection("current", null, currentEntries))
     val queued = upNext.mapNotNull(books::get).mapIndexed { index, book ->
-      LibraryEntry(null, listOf(book), sectionId = UP_NEXT, itemId = "book:${book.value.id.value}", queuePosition = index + 1)
+      LibraryEntry(null, listOf(book), sectionId = UP_NEXT, itemId = BOOK_ITEM + book.value.id.value, queuePosition = index + 1)
     }
     if (queued.isNotEmpty()) add(LibrarySection(UP_NEXT, null, queued))
     organisation.shelves.sortedWith(

@@ -16,7 +16,7 @@ class LibraryShelfDragStateTest {
     drag.registerShelf("first", Rect(0f, 0f, 100f, 50f))
     drag.registerShelf("second", Rect(0f, 100f, 100f, 150f))
 
-    drag.start("series:one", books, "first", Offset(50f, 25f))
+    drag.start("first:series:one", "series:one", books, "first", Offset(50f, 25f))
     drag.drag(Offset(0f, 100f))
     drag.hoveredShelf shouldBe "second"
     drag.drop()
@@ -31,8 +31,34 @@ class LibraryShelfDragStateTest {
     val drag = LibraryShelfDragState(this, { _, _ -> error("Source shelf accepted a drop") }) {}
     drag.registerShelf("first", Rect(0f, 0f, 100f, 50f))
 
-    drag.start("book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
+    drag.start("one", "book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
     drag.hoveredShelf shouldBe null
+  }
+
+  @Test fun `Current and Up next neither take books from shelves nor send them to one`() = runTest {
+    val drag = LibraryShelfDragState(this, { _, _ -> error("Dropped across a projection") }, canDrop = { it != UP_NEXT }) {}
+    drag.registerShelf("first", Rect(0f, 0f, 100f, 50f))
+    drag.registerEntry("queued", UP_NEXT, "book:two", Rect(0f, 100f, 100f, 200f))
+
+    drag.start("one", "book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
+    drag.drag(Offset(0f, 125f))
+    drag.hoveredShelf shouldBe null
+
+    val fromQueue = LibraryShelfDragState(this, { _, _ -> error("Dropped across a projection") }, canDrop = { it != UP_NEXT }) {}
+    fromQueue.registerShelf("first", Rect(0f, 0f, 100f, 50f))
+    fromQueue.start("queued", "book:two", setOf(BookId("two")), UP_NEXT, Offset(50f, 150f))
+    fromQueue.drag(Offset(0f, -125f))
+    fromQueue.hoveredShelf shouldBe null
+  }
+
+  @Test fun `only the held tile lifts when its book also shows in another section`() = runTest {
+    val drag = LibraryShelfDragState(this, { _, _ -> }, canReorder = { true }) {}
+    drag.registerEntry("current:book:one", "current", "book:one", Rect(0f, 0f, 100f, 50f))
+    drag.registerEntry("$UP_NEXT:book:one", UP_NEXT, "book:one", Rect(0f, 100f, 100f, 150f))
+
+    drag.start("$UP_NEXT:book:one", "book:one", setOf(BookId("one")), UP_NEXT, Offset(50f, 125f))
+    drag.dragged shouldBe "$UP_NEXT:book:one"
+    drag.visualOffset("current:book:one") shouldBe Offset.Zero
   }
 
   @Test fun `dropping on a visible book moves into that books shelf`() = runTest {
@@ -42,7 +68,7 @@ class LibraryShelfDragStateTest {
     drag.registerShelf("first", Rect(0f, 0f, 100f, 50f))
     drag.registerEntry("second-book", "second", "book:two", Rect(0f, 100f, 100f, 200f))
 
-    drag.start("book:one", setOf(book), "first", Offset(50f, 25f))
+    drag.start("one", "book:one", setOf(book), "first", Offset(50f, 25f))
     drag.drag(Offset(0f, 125f))
     drag.hoveredShelf shouldBe "second"
     drag.drop()
@@ -61,9 +87,9 @@ class LibraryShelfDragStateTest {
     drag.registerEntry("one", "first", "book:one", Rect(0f, 0f, 100f, 50f))
     drag.registerEntry("two", "first", "book:two", Rect(0f, 60f, 100f, 110f))
 
-    drag.start("book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
+    drag.start("one", "book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
     drag.drag(Offset(0f, 60f))
-    drag.hoveredEntry shouldBe "book:two"
+    drag.hoveredEntry shouldBe "two"
     drag.drop()
 
     reordered shouldBe Triple("first", "book:one", "book:two")
@@ -74,7 +100,7 @@ class LibraryShelfDragStateTest {
     drag.registerEntry("one", "first", "book:one", Rect(0f, 0f, 100f, 50f))
     drag.registerEntry("two", "first", "book:two", Rect(0f, 60f, 100f, 110f))
 
-    drag.start("book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
+    drag.start("one", "book:one", setOf(BookId("one")), "first", Offset(50f, 25f))
     drag.drag(Offset(0f, 60f))
     drag.hoveredEntry shouldBe null
   }

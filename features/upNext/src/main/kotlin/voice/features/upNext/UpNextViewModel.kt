@@ -39,8 +39,8 @@ class UpNextViewModel(
     bookRepository.flow(),
   ) { current, queue, books ->
     val byId = books.associateBy { it.id }
-    // An opened book keeps its place until it plays, but it already heads the sheet as now playing.
-    UpNextViewState(nowPlaying = current?.let(byId::get), queue = queue.filter { it != current }.mapNotNull(byId::get))
+    // Playing takes a book off the queue, so a current book still queued is only open, not playing.
+    UpNextViewState(nowPlaying = current?.takeIf { it !in queue }?.let(byId::get), queue = queue.mapNotNull(byId::get))
   }
 
   /** Puts [id] where [target] is now, as dragging it onto that book does. */
@@ -56,7 +56,8 @@ class UpNextViewModel(
   }
 }
 
-internal fun List<BookId>.moved(
+/** Puts [id] where [target] is now, as dragging it onto that book does. */
+fun List<BookId>.moved(
   id: BookId,
   target: BookId,
 ): List<BookId> {

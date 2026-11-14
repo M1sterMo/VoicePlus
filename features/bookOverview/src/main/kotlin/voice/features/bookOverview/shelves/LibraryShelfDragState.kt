@@ -22,11 +22,13 @@ import voice.core.data.BookId
 @Composable
 internal fun rememberLibraryShelfDragState(
   onDrop: (Set<BookId>, String) -> Unit,
+  canDrop: (shelfId: String) -> Boolean = { true },
   canReorder: (shelfId: String) -> Boolean = { false },
   onReorder: (shelfId: String, itemId: String, targetItemId: String) -> Unit = { _, _, _ -> },
 ): LibraryShelfDragState {
   val scope = rememberCoroutineScope()
   val drop by rememberUpdatedState(onDrop)
+  val droppable by rememberUpdatedState(canDrop)
   val reorderable by rememberUpdatedState(canReorder)
   val reorder by rememberUpdatedState(onReorder)
   val haptic = LocalHapticFeedback.current
@@ -34,6 +36,7 @@ internal fun rememberLibraryShelfDragState(
     LibraryShelfDragState(
       scope = scope,
       onDrop = { books, shelf -> drop(books, shelf) },
+      canDrop = { droppable(it) },
       canReorder = { reorderable(it) },
       onReorder = { shelf, item, target -> reorder(shelf, item, target) },
       haptic = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
@@ -43,12 +46,14 @@ internal fun rememberLibraryShelfDragState(
 
 /**
  * Coordinates a lifted library entry with the visible shelf headings and entries that can receive it.
- * Over another shelf it moves there; over an entry of its own shelf, where that shelf keeps a manual
- * order, it takes that entry's place.
+ * Over another shelf it moves there, if that is a real shelf rather than Current or Up next; over an
+ * entry of its own shelf, where that shelf keeps a manual order, it takes that entry's place. Books from
+ * Current or Up next only reorder there. Entries are tracked by key, as one book can show in several sections.
  */
 internal class LibraryShelfDragState(
   private val scope: CoroutineScope,
   private val onDrop: (Set<BookId>, String) -> Unit,
+  private val canDrop: (String) -> Boolean = { true },
   private val canReorder: (String) -> Boolean = { false },
   private val onReorder: (String, String, String) -> Unit = { _, _, _ -> },
   private val haptic: () -> Unit,
@@ -67,6 +72,7 @@ internal class LibraryShelfDragState(
 
   private val shelfBounds = mutableMapOf<String, Rect>()
   private val entryBounds = mutableMapOf<String, Triple<String, String, Rect>>()
+  private var draggedItem = ""
   private var books = emptySet<BookId>()
   private var sourceShelf = ""
   private var pointer = Offset.Zero
@@ -101,6 +107,7 @@ internal class LibraryShelfDragState(
   }
 
   fun start(
+    key: String,
     itemId: String,
     bookIds: Set<BookId>,
     shelfId: String,
@@ -108,7 +115,8 @@ internal class LibraryShelfDragState(
   ) {
     settleJob?.cancel()
     returning = null
-    dragged = itemId
+    dragged = key
+    draggedItem = itemId
     books = bookIds
     sourceShelf = shelfId
     pointer = pointerInRoot
@@ -125,9 +133,10 @@ internal class LibraryShelfDragState(
   }
 
   fun drop() {
-    val itemId = dragged ?: return
+    val key = dragged ?: return
+    val itemId = draggedItem
     val destination = hoveredShelf
-    val target = hoveredEntry
+    val target = hoveredEntry?.let { entryBounds[it]?.second }
     val shelf = sourceShelf
     when {
       destination != null -> {
@@ -139,7 +148,7 @@ internal class LibraryShelfDragState(
         clear()
         onReorder(shelf, itemId, target)
       }
-      else -> returnToOrigin(itemId)
+      else -> returnToOrigin(key)
     }
   }
 
@@ -147,28 +156,30 @@ internal class LibraryShelfDragState(
     dragged?.let(::returnToOrigin)
   }
 
-  fun visualOffset(itemId: String): Offset = when (itemId) {
+  fun visualOffset(key: String): Offset = when (key) {
     dragged -> offset
     returning -> settle.value
     else -> Offset.Zero
   }
 
   private fun updateHoveredShelf() {
-    hoveredShelf = shelfBounds.entries.firstOrNull { (id, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.key
-      ?: entryBounds.values.firstOrNull { (id, _, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.first
+    hoveredShelf = (
+      shelfBounds.entries.firstOrNull { (id, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.key
+        ?: entryBounds.values.firstOrNull { (id, _, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.first
+      )?.takeIf { canDrop(sourceShelf) && canDrop(it) }
     hoveredEntry = if (hoveredShelf == null && dragged != null && canReorder(sourceShelf)) {
-      entryBounds.values.firstOrNull { (id, item, bounds) -> id == sourceShelf && item != dragged && bounds.contains(pointer) }?.second
+      entryBounds.entries.firstOrNull { (key, entry) -> entry.first == sourceShelf && key != dragged && entry.third.contains(pointer) }?.key
     } else {
       null
     }
   }
 
-  private fun returnToOrigin(itemId: String) {
+  private fun returnToOrigin(key: String) {
     val distance = offset
     dragged = null
     hoveredShelf = null
     hoveredEntry = null
-    returning = itemId
+    returning = key
     settleJob = scope.launch {
       settle.snapTo(distance)
       settle.animateTo(Offset.Zero, spring(dampingRatio = 1f, stiffness = 400f))
@@ -181,6 +192,7 @@ internal class LibraryShelfDragState(
     returning = null
     hoveredShelf = null
     hoveredEntry = null
+    draggedItem = ""
     books = emptySet()
     sourceShelf = ""
     pointer = Offset.Zero

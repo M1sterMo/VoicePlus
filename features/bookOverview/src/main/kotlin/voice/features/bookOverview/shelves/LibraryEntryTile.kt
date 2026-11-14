@@ -63,7 +63,7 @@ internal fun LibraryEntryTile(
   DisposableEffect(dragState, entry.key) {
     onDispose { dragState?.unregisterEntry(entry.key) }
   }
-  val moving = dragState?.let { it.dragged == entry.itemId || it.returning == entry.itemId } == true
+  val moving = dragState?.let { it.dragged == entry.key || it.returning == entry.key } == true
   // Holding a book lifts it; letting go without moving still opens its menu, as a long press did.
   val holdMenu: (() -> Unit)? = when {
     selecting || onOrganise != null -> null
@@ -83,7 +83,7 @@ internal fun LibraryEntryTile(
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)
           val press = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
-          dragState.start(entry.itemId, ids, entry.sectionId, bounds.topLeft + press.position)
+          dragState.start(entry.key, entry.itemId, ids, entry.sectionId, bounds.topLeft + press.position)
           // After the hold this gesture owns the finger: it reads events before the row does and consumes
           // them, so the row never turns the release into a tap.
           while (true) {
@@ -103,7 +103,7 @@ internal fun LibraryEntryTile(
       }
       .zIndex(if (moving) 2f else 0f)
       .graphicsLayer {
-        val offset = dragState.visualOffset(entry.itemId)
+        val offset = dragState.visualOffset(entry.key)
         translationX = offset.x
         translationY = offset.y
         if (moving) {
@@ -114,7 +114,7 @@ internal fun LibraryEntryTile(
         }
       }
   }
-  val target = if (dragState?.hoveredEntry == entry.itemId) {
+  val target = if (dragState?.hoveredEntry == entry.key) {
     Modifier.border(2.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.large)
   } else {
     Modifier

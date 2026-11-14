@@ -81,6 +81,8 @@ import voice.features.bookOverview.shelves.ShelfControls
 import voice.features.bookOverview.shelves.ShelfDialog
 import voice.features.bookOverview.shelves.ShelfFilter
 import voice.features.bookOverview.shelves.ShelfLibraryBar
+import voice.features.bookOverview.shelves.UP_NEXT
+import voice.features.bookOverview.shelves.bookOfItem
 import voice.features.bookOverview.shelves.librarySections
 import voice.features.bookOverview.shelves.rememberLibraryShelfDragState
 import voice.features.bookOverview.views.topbar.BookOverviewTopBar
@@ -223,13 +225,18 @@ fun BookOverviewScreen(
   val viewState = bookOverviewViewModel.state()
   val libraryDrag = rememberLibraryShelfDragState(
     onDrop = shelfViewModel::dropOnShelf,
-    // Dragging can only reorder a shelf kept in the listener's own order, with every book showing.
+    canDrop = { shelfId -> viewState.organisation?.shelves?.any { it.id == shelfId } == true },
+    // Dragging can only reorder Up next, or a shelf kept in the listener's own order with every book showing.
     canReorder = { shelfId ->
-      shelfViewModel.filter == ShelfFilter.ALL &&
-        viewState.organisation?.shelves?.find { it.id == shelfId }?.sort == ShelfSort.MANUAL
+      shelfId == UP_NEXT ||
+        (shelfViewModel.filter == ShelfFilter.ALL && viewState.organisation?.shelves?.find { it.id == shelfId }?.sort == ShelfSort.MANUAL)
     },
     onReorder = { shelfId, itemId, targetId ->
-      viewState.organisation?.let { shelfViewModel.reorderByDrag(it, shelfId, itemId, targetId) }
+      if (shelfId == UP_NEXT) {
+        bookOverviewViewModel.moveInUpNext(bookOfItem(itemId), bookOfItem(targetId))
+      } else {
+        viewState.organisation?.let { shelfViewModel.reorderByDrag(it, shelfId, itemId, targetId) }
+      }
     },
   )
   DisposableEffect(viewState.layoutMode, listState, gridState) {
