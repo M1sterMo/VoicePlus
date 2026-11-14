@@ -1,5 +1,6 @@
 package voice.core.playback
 
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import org.junit.Test
 import voice.core.data.Book
 import voice.core.data.BookContent
@@ -18,6 +20,7 @@ import voice.core.data.BookId
 import voice.core.data.Chapter
 import voice.core.data.ChapterId
 import voice.core.data.repo.BookRepository
+import voice.core.playback.session.MediaId
 import voice.core.playback.session.search.book
 import voice.core.sleeptimer.SleepTimer
 import voice.core.sleeptimer.SleepTimerMode
@@ -85,6 +88,22 @@ class UpNextAdvancerTest {
 
     verify(exactly = 1) { playerController.playPauseForBook(second) }
     upNext.data.first() shouldBe listOf(second)
+  }
+
+  @Test
+  fun `the book that starts playing leaves the queue, not the one merely open`() = runTest {
+    // The open book is `current`; a headset resumes `first`, which the player still has loaded.
+    every { player.currentMediaItem } returns
+      MediaItem.Builder().setMediaId(Json.encodeToString(MediaId.serializer(), MediaId.Book(first))).build()
+    val advancer = advancer(listOf(first, current, second))
+
+    advancer.onIsPlayingChanged(false)
+    runCurrent()
+    upNext.data.first() shouldBe listOf(first, current, second)
+
+    advancer.onIsPlayingChanged(true)
+    runCurrent()
+    upNext.data.first() shouldBe listOf(current, second)
   }
 
   @Test

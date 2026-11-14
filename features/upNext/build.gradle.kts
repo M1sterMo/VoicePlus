@@ -9,7 +9,6 @@ dependencies {
   implementation(projects.core.strings)
   implementation(projects.core.ui)
   implementation(projects.core.data.api)
-  implementation(projects.core.initializer)
 
   testImplementation(libs.bundles.testing.jvm)
 }

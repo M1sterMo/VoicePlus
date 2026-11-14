@@ -5,8 +5,8 @@ import dev.zacsweers.metro.ContributesIntoSet
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.first
 import voice.core.data.BookId
-import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.UpNextStore
+import voice.core.playback.PlayerController
 import voice.features.bookOverview.bottomSheet.BottomSheetItem
 import voice.features.bookOverview.bottomSheet.BottomSheetItemViewModel
 import voice.features.bookOverview.di.BookOverviewScope
@@ -16,13 +16,12 @@ import voice.features.bookOverview.di.BookOverviewScope
 class UpNextItemViewModel(
   @UpNextStore
   private val upNextStore: DataStore<List<BookId>>,
-  @CurrentBookStore
-  private val currentBookStore: DataStore<BookId?>,
+  private val playerController: PlayerController,
 ) : BottomSheetItemViewModel {
 
   override suspend fun items(bookId: BookId): List<BottomSheetItem> {
-    // The current book is the one playing; queueing it would only replay it.
-    if (bookId == currentBookStore.data.first()) return emptyList()
+    // Queueing the book that is playing would only replay it. A book that is merely open can be queued.
+    if (playerController.currentPlaybackSnapshot() == (bookId to true)) return emptyList()
     return listOf(if (bookId in upNextStore.data.first()) BottomSheetItem.RemoveFromUpNext else BottomSheetItem.AddToUpNext)
   }
 

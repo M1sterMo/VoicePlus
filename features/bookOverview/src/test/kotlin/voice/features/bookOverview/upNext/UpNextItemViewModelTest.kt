@@ -2,12 +2,15 @@ package voice.features.bookOverview.upNext
 
 import androidx.datastore.core.DataStore
 import io.kotest.matchers.shouldBe
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import voice.core.data.BookId
+import voice.core.playback.PlayerController
 import voice.features.bookOverview.bottomSheet.BottomSheetItem
 
 class UpNextItemViewModelTest {
@@ -16,7 +19,8 @@ class UpNextItemViewModelTest {
   private val queued = BookId("queued")
   private val other = BookId("other")
   private val queue = MemoryDataStore(listOf(queued))
-  private val viewModel = UpNextItemViewModel(queue, MemoryDataStore(current))
+  private val player = mockk<PlayerController> { coEvery { currentPlaybackSnapshot() } returns (current to false) }
+  private val viewModel = UpNextItemViewModel(queue, player)
 
   @Test
   fun `a book is added to the end of the queue`() = runTest {
@@ -33,8 +37,14 @@ class UpNextItemViewModelTest {
   }
 
   @Test
-  fun `the current book cannot be queued`() = runTest {
+  fun `the book that is playing cannot be queued`() = runTest {
+    coEvery { player.currentPlaybackSnapshot() } returns (current to true)
     viewModel.items(current) shouldBe emptyList()
+  }
+
+  @Test
+  fun `an opened book that is not playing can be queued`() = runTest {
+    viewModel.items(current) shouldBe listOf(BottomSheetItem.AddToUpNext)
   }
 }
 

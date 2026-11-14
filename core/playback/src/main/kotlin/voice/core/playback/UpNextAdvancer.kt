@@ -16,9 +16,9 @@ import voice.core.sleeptimer.SleepTimer
 import voice.core.sleeptimer.SleepTimerState
 
 /**
- * Starts the first queued book once the current one plays to its end. Only the player's own end of
- * the book counts: every sleep-timer stop is a pause, which never reaches [Player.STATE_ENDED].
- * Starting the book makes it the current one, and that takes it off the queue.
+ * Runs the Up next queue. A queued book leaves it once it starts playing, however it was started;
+ * opening it alone keeps its place. When a book plays to its end, the first queued one starts. Only
+ * the player's own end counts: every sleep-timer stop is a pause, which never reaches [Player.STATE_ENDED].
  */
 @Inject
 @SingleIn(PlaybackScope::class)
@@ -38,6 +38,12 @@ class UpNextAdvancer(
   fun attachTo(player: Player) {
     this.player = player
     player.addListener(this)
+  }
+
+  override fun onIsPlayingChanged(isPlaying: Boolean) {
+    // The loaded book, not the current one: a headset can resume a book while another is open.
+    val playing = player?.takeIf { isPlaying }?.currentBookId() ?: return
+    scope.launch { upNextStore.updateData { it - playing } }
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {

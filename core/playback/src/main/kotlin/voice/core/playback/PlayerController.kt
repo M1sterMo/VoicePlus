@@ -164,17 +164,6 @@ class PlayerController(
     return true
   }
 
-  private fun MediaController.currentBookId(): BookId? {
-    val currentMediaItem = currentMediaItem ?: return null
-    val mediaId = currentMediaItem.mediaId.toMediaIdOrNull() ?: return null
-    return when (mediaId) {
-      is MediaId.Book -> mediaId.id
-      is MediaId.Chapter -> mediaId.bookId
-      MediaId.Recent -> null
-      MediaId.Root -> null
-    }
-  }
-
   fun pauseWithRewind(rewind: Duration) = executeAfterPrepare { controller ->
     controller.sendCustomCommand(CustomCommand.PauseWithRewind(rewind.inWholeMilliseconds))
   }
@@ -291,4 +280,11 @@ class PlayerController(
       null
     }
   }
+}
+
+/** The book the player has loaded, which can differ from the current book until play loads that one. */
+internal fun Player.currentBookId(): BookId? = when (val mediaId = currentMediaItem?.mediaId?.toMediaIdOrNull()) {
+  is MediaId.Book -> mediaId.id
+  is MediaId.Chapter -> mediaId.bookId
+  else -> null
 }
