@@ -147,8 +147,7 @@ internal fun SeriesEditorSheet(
           modifier = Modifier.fillMaxWidth(),
         )
         val matches = state.books.filter {
-          (it.isActive || it.id in state.selected) &&
-            (query.isBlank() || it.name.contains(query, ignoreCase = true) || it.author.orEmpty().contains(query, ignoreCase = true))
+          query.isBlank() || it.name.contains(query, ignoreCase = true) || it.author.orEmpty().contains(query, ignoreCase = true)
         }
         LazyColumn(Modifier.weight(1f).testTag("series-picker"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
           if (matches.isEmpty()) item { Text(stringResource(StringsR.string.series_no_matches), Modifier.padding(16.dp)) }

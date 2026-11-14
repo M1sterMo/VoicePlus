@@ -178,8 +178,8 @@ class SeriesViewModelTest {
     model.state shouldBe null
   }
 
-  @Test fun `new groups spanning shelves require an explicit home and include selected hidden books`() = runTest(dispatcher) {
-    coEvery { repo.all() } returns listOf(first.content, second.content.copy(isActive = false))
+  @Test fun `new groups spanning shelves require an explicit home`() = runTest(dispatcher) {
+    coEvery { repo.all() } returns listOf(first.content, second.content)
     coEvery { organisation.get() } returns LibraryOrganisation(
       shelves = listOf(LibraryShelf.Other, LibraryShelf("later", "Later", 0)),
       placements = listOf(LibraryPlacement(first.id.value, position = 0), LibraryPlacement(second.id.value, "later", 0)),
@@ -195,5 +195,22 @@ class SeriesViewModelTest {
     model.save()
     advanceUntilIdle()
     coVerify { organisation.saveSeries(null, "New series", listOf(first.id, second.id), "later") }
+  }
+
+  @Test fun `a series book whose files are gone is left out, so the editor matches the shelf`() = runTest(dispatcher) {
+    val gone = book(name = "Gone").let { it.copy(content = it.content.copy(seriesGroup = "Existing", seriesOrder = 0, isActive = false)) }
+    coEvery { repo.all() } returns listOf(gone.content, second.content.copy(seriesOrder = 1))
+    model.onItemClick(second.id, BottomSheetItem.Series)
+    model.state!!.selected shouldBe listOf(second.id)
+    model.state!!.books.map { it.id } shouldBe listOf(second.id)
+  }
+
+  @Test fun `saving keeps a missing book in the series, after the others`() = runTest(dispatcher) {
+    val gone = book(name = "Gone").let { it.copy(content = it.content.copy(seriesGroup = "Existing", seriesOrder = 0, isActive = false)) }
+    coEvery { repo.all() } returns listOf(gone.content, second.content.copy(seriesOrder = 1))
+    model.onItemClick(second.id, BottomSheetItem.Series)
+    model.save()
+    advanceUntilIdle()
+    coVerify { organisation.saveSeries("Existing", "Existing", listOf(second.id, gone.id), any()) }
   }
 }

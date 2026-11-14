@@ -42,6 +42,12 @@ internal data class SeriesEditorState(
   val destination: String? get() = shelfId
     ?: organisation.placements.filter { BookId(it.bookId) in selected }.map { it.shelfId }.distinct().singleOrNull()
   val canSave: Boolean get() = name.isNotBlank() && selected.isNotEmpty() && !saving && destination != null
+
+  /** Members whose files are gone: not shown, but kept at the end of the series so they return to it. */
+  val missing: List<BookId> get() = organisation.placements
+    .filter { seriesId != null && it.seriesId == seriesId && books.none { book -> book.id.value == it.bookId } }
+    .sortedBy { it.seriesPosition }
+    .map { BookId(it.bookId) }
   val selectedBooks: List<BookContent> get() {
     val byId = books.associateBy { it.id }
     return selected.mapNotNull(byId::get)
@@ -87,7 +93,9 @@ class SeriesViewModel(
     val placements = organisation.placements.associateBy { it.bookId }
     val series = organisation.series.associateBy { it.id }
     val groupId = placements[bookId.value]?.seriesId
+    // Only books in the library: one whose files are gone would hold a place the shelf never shows.
     val books = contentRepo.all()
+      .filter { it.isActive }
       .map { content ->
         content.copy(
           seriesGroup = placements[content.id.value]?.seriesId?.let {
@@ -193,7 +201,7 @@ class SeriesViewModel(
         val change = organisationRepo.saveSeries(
           current.seriesId,
           if (ungroup) current.originalName!! else name,
-          if (ungroup) emptyList() else current.selected,
+          if (ungroup) emptyList() else current.selected + current.missing,
           current.destination,
         )
         state = null
