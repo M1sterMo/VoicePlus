@@ -54,7 +54,8 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> signing/keystore.properties
 
       - name: Build Signed Release APK
-        run: ./gradlew :app:assembleLibreRelease --no-configuration-cache
+        # Like F-Droid's rebuild, skip the build cache so both compile everything from source.
+        run: ./gradlew :app:assembleLibreRelease --no-build-cache --no-configuration-cache
 
       - uses: actions/setup-python@v6
         with:

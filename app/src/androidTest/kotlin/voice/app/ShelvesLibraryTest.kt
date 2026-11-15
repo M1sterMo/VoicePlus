@@ -7,6 +7,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -173,7 +174,9 @@ class ShelvesLibraryTest {
         compose.mainClock.autoAdvance = true
         compose.onNodeWithText("Done").performClick()
         compose.waitUntil(10_000) { runBlocking { organisation.get().itemOrder(shelves[0]).indexOf("book:${ids[0].value}") > 8 } }
-        compose.onNodeWithContentDescription("Library options").performClick()
+        // Organising starts from a shelf's own menu; its options then sit in the top bar.
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Organise Reading room"))
+        compose.onNodeWithContentDescription("Organise Reading room").performClick()
         compose.onNodeWithText("Organise library").performClick()
         compose.onNodeWithContentDescription("Library options").performClick()
         compose.onNodeWithText("Reorder shelves").performClick()
@@ -295,6 +298,13 @@ class ShelvesLibraryTest {
       compose.onNodeWithContentDescription("Library options").performClick()
       compose.onNodeWithText(label).performClick()
     }
+
+    // Organising starts from a shelf's own menu; its options then sit in the top bar.
+    fun organise() {
+      compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Organise Other books"))
+      compose.onNodeWithContentDescription("Organise Other books").performClick()
+      compose.onNodeWithText("Organise library").performClick()
+    }
     fun scrollTo(tag: String) {
       compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
     }
@@ -309,7 +319,7 @@ class ShelvesLibraryTest {
           compose.waitUntil(15_000) { compose.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() }
           scrollTo("current:book:${ids[1].value}")
           compose.onNodeWithTag("current:book:${ids[1].value}").assertIsDisplayed()
-          option("Organise library")
+          organise()
           option("New shelf")
           compose.onNodeWithText("Shelf name").performTextInput("Fantasy")
           compose.onNodeWithText("Create").performClick()
@@ -317,7 +327,7 @@ class ShelvesLibraryTest {
           compose.onNodeWithText("Done").performClick()
           val fantasy = runBlocking { organisation.get().shelves.single { it.name == "Fantasy" }.id }.also(created::add)
           // Organise mode supports a direct long-press drag from a book to a shelf heading.
-          option("Organise library")
+          organise()
           val draggedBook = "other:book:${ids[3].value}"
           scrollTo(draggedBook)
           val from = compose.onNodeWithTag(draggedBook).fetchSemanticsNode().boundsInRoot.center

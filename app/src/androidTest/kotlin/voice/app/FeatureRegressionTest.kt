@@ -105,6 +105,8 @@ class FeatureRegressionTest {
     ActivityScenario.launch(MainActivity::class.java).use { activity ->
       search()
       compose.onNode(searchResult).performTouchInput { longClick() }
+      // The menu opens once its items are ready.
+      compose.waitUntilAtLeastOneExists(hasText("Edit book"), 10_000)
       compose.onNodeWithText("Edit book").performClick()
       val titleField = hasSetTextAction() and hasAnyAncestor(isDialog())
       compose.waitUntilAtLeastOneExists(titleField, 10_000)
@@ -136,6 +138,8 @@ class FeatureRegressionTest {
       runBlocking { books.get(bookId)!!.name shouldBe title }
 
       compose.onNode(searchResult).performTouchInput { longClick() }
+      // The menu opens once its items are ready.
+      compose.waitUntilAtLeastOneExists(hasText("Edit book"), 10_000)
       compose.onNodeWithText("Edit book").performClick()
       compose.waitUntilAtLeastOneExists(titleField, 10_000)
       val savedCover = cropCover()
