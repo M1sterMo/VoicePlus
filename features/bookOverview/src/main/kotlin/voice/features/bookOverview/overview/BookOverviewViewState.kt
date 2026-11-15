@@ -20,6 +20,7 @@ data class BookOverviewViewState(
   val showFolderPickerIcon: Boolean,
   val booksPerRow: Int = 2,
   val organisation: LibraryOrganisation? = null,
+  val upNext: List<BookId> = emptyList(),
 ) {
 
   companion object {

@@ -15,6 +15,14 @@ internal constructor(private val dao: ListeningSessionDao) : ListeningSessionRep
     dao.insert(session)
   }
 
+  override suspend fun updateSession(session: ListeningSession) {
+    dao.upsert(session)
+  }
+
+  override suspend fun deleteSession(session: ListeningSession) {
+    dao.deleteAt(session.bookId, session.startedAt, session.startPositionMs)
+  }
+
   override fun sessions(bookId: BookId): Flow<List<ListeningSession>> {
     return dao.sessionsForBook(bookId)
   }

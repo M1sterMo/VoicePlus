@@ -11,5 +11,9 @@
   <color name="widget_background_color">#ECE6F0</color>
   <color name="widget_text_primary">#1C1B1F</color>
   <color name="widget_text_secondary">#49454F</color>
-  <color name="widget_icon_tint">#1C1B1F</color>
+  <color name="widget_primary">#6750A4</color>
+  <color name="widget_on_primary">#FFFFFF</color>
+  <color name="widget_tonal">#EADDFF</color>
+  <color name="widget_on_tonal">#4F378B</color>
+  <color name="widget_progress_track">#CAC4D0</color>
 </resources>

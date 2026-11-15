@@ -37,6 +37,11 @@ jobs:
             echo "Release notes exceed F-Droid's 500-character limit" >&2
             exit 1
           fi
+          # F-Droid shows every line in full, so keep "What's new" to a glance.
+          if [[ $(grep -c . "$notes") -gt 4 ]]; then
+            echo "Release notes have more than four points" >&2
+            exit 1
+          fi
           echo "RELEASE_NOTES_PATH=$notes" >> "$GITHUB_ENV"
 
       - name: Decode Keystore
@@ -49,7 +54,8 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> signing/keystore.properties
 
       - name: Build Signed Release APK
-        run: ./gradlew :app:assembleLibreRelease --no-configuration-cache
+        # Like F-Droid's rebuild, skip the build cache so both compile everything from source.
+        run: ./gradlew :app:assembleLibreRelease --no-build-cache --no-configuration-cache
 
       - uses: actions/setup-python@v6
         with:

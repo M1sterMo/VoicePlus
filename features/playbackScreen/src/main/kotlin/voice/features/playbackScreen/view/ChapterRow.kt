@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +41,7 @@ internal fun ChapterRow(
       IconButton(onClick = onSkipToPrevious) {
         Icon(
           modifier = Modifier.size(36.dp),
-          imageVector = Icons.Outlined.ChevronLeft,
+          imageVector = Icons.Outlined.SkipPrevious,
           contentDescription = stringResource(id = R.string.previous_track),
         )
       }
@@ -75,7 +75,7 @@ internal fun ChapterRow(
       IconButton(onClick = onSkipToNext) {
         Icon(
           modifier = Modifier.size(36.dp),
-          imageVector = Icons.Outlined.ChevronRight,
+          imageVector = Icons.Outlined.SkipNext,
           contentDescription = stringResource(id = R.string.next_track),
         )
       }

@@ -1,5 +1,6 @@
 package voice.features.listeningStats
 
+import android.text.format.DateFormat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -18,12 +19,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,20 +38,25 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -54,18 +64,26 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavEntry
 import coil.compose.AsyncImage
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
+import kotlinx.coroutines.launch
 import voice.core.common.rootGraphAs
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
+import java.text.DecimalFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
@@ -92,9 +110,11 @@ fun ListeningStatsScreen() {
   // Null until the first aggregation lands: rendering Empty here would flash "No listening data yet"
   // at a user who has years of it.
   val viewState = viewModel.viewState() ?: return
+  val scope = rememberCoroutineScope()
   ListeningStatsScreen(
     viewState = viewState,
     onClose = viewModel::onClose,
+    onChangeFinishDate = { book, date -> scope.launch { viewModel.changeFinishDate(book, date) } },
   )
 }
 
@@ -103,6 +123,7 @@ internal fun ListeningStatsScreen(
   viewState: ListeningStatsViewState,
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
+  onChangeFinishDate: (FinishedBookStats, LocalDate) -> Unit = { _, _ -> },
 ) {
   var selectedBook by remember { mutableStateOf<FinishedBookStats?>(null) }
   Scaffold(
@@ -153,15 +174,19 @@ internal fun ListeningStatsScreen(
         if (viewState.totalLifetimeMs > 0L) {
           TotalListening(viewState)
           Recently(viewState)
-          LastTwelveMonths(viewState)
-          Records(viewState)
         }
 
+        // The trophy shelf comes before the charts: it is what this screen is visited for.
         if (viewState.finishedBooks.isNotEmpty()) {
           FinishedBooks(
             books = viewState.finishedBooks,
             onBookClick = { selectedBook = it },
           )
+        }
+
+        if (viewState.totalLifetimeMs > 0L) {
+          LastTwelveMonths(viewState)
+          Records(viewState)
         }
 
         if (viewState.booksInLibrary > 0) {
@@ -188,6 +213,10 @@ internal fun ListeningStatsScreen(
     FinishedBookDetailsSheet(
       book = book,
       onDismiss = { selectedBook = null },
+      onChangeFinishDate = { date ->
+        onChangeFinishDate(book, date)
+        selectedBook = null
+      },
     )
   }
 }
@@ -216,7 +245,14 @@ private fun TotalListening(viewState: ListeningStatsViewState) {
       UnitTile(minutes.toString(), stringResource(StringsR.string.listening_stats_unit_minutes), Modifier.weight(1f))
     }
     Text(
-      text = formatDuration(totalMs),
+      text = listOfNotNull(
+        formatDuration(totalMs),
+        pluralStringResource(
+          StringsR.plurals.listening_stats_books_finished,
+          viewState.booksCompleted,
+          viewState.booksCompleted,
+        ).takeIf { viewState.booksCompleted > 0 },
+      ).joinToString(" · "),
       style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier
@@ -232,29 +268,39 @@ private fun UnitTile(
   value: String,
   unit: String,
   modifier: Modifier = Modifier,
+  valueStyle: TextStyle = MaterialTheme.typography.displaySmall,
+  supporting: String? = null,
+  containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
 ) {
   Card(
     modifier = modifier,
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    colors = CardDefaults.cardColors(containerColor = containerColor),
     shape = MaterialTheme.shapes.large,
   ) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(vertical = 14.dp),
+        .padding(vertical = 14.dp, horizontal = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Text(
         text = value,
-        style = MaterialTheme.typography.displaySmall,
+        style = valueStyle,
         color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        // Long values ("200h 15m") shrink to fit a narrow tile instead of being cut off.
+        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = valueStyle.fontSize),
       )
       Text(
         text = unit,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 2.dp),
+        textAlign = TextAlign.Center,
       )
+      supporting?.let {
+        Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+      }
     }
   }
 }
@@ -263,12 +309,19 @@ private fun UnitTile(
 private fun Recently(viewState: ListeningStatsViewState) {
   Column {
     SectionTitle(stringResource(StringsR.string.listening_stats_recently))
-    StatsCard {
-      StatRow(stringResource(StringsR.string.listening_stats_today), formatDuration(viewState.todayMs))
-      RowDivider()
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_this_week),
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 8.dp),
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      val style = MaterialTheme.typography.titleLarge
+      UnitTile(formatDuration(viewState.todayMs), stringResource(StringsR.string.listening_stats_today), Modifier.weight(1f), style)
+      UnitTile(
         value = formatDuration(viewState.thisWeekMs),
+        unit = stringResource(StringsR.string.listening_stats_this_week),
+        modifier = Modifier.weight(1f),
+        valueStyle = style,
         supporting = viewState.weekChangePercent?.let { change ->
           when {
             change > 0 -> stringResource(StringsR.string.listening_stats_week_delta_more, change)
@@ -277,8 +330,12 @@ private fun Recently(viewState: ListeningStatsViewState) {
           }
         },
       )
-      RowDivider()
-      StatRow(stringResource(StringsR.string.listening_stats_this_month), formatDuration(viewState.thisMonthMs))
+      UnitTile(
+        formatDuration(viewState.thisMonthMs),
+        stringResource(StringsR.string.listening_stats_this_month),
+        Modifier.weight(1f),
+        style,
+      )
     }
   }
 }
@@ -428,65 +485,67 @@ private fun InteractiveBarChart(
 
 @Composable
 private fun Records(viewState: ListeningStatsViewState) {
+  val longestStreakLabel = stringResource(StringsR.string.listening_stats_longest_streak)
+  val records = listOf(
+    pluralStringResource(StringsR.plurals.listening_stats_streak_days, viewState.longestStreak, viewState.longestStreak) to
+      if (viewState.currentStreak == viewState.longestStreak && viewState.currentStreak > 0) {
+        "$longestStreakLabel ${stringResource(StringsR.string.listening_stats_streak_now)}"
+      } else {
+        longestStreakLabel
+      },
+    pluralStringResource(StringsR.plurals.listening_stats_streak_days, viewState.currentStreak, viewState.currentStreak) to
+      stringResource(StringsR.string.listening_stats_current_streak),
+    formatDuration(viewState.longestDayMs) to
+      dated(stringResource(StringsR.string.listening_stats_longest_day), viewState.longestDayLabel),
+    formatDuration(viewState.biggestMonthMs) to
+      dated(stringResource(StringsR.string.listening_stats_biggest_month), viewState.biggestMonthLabel),
+    (viewState.bestDayOfWeek ?: "—") to stringResource(StringsR.string.listening_stats_best_day_of_week),
+    formatDuration(viewState.avgSessionMs) to stringResource(StringsR.string.listening_stats_avg_session),
+  )
   Column {
     SectionTitle(stringResource(StringsR.string.listening_stats_records))
-    StatsCard {
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_longest_streak),
-        value = pluralStringResource(
-          StringsR.plurals.listening_stats_streak_days,
-          viewState.longestStreak,
-          viewState.longestStreak,
-        ),
-        badge = stringResource(StringsR.string.listening_stats_streak_now)
-          .takeIf { viewState.currentStreak == viewState.longestStreak && viewState.currentStreak > 0 },
-      )
-      if (viewState.currentStreak != viewState.longestStreak) {
-        RowDivider()
-        StatRow(
-          label = stringResource(StringsR.string.listening_stats_current_streak),
-          value = pluralStringResource(
-            StringsR.plurals.listening_stats_streak_days,
-            viewState.currentStreak,
-            viewState.currentStreak,
-          ),
-        )
+    Column(
+      modifier = Modifier.padding(top = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      records.chunked(2).forEach { pair ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          pair.forEach { (value, label) -> RecordTile(value, label, Modifier.weight(1f)) }
+        }
       }
-      RowDivider()
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_longest_day),
-        value = if (viewState.longestDayMs > 0 && viewState.longestDayLabel != null) {
-          stringResource(
-            StringsR.string.listening_stats_selected_period,
-            formatDuration(viewState.longestDayMs),
-            viewState.longestDayLabel,
-          )
-        } else {
-          "—"
-        },
+    }
+  }
+}
+
+@Composable
+private fun dated(
+  label: String,
+  date: String?,
+): String = if (date == null) label else stringResource(StringsR.string.listening_stats_selected_period, label, date)
+
+@Composable
+private fun RecordTile(
+  value: String,
+  label: String,
+  modifier: Modifier = Modifier,
+) {
+  Card(
+    modifier = modifier,
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    shape = MaterialTheme.shapes.large,
+  ) {
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+      Text(
+        text = value,
+        style = MaterialTheme.typography.titleLarge,
+        maxLines = 1,
+        autoSize = TextAutoSize.StepBased(minFontSize = 12.sp, maxFontSize = MaterialTheme.typography.titleLarge.fontSize),
       )
-      RowDivider()
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_biggest_month),
-        value = if (viewState.biggestMonthMs > 0 && viewState.biggestMonthLabel != null) {
-          stringResource(
-            StringsR.string.listening_stats_selected_period,
-            formatDuration(viewState.biggestMonthMs),
-            viewState.biggestMonthLabel,
-          )
-        } else {
-          "—"
-        },
-      )
-      RowDivider()
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_best_day_of_week),
-        value = viewState.bestDayOfWeek ?: "—",
-      )
-      RowDivider()
-      StatRow(
-        label = stringResource(StringsR.string.listening_stats_avg_session),
-        value = formatDuration(viewState.avgSessionMs),
+      Text(
+        text = label,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 2,
       )
     }
   }
@@ -499,17 +558,28 @@ private fun FinishedBooks(
 ) {
   var showAll by remember { mutableStateOf(false) }
   val visibleBooks = if (showAll) books else books.take(RECENT_FINISHED_BOOKS)
+  // The list is newest first, so grouping keeps years in order and undated books last.
+  val yearCounts = books.groupingBy { it.finishedDate?.year }.eachCount()
   Column {
     SectionTitle(stringResource(StringsR.string.listening_stats_finished))
-    Card(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 8.dp),
-      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-      shape = MaterialTheme.shapes.large,
-    ) {
-      Column {
-        visibleBooks.forEachIndexed { index, book ->
+    visibleBooks.groupBy { it.finishedDate?.year }.forEach { (year, group) ->
+      Text(
+        text = if (year == null) {
+          stringResource(StringsR.string.listening_stats_undated)
+        } else {
+          val count = yearCounts.getValue(year)
+          pluralStringResource(StringsR.plurals.listening_stats_year_books, count, year.toString(), count)
+        },
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+      )
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.large,
+      ) {
+        group.forEachIndexed { index, book ->
           if (index > 0) {
             HorizontalDivider(
               modifier = Modifier.padding(start = 70.dp),
@@ -521,21 +591,20 @@ private fun FinishedBooks(
             onClick = { onBookClick(book) },
           )
         }
-        if (books.size > RECENT_FINISHED_BOOKS) {
-          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-          TextButton(
-            onClick = { showAll = !showAll },
-            modifier = Modifier.fillMaxWidth(),
-          ) {
-            Text(
-              if (showAll) {
-                stringResource(StringsR.string.listening_stats_show_fewer)
-              } else {
-                stringResource(StringsR.string.listening_stats_show_all, books.size)
-              },
-            )
-          }
-        }
+      }
+    }
+    if (books.size > RECENT_FINISHED_BOOKS) {
+      TextButton(
+        onClick = { showAll = !showAll },
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        Text(
+          if (showAll) {
+            stringResource(StringsR.string.listening_stats_show_fewer)
+          } else {
+            stringResource(StringsR.string.listening_stats_show_all, books.size)
+          },
+        )
       }
     }
   }
@@ -546,9 +615,11 @@ private fun FinishedBookRow(
   book: FinishedBookStats,
   onClick: () -> Unit,
 ) {
+  val days = book.daysToFinish()
   val meta = listOfNotNull(
+    book.finishedDate?.let { stringResource(StringsR.string.book_finished_on, it.format(monthDayFormatter())) },
     formatDuration(book.listenedMs).takeIf { book.listenedMs > 0 },
-    book.finishedDateLabel,
+    days?.let { pluralStringResource(StringsR.plurals.listening_stats_streak_days, it, it) },
   ).joinToString(" · ")
   ListItem(
     modifier = Modifier
@@ -600,7 +671,21 @@ private fun FinishedBookRow(
 private fun FinishedBookDetailsSheet(
   book: FinishedBookStats,
   onDismiss: () -> Unit,
+  onChangeFinishDate: (LocalDate) -> Unit,
 ) {
+  var pickingDate by remember { mutableStateOf(false) }
+  val speedFormat = remember { DecimalFormat("0.##") }
+  if (pickingDate) {
+    FinishDatePicker(
+      initial = book.finishedDate ?: LocalDate.now(),
+      after = book.finishDateFloor,
+      onPick = {
+        pickingDate = false
+        onChangeFinishDate(it)
+      },
+      onDismiss = { pickingDate = false },
+    )
+  }
   ModalBottomSheet(onDismissRequest = onDismiss) {
     Box(
       modifier = Modifier.fillMaxWidth(),
@@ -623,6 +708,15 @@ private fun FinishedBookDetailsSheet(
               overflow = TextOverflow.Ellipsis,
             )
           },
+          supportingContent = book.finishedDateLabel?.let { date ->
+            {
+              Text(
+                text = stringResource(StringsR.string.book_finished_on, date),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+              )
+            }
+          },
           leadingContent = {
             AsyncImage(
               modifier = Modifier
@@ -636,48 +730,162 @@ private fun FinishedBookDetailsSheet(
             )
           },
         )
-        StatsCard {
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_total_lifetime),
-            value = formatDuration(book.listenedMs),
+        if (book.sessionCount > 0) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+          ) {
+            // The sheet is the page's tile colour, so its tiles take the tonal accent instead.
+            val tile: @Composable (String, String) -> Unit = { value, label ->
+              UnitTile(
+                value = value,
+                unit = label,
+                modifier = Modifier.weight(1f),
+                valueStyle = MaterialTheme.typography.titleLarge,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+              )
+            }
+            tile(formatDuration(book.listenedMs), stringResource(StringsR.string.listening_stats_listening))
+            book.daysToFinish()?.let { days ->
+              tile(
+                pluralStringResource(StringsR.plurals.listening_stats_streak_days, days, days),
+                stringResource(StringsR.string.listening_stats_start_to_finish),
+              )
+            }
+            tile(book.sessionCount.toString(), stringResource(StringsR.string.listening_stats_sessions))
+          }
+        }
+        if (book.dailyMs.size > 1) {
+          SectionTitle(
+            stringResource(StringsR.string.listening_stats_day_by_day),
+            Modifier.padding(top = 20.dp, bottom = 8.dp),
           )
-          RowDivider()
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_sessions),
-            value = book.sessionCount.toString(),
-          )
-          RowDivider()
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_avg_session),
-            value = if (book.sessionCount > 0) {
-              formatDuration(book.listenedMs / book.sessionCount)
-            } else {
-              stringResource(StringsR.string.listening_stats_not_available)
-            },
-          )
-          RowDivider()
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_completed),
-            value = book.completionCount?.let { count ->
-              pluralStringResource(StringsR.plurals.listening_stats_completion_count, count, count)
-            } ?: stringResource(StringsR.string.listening_stats_completed_at_least_once),
-          )
-          RowDivider()
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_first_listened),
-            value = book.firstListenedDateLabel
-              ?: stringResource(StringsR.string.listening_stats_not_available),
-          )
-          RowDivider()
-          StatRow(
-            label = stringResource(StringsR.string.listening_stats_most_recent_completion),
-            value = book.finishedDateLabel
-              ?: stringResource(StringsR.string.listening_stats_not_available),
-          )
+          DayBars(book)
+        }
+        if (book.sessionCount > 0 || book.completionCount != null) {
+          StatsCard {
+            val rows = buildList {
+              if (book.sessionCount > 0) {
+                add(stringResource(StringsR.string.listening_stats_longest_session) to formatDuration(book.longestSessionMs))
+                add(stringResource(StringsR.string.listening_stats_avg_session) to formatDuration(book.listenedMs / book.sessionCount))
+                add(stringResource(StringsR.string.playback_speed) to "${speedFormat.format(book.playbackSpeed)}×")
+              }
+              book.firstListenedDateLabel?.let { add(stringResource(StringsR.string.listening_stats_first_listened) to it) }
+              // An unknown count (a finish from before tracking) is left out rather than guessed.
+              book.completionCount?.let { count ->
+                add(
+                  stringResource(StringsR.string.listening_stats_completed) to
+                    pluralStringResource(StringsR.plurals.listening_stats_completion_count, count, count),
+                )
+              }
+            }
+            rows.forEachIndexed { index, (label, value) ->
+              if (index > 0) RowDivider()
+              StatRow(label, value)
+            }
+          }
+        }
+        if (book.canChangeFinishDate) {
+          TextButton(
+            onClick = { pickingDate = true },
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(top = 12.dp),
+          ) {
+            Text(stringResource(StringsR.string.listening_stats_change_finish_date))
+          }
         }
       }
     }
   }
+}
+
+@Composable
+private fun DayBars(book: FinishedBookStats) {
+  val max = book.dailyMs.max().coerceAtLeast(1L)
+  val primary = MaterialTheme.colorScheme.primary
+  val idle = MaterialTheme.colorScheme.outlineVariant
+  Column {
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(96.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalAlignment = Alignment.Bottom,
+    ) {
+      book.dailyMs.forEach { ms ->
+        Box(
+          modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight((ms.toFloat() / max).coerceAtLeast(0.06f))
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(if (ms > 0) primary else idle),
+        )
+      }
+    }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 6.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      val formatter = monthDayFormatter()
+      listOfNotNull(book.readStartDate, book.finishedDate).forEach {
+        Text(it.format(formatter), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FinishDatePicker(
+  initial: LocalDate,
+  after: LocalDate?,
+  onPick: (LocalDate) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  // DatePicker counts in UTC midnights, so convert at UTC to keep the calendar day intact.
+  val state = rememberDatePickerState(
+    initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+    selectableDates = object : SelectableDates {
+      override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+        val date = Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        return date <= LocalDate.now() && (after == null || date > after)
+      }
+    },
+  )
+  DatePickerDialog(
+    onDismissRequest = onDismiss,
+    confirmButton = {
+      TextButton(
+        onClick = {
+          state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
+        },
+      ) { Text(stringResource(StringsR.string.listening_stats_set_date)) }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss) { Text(stringResource(StringsR.string.dialog_cancel)) }
+    },
+  ) {
+    DatePicker(state)
+  }
+}
+
+/** Days from the first listen to the finish, counting both; null when either end is unknown. */
+private fun FinishedBookStats.daysToFinish(): Int? {
+  val start = readStartDate ?: return null
+  val end = finishedDate ?: return null
+  return (end.toEpochDay() - start.toEpochDay() + 1).toInt().takeIf { it > 0 }
+}
+
+/** "Nov 8" in the reader's locale: the year is already given by the group heading. */
+@Composable
+private fun monthDayFormatter(): DateTimeFormatter {
+  val locale = LocalConfiguration.current.locales[0]
+  return remember(locale) { DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMd"), locale) }
 }
 
 @Composable
@@ -800,10 +1008,14 @@ private fun StatRow(
 }
 
 @Composable
-private fun SectionTitle(title: String) {
+private fun SectionTitle(
+  title: String,
+  modifier: Modifier = Modifier,
+) {
   Text(
     text = title,
     style = MaterialTheme.typography.titleMedium,
+    modifier = modifier,
   )
 }
 

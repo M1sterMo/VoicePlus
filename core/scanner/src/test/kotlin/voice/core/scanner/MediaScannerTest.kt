@@ -21,6 +21,7 @@ import org.junit.runner.RunWith
 import voice.core.data.BookId
 import voice.core.data.ChapterId
 import voice.core.data.folders.FolderType
+import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.BookContentRepoImpl
 import voice.core.data.repo.BookRepositoryImpl
 import voice.core.data.repo.ChapterRepoImpl
@@ -483,6 +484,38 @@ class MediaScannerTest {
     )
   }
 
+  @Test
+  fun scanAuthorScansEachBookOnce() = test {
+    val audioBooks = folder("audiobooks")
+
+    audioFile(parent = audioBooks, "test.mp3")
+    audioFile(parent = audioBooks, "author1/test.mp3")
+    audioFile(parent = File(audioBooks, "author1/book1"), "c1.mp3")
+    audioFile(parent = File(audioBooks, "author1/book1"), "c2.mp3")
+    audioFile(parent = File(audioBooks, "author1/book2"), "a.mp3")
+
+    scan(FolderType.Author, audioBooks)
+
+    scannedBooks.size shouldBe 4
+  }
+
+  @Test
+  fun bookFolderLeftWithoutAudioFilesLeavesTheLibrary() = test {
+    val audiobookFolder = folder("audiobooks")
+    val book = File(audiobookFolder, "book")
+    val chapter = audioFile(book, "1.mp3")
+    File(book, "cover.jpg").writeText("cover")
+    scan(FolderType.Root, audiobookFolder)
+    assertBookContents(BookContentView(book, chapters = listOf(chapter)))
+
+    check(chapter.delete())
+    scan(FolderType.Root, audiobookFolder)
+
+    assertBookContents()
+    // Progress stays stored, so the book comes back when its files return.
+    bookContentRepo.get(BookId(book.toUri()))!!.isActive shouldBe false
+  }
+
   private fun test(test: suspend TestEnvironment.() -> Unit) {
     runTest {
       TestEnvironment().use { test(it) }
@@ -505,8 +538,10 @@ class MediaScannerTest {
     // passed to scan() is treated as currently-configured. (The remove-during-scan race — where this set diverges
     // from the snapshot mid-scan — is covered by ScanFolderRemovalRaceTest.)
     val configuredFolders = FakeManagedFolders()
+    private val scannedRepo = ScannedBooksRecordingRepo(bookContentRepo)
+    val scannedBooks: List<BookId> get() = scannedRepo.scannedBooks
     private val scanner = MediaScanner(
-      contentRepo = bookContentRepo,
+      contentRepo = scannedRepo,
       chapterParser = ChapterParser(
         chapterRepo = chapterRepo,
         mediaAnalyzer = mediaAnalyzer,
@@ -597,4 +632,15 @@ class MediaScannerTest {
     val id: File,
     val chapters: List<File>,
   )
+
+  /** Records the books a scan found, which the scanner reports through the reconcile call. */
+  private class ScannedBooksRecordingRepo(private val delegate: BookContentRepo) : BookContentRepo by delegate {
+
+    val scannedBooks = mutableListOf<BookId>()
+
+    override suspend fun setAllInactiveExcept(ids: List<BookId>) {
+      scannedBooks += ids
+      delegate.setAllInactiveExcept(ids)
+    }
+  }
 }

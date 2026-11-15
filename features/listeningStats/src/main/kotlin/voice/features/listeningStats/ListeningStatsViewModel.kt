@@ -13,12 +13,16 @@ import voice.core.data.BookId
 import voice.core.data.ChapterId
 import voice.core.data.ListeningSession
 import voice.core.data.ListeningSessionEndReason
+import voice.core.data.isCompletion
+import voice.core.data.isCompletionMark
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ListeningSessionRepo
 import voice.core.ui.ImmutableFile
 import voice.navigation.Navigator
 import java.net.URLDecoder
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -53,6 +57,7 @@ class ListeningStatsViewModel(
               isCompleted = book.isCompleted(),
               lastChapter = lastChapter?.id,
               lastChapterDurationMs = lastChapter?.duration ?: 0L,
+              playbackSpeed = book.content.playbackSpeed,
             )
           }
         }
@@ -73,6 +78,35 @@ class ListeningStatsViewModel(
   fun onClose() {
     navigator.goBack()
   }
+
+  /** Moves a hand-marked finish, or dates one that only has the last-played fallback. */
+  suspend fun changeFinishDate(
+    book: FinishedBookStats,
+    date: LocalDate,
+  ) {
+    val bookId = book.bookId ?: return
+    val zone = ZoneId.systemDefault()
+    val at = if (date == LocalDate.now()) Instant.now() else date.atTime(LocalTime.NOON).atZone(zone).toInstant()
+    val mark = book.finishMark
+    if (mark != null) {
+      sessionRepo.updateSession(mark.copy(startedAt = at, endedAt = at))
+    } else {
+      val chapter = book.lastChapter ?: return
+      sessionRepo.addSession(
+        ListeningSession(
+          bookId = bookId,
+          chapterId = chapter,
+          startedAt = at,
+          endedAt = at,
+          durationMs = 0,
+          startPositionMs = 0,
+          endPositionMs = 0,
+          endChapterId = chapter,
+          endReason = ListeningSessionEndReason.MarkedCompleted.id,
+        ),
+      )
+    }
+  }
 }
 
 data class LibraryBookInfo(
@@ -82,6 +116,7 @@ data class LibraryBookInfo(
   val isCompleted: Boolean,
   val lastChapter: ChapterId? = null,
   val lastChapterDurationMs: Long = 0L,
+  val playbackSpeed: Float = 1f,
 )
 
 internal fun computeStats(
@@ -93,13 +128,15 @@ internal fun computeStats(
 ): ListeningStatsViewState {
   val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
   val finishedBooks = finishedBooks(sessions, books, zone, dateFormatter)
+  // Completion marks date a finish; they are not listening, so they stay out of every time metric.
+  val listening = sessions.filterNot { it.isCompletionMark }
   // Count TITLES, not library rows: the same audiobook can exist under several identities
   // (folder-level book alongside a file-level or parent-folder one), and the Finished shelf
   // collapses those — the "N of M completed" card must agree with it.
   val booksInLibrary = books.distinctBy { it.name }.size
   val booksCompleted = finishedBooks.size
 
-  if (sessions.isEmpty()) {
+  if (listening.isEmpty()) {
     return ListeningStatsViewState.Empty.copy(
       booksCompleted = booksCompleted,
       booksInLibrary = booksInLibrary,
@@ -108,10 +145,10 @@ internal fun computeStats(
   }
 
   val weekFields = WeekFields.of(locale)
-  val dailyTotals = dailyTotals(sessions, zone)
+  val dailyTotals = dailyTotals(listening, zone)
 
   // Summary metrics
-  val totalLifetimeMs = sessions.sumOf { it.durationMs }
+  val totalLifetimeMs = listening.sumOf { it.durationMs }
   val todayMs = dailyTotals[today] ?: 0L
   val weekStart = today.with(weekFields.dayOfWeek(), 1)
   val thisWeekMs = dailyTotals.entries.filter { it.key >= weekStart }.sumOf { it.value }
@@ -129,7 +166,7 @@ internal fun computeStats(
   }
 
   val firstDay = dailyTotals.keys.min()
-  val avgSessionMs = totalLifetimeMs / sessions.size
+  val avgSessionMs = totalLifetimeMs / listening.size
 
   // Longest day
   val longestEntry = dailyTotals.maxByOrNull { it.value }
@@ -189,11 +226,10 @@ internal fun computeStats(
 /**
  * One shelf entry per finished TITLE, newest finish first. The same audiobook can exist under
  * several library identities (a folder-level book alongside a file-level or parent-folder one, from
- * grants added over time), so hours are summed across all same-named copies. There is no explicit
- * "completed at" timestamp: the finish date is the last
- * session that demonstrably REACHED the end of the book, so a later re-listen that stops mid-book
- * cannot bump a March finish to August. For a book finished before session tracking existed both
- * duration and date stay empty rather than showing zeros.
+ * grants added over time), so hours are summed across all same-named copies. The finish date is the
+ * last completion record — playback reaching the end, or the listener marking the book completed —
+ * so a later re-listen that stops mid-book cannot bump a March finish to August. For a book finished
+ * before session tracking existed both duration and date stay empty rather than showing zeros.
  */
 private fun finishedBooks(
   sessions: List<ListeningSession>,
@@ -209,18 +245,29 @@ private fun finishedBooks(
     .groupBy { it.name }
     .mapNotNull { (name, copies) ->
       val copySessions = copies.map { it to sessionsByBook[it.id].orEmpty() }
-      val allSessions = copySessions.flatMap { it.second }
+      val allSessions = copySessions.flatMap { it.second }.filterNot { it.isCompletionMark }
       val nativeCopySessions = copySessions.map { (copy, s) -> copy to s.filter { it.bookId == copy.id } }
-      val explicitCompletions = nativeCopySessions.flatMap { (_, s) ->
-        s.filter { it.endReason == ListeningSessionEndReason.EndOfBook.id }
-      }
+      val explicitCompletions = nativeCopySessions.flatMap { (_, s) -> s.filter { it.isCompletion } }
       val legacyCompletions = nativeCopySessions.flatMap { (copy, s) -> legacyCompletionSessions(copy, s) }
       val completions = explicitCompletions + legacyCompletions
-      val completedAt = completions.maxOfOrNull { it.endedAt }
+      // A book marked completed before marks were recorded is dated by the finished copy's last
+      // listen, which is when it was finished in all but name. Finishes from before tracking, and
+      // listening on another copy of the title, stay undated.
+      val byRecency = completions.sortedByDescending { it.endedAt }
+      val latestCompletion = byRecency.firstOrNull()
+      val completedAt = latestCompletion?.endedAt
+        ?: copySessions.filter { (copy, _) -> copy.isCompleted }.flatMap { it.second }.filterNot { it.isCompletionMark }
+          .maxOfOrNull { it.endedAt }
       // Current position can move away from the end when a relisten begins, so completion evidence
       // also keeps the title on this historical shelf.
       if (copies.none { it.isCompleted } && completions.isEmpty()) return@mapNotNull null
       val finishedOn = completedAt?.atZone(zone)?.toLocalDate()
+      val firstListened = allSessions.minOfOrNull { it.startedAt }?.atZone(zone)?.toLocalDate()
+      // A re-read starts after the previous finish; measure this read, not the very first one.
+      val previousFinish = byRecency.getOrNull(1)?.endedAt
+      val readStart = allSessions.filter { previousFinish == null || it.startedAt > previousFinish }
+        .minOfOrNull { it.startedAt }?.atZone(zone)?.toLocalDate()
+      val primary = copies.firstOrNull { it.isCompleted } ?: copies.first()
       FinishedBookStats(
         name = name,
         cover = copies.firstNotNullOfOrNull { it.cover },
@@ -228,17 +275,43 @@ private fun finishedBooks(
         sessionCount = allSessions.size,
         // A legacy near-end record can establish that a finish happened, but not an exact count.
         completionCount = explicitCompletions.size.takeIf { it > 0 && legacyCompletions.isEmpty() },
-        firstListenedDateLabel = allSessions.minOfOrNull { it.startedAt }
-          ?.atZone(zone)
-          ?.toLocalDate()
-          ?.format(dateFormatter),
+        firstListenedDate = firstListened,
+        firstListenedDateLabel = firstListened?.format(dateFormatter),
         finishedDate = finishedOn,
         finishedDateLabel = finishedOn?.format(dateFormatter),
+        longestSessionMs = allSessions.maxOfOrNull { it.durationMs } ?: 0L,
+        readStartDate = readStart,
+        dailyMs = dailySpan(allSessions, zone, readStart, finishedOn),
+        playbackSpeed = primary.playbackSpeed,
+        bookId = primary.id,
+        lastChapter = primary.lastChapter,
+        // A finish reached by listening is a fact; a hand-marked or inferred one can be corrected.
+        finishMark = latestCompletion?.takeIf { it.isCompletionMark },
+        canChangeFinishDate = latestCompletion == null || latestCompletion.isCompletionMark,
+        // A finish reached by listening is fixed, so a moved mark cannot go back past it.
+        finishDateFloor = completions.filterNot { it.isCompletionMark }.maxOfOrNull { it.endedAt }?.atZone(zone)?.toLocalDate(),
       )
     }
     // compareByDescending flips the comparator, so nullsFirst ends up putting undated books last.
     .sortedWith(compareByDescending(nullsFirst()) { it.finishedDate })
 }
+
+/**
+ * Listening per day from the first listen to the finish, for the book's day-by-day chart. Empty
+ * when there is no span to chart, or when it is too long for one bar per day to stay readable.
+ */
+private fun dailySpan(
+  sessions: List<ListeningSession>,
+  zone: ZoneId,
+  from: LocalDate?,
+  to: LocalDate?,
+): List<Long> {
+  if (from == null || to == null || from >= to || to.toEpochDay() - from.toEpochDay() >= MAX_CHART_DAYS) return emptyList()
+  val totals = dailyTotals(sessions, zone)
+  return generateSequence(from) { it.plusDays(1) }.takeWhile { it <= to }.map { totals[it] ?: 0L }.toList()
+}
+
+private const val MAX_CHART_DAYS = 31
 
 /** Pre-end-reason sessions that demonstrably reached the final chapter's end. */
 private fun legacyCompletionSessions(
@@ -385,6 +458,16 @@ data class FinishedBookStats(
   val firstListenedDateLabel: String?,
   val finishedDate: LocalDate?,
   val finishedDateLabel: String?,
+  val firstListenedDate: LocalDate? = null,
+  val longestSessionMs: Long = 0L,
+  val dailyMs: List<Long> = emptyList(),
+  val playbackSpeed: Float = 1f,
+  val bookId: BookId? = null,
+  val lastChapter: ChapterId? = null,
+  val finishMark: ListeningSession? = null,
+  val canChangeFinishDate: Boolean = false,
+  val finishDateFloor: LocalDate? = null,
+  val readStartDate: LocalDate? = null,
 )
 
 data class ListeningStatsViewState(

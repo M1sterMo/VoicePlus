@@ -12,6 +12,7 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.core.net.toUri
+import androidx.datastore.core.DataStore
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
@@ -19,9 +20,13 @@ import androidx.navigation3.ui.NavDisplay
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Inject
+import kotlinx.coroutines.flow.filterNotNull
 import voice.app.navigation.NavEntryResolver
 import voice.app.navigation.StartDestinationProvider
+import voice.app.navigation.showCurrentBook
 import voice.core.common.rootGraphAs
+import voice.core.data.BookId
+import voice.core.data.store.CurrentBookStore
 import voice.core.logging.api.Logger
 import voice.core.ui.VoiceTheme
 import voice.features.review.ReviewFeature
@@ -45,6 +50,10 @@ class MainActivity : AppCompatActivity() {
   @Inject
   private lateinit var startDestinationProvider: StartDestinationProvider
 
+  @Inject
+  @CurrentBookStore
+  private lateinit var currentBookStore: DataStore<BookId?>
+
   override fun onCreate(savedInstanceState: Bundle?) {
     rootGraphAs<MainActivityGraph>().inject(this)
     super.onCreate(savedInstanceState)
@@ -54,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     setContent {
       @Suppress("UNCHECKED_CAST")
       val backStack = rememberNavBackStack(*startDestinationProvider(intent).toTypedArray()) as MutableList<Destination.Compose>
+      LaunchedEffect(backStack) { currentBookStore.data.filterNotNull().collect(backStack::showCurrentBook) }
       VoiceTheme {
         val dialogStrategy = remember { DialogSceneStrategy<Destination.Compose>() }
 

@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import voice.core.common.RetainedViewModel
 import voice.core.common.resolveChapterName
@@ -21,6 +22,7 @@ import voice.core.data.ListeningSession
 import voice.core.data.ListeningSessionEndReason
 import voice.core.data.byMarkKey
 import voice.core.data.durationMs
+import voice.core.data.isCompletionMark
 import voice.core.data.markForPosition
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ChapterNameOverrideRepo
@@ -64,7 +66,9 @@ class ListeningLogViewModel(
 
   @Composable
   fun viewState(): ListeningLogViewState {
-    val sessions by remember { sessionRepo.sessions(bookId) }.collectAsState(initial = emptyList())
+    val sessions by remember {
+      sessionRepo.sessions(bookId).map { all -> all.filterNot { it.isCompletionMark } }
+    }.collectAsState(initial = emptyList())
     val events by remember { eventRepo.events(bookId) }.collectAsState(initial = emptyList())
     val book by remember { bookRepo.flow(bookId) }.collectAsState(initial = null)
     val overrides by remember { chapterNameOverrideRepo.overridesForBook(bookId) }.collectAsState(initial = emptyList())

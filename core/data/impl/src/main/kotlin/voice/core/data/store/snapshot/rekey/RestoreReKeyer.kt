@@ -1,6 +1,5 @@
 package voice.core.data.store.snapshot.rekey
 
-import voice.core.data.BookCharacter
 import voice.core.data.BookContent
 import voice.core.data.Bookmark
 import voice.core.data.ChapterId
@@ -214,26 +213,12 @@ internal object RestoreReKeyer {
       )
     }
 
-    // Characters are book-scoped (no chapter anchor): rewrite bookId, fresh PK, the writer dedups.
-    val characters = snap.characters.map { dto ->
-      BookCharacter(
-        id = 0,
-        bookId = newBookId,
-        name = dto.name,
-        description = dto.description,
-        sortOrder = dto.sortOrder,
-        createdAt = Instant.ofEpochMilli(dto.createdAtEpochMillis),
-        updatedAt = Instant.ofEpochMilli(dto.updatedAtEpochMillis),
-      )
-    }
-
     return MatchedBook(
       sourceId = snap.content.id,
       content = content,
       bookmarks = bookmarks,
       overrides = overrides,
       sessions = sessions,
-      characters = characters,
       sourceLastPlayedAt = Instant.ofEpochMilli(snap.content.lastPlayedAtEpochMillis),
     )
   }

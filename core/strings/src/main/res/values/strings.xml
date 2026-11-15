@@ -16,6 +16,13 @@
     <string name="widget_config_opacity">Background opacity: %1$d%%</string>
     <string name="widget_config_text_size">Text size: %1$sx</string>
     <string name="widget_config_apply">Apply</string>
+    <string name="widget_previous_chapter">Previous chapter</string>
+    <string name="widget_next_chapter">Next chapter</string>
+    <string name="widget_no_book">No book selected</string>
+    <string name="widget_config_cover_shape">Cover shape</string>
+    <string name="widget_config_cover_square">Square</string>
+    <string name="widget_config_cover_book">Book</string>
+    <string name="widget_config_chapter_buttons">Previous and next chapter buttons</string>
     <string name="previous_track">Previous track</string>
     <string name="next_track">Next track</string>
     <string name="skip_silence">Skip Silence</string>
@@ -129,6 +136,21 @@
         <item quantity="one">%1$d day</item>
         <item quantity="other">%1$d days</item>
     </plurals>
+    <plurals name="listening_stats_books_finished">
+        <item quantity="one">%1$d book finished</item>
+        <item quantity="other">%1$d books finished</item>
+    </plurals>
+    <plurals name="listening_stats_year_books">
+        <item quantity="one">%1$s · %2$d book</item>
+        <item quantity="other">%1$s · %2$d books</item>
+    </plurals>
+    <string name="listening_stats_undated">No finish date</string>
+    <string name="listening_stats_listening">Listening</string>
+    <string name="listening_stats_start_to_finish">Start to finish</string>
+    <string name="listening_stats_day_by_day">Day by day</string>
+    <string name="listening_stats_longest_session">Longest session</string>
+    <string name="listening_stats_change_finish_date">Change finish date</string>
+    <string name="listening_stats_set_date">Set date</string>
     <string name="listening_stats_no_data">No listening data yet.\nStart playing to see your statistics.</string>
     <string name="character_list">Character list</string>
     <string name="character_list_add">Add character</string>
@@ -141,6 +163,11 @@
     <string name="character_delete_title">Delete character?</string>
     <string name="character_delete_confirmation">This action can’t be undone.</string>
     <string name="character_position_label">Position (1–%1$d)</string>
+    <plurals name="character_list_shared">
+        <item quantity="one">Shared across %1$s · %2$d book</item>
+        <item quantity="other">Shared across %1$s · %2$d books</item>
+    </plurals>
+    <string name="character_origin_book">Book %1$d</string>
     <string name="listening_log">Listening Log</string>
     <string name="listening_log_clear_history">Clear History</string>
     <string name="listening_log_empty">No listening sessions yet.\nStart playing to track your progress.</string>
@@ -209,6 +236,22 @@
     <string name="settings_section_appearance">Appearance</string>
     <!-- A numeric layout option, not a count of a pluralized noun. -->
     <string name="settings_appearance_books_summary" tools:ignore="PluralsCandidate">%1$s · %2$d per row</string>
+    <!-- e.g. "System theme · List" -->
+    <string name="settings_appearance_summary">%1$s theme · %2$s</string>
+    <string name="appearance_theme">Theme</string>
+    <string name="appearance_theme_system">System</string>
+    <string name="appearance_theme_light">Light</string>
+    <string name="appearance_theme_dark">Dark</string>
+    <string name="appearance_colour">Colour</string>
+    <string name="appearance_colour_wallpaper">Wallpaper colours</string>
+    <string name="appearance_colour_default">Default</string>
+    <string name="appearance_colour_teal">Teal</string>
+    <string name="appearance_colour_green">Green</string>
+    <string name="appearance_colour_orange">Orange</string>
+    <string name="appearance_colour_rose">Rose</string>
+    <string name="appearance_colour_blue">Blue</string>
+    <string name="appearance_cover_glow">Glow behind the cover</string>
+    <string name="appearance_cover_glow_summary">On the player, in the cover’s colours</string>
     <string name="settings_section_advanced">Advanced</string>
     <string name="settings_section_help_feedback">Help &amp; feedback</string>
     <string name="settings_section_about">About</string>
@@ -246,10 +289,14 @@
     <string name="book_header_current">Current</string>
     <string name="book_header_not_started">Not started Yet</string>
     <string name="book_header_completed">Completed</string>
+    <string name="book_time_left">%1$s left</string>
+    <string name="chapter_time_toggle">Switch between chapter length and time left</string>
     <string name="book_finished_on">Finished %1$s</string>
     <string name="book_header_expand_section">Expand %1$s</string>
     <string name="book_header_collapse_section">Collapse %1$s</string>
     <string name="close">Close</string>
+    <!-- Content description of the arrow that goes back to the previous screen. -->
+    <string name="navigate_back">Back</string>
     <string name="delete">Delete</string>
     <string name="add">Add</string>
     <string name="folder_mode_root">Top-Level Book Mode: Subfolders are books</string>
@@ -259,9 +306,41 @@
         <item quantity="one">%d audio file</item>
         <item quantity="other">%d audio files</item>
     </plurals>
-    <string name="folder_type_book_example_header">This would lead to the following books being detected</string>
-    <string name="folder_type_no_books">VoicePlus could not detect any books. Are there any audio files?</string>
-    <string name="folder_type_title">How are your files structured?</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. The whole folder is one book. -->
+    <string name="folder_mode_single_option">%s is one book</string>
+    <!-- Explains the option where a folder is one book: all its audio files become chapters, including those in disc folders. -->
+    <string name="folder_mode_single_summary">Its files become chapters, even in folders like CD 1 and CD 2.</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. Each subfolder or audio file in it is a book. -->
+    <string name="folder_mode_root_option">Every folder or file in %s is a book</string>
+    <!-- Option for how books are found in a picked folder. %s is the folder name. Its subfolders are authors, their subfolders are books. -->
+    <string name="folder_mode_author_option">Folders in %s are authors</string>
+    <!-- Badge on the option for finding books that matches the picked folder best. -->
+    <string name="folder_mode_guess">Looks like yours</string>
+    <!-- Title of the sheet with the options for how books are found in a folder. %s is the folder name. -->
+    <string name="folder_mode_sheet_title">How is %s organized?</string>
+    <!-- Number of books an option for finding books would lead to. -->
+    <plurals name="folder_mode_book_count">
+        <item quantity="one">%d book</item>
+        <item quantity="other">%d books</item>
+    </plurals>
+    <!-- Title while a picked folder is looked through. %s is the folder name. -->
+    <string name="folder_review_loading">Looking through %s…</string>
+    <!-- Title once the books in a picked folder are found. -->
+    <plurals name="folder_review_title">
+        <item quantity="one">%d book</item>
+        <item quantity="other">%d books</item>
+    </plurals>
+    <!-- Button that adds a picked folder with the books found in it. -->
+    <plurals name="folder_review_action_add">
+        <item quantity="one">Add %d book</item>
+        <item quantity="other">Add %d books</item>
+    </plurals>
+    <!-- Text button that shows the options for how books are found in a picked folder. -->
+    <string name="folder_review_action_change">Change how books are found</string>
+    <!-- Title when a picked folder has no audio files. %s is the folder name. -->
+    <string name="folder_review_empty_title">No audio files in %s</string>
+    <!-- Subtitle when a picked folder has no audio files. -->
+    <string name="folder_review_empty_subtitle">Pick the folder that has your audiobooks in it.</string>
     <string name="bookmark_just_now">Just now</string>
     <string name="voice_intro_first_book">Let\'s add your audiobook folder so you can start listening!</string>
     <string name="migration_hint_title">Accessing old Book positions</string>
@@ -300,9 +379,12 @@
     <string name="storage_bug_button">Grant permission</string>
     <string name="select_folder_title_onboarding">Add Your First Audiobook</string>
     <string name="select_folder_title_default">Add your Audiobook(s)</string>
-    <string name="select_folder_type_file">File</string>
-    <string name="select_folder_type_folder">Folder</string>
-    <string name="select_folder_subtitle">Would you like to add a single file as a book or a folder?</string>
+    <!-- Subtitle on the add content screen. Explains that picking a folder works for one book as well as for a whole library. -->
+    <string name="folder_add_subtitle">Pick the folder with your audiobooks. It can hold a single book or your whole library.</string>
+    <!-- Main button on the add content screen that opens the system folder picker. Also shown when a picked folder has no audio files. -->
+    <string name="folder_add_action_folder">Choose a folder</string>
+    <!-- Text button on the add content screen for adding one audio file instead of a folder. -->
+    <string name="folder_add_action_file">Add a single file instead</string>
     <string name="onboarding_welcome_title">Welcome to VoicePlus!</string>
     <string name="onboarding_welcome_subtitle">Your personal pocket audiobook player. Let\'s get you set up.</string>
     <string name="onboarding.button_next">Next</string>
@@ -464,6 +546,8 @@
     <string name="library_sort_title">Title</string>
     <string name="library_sort_author">Author</string>
     <string name="library_recently_added">Recently added</string>
+    <string name="library_sort_shortest">Shortest first</string>
+    <string name="library_sort_longest">Longest first</string>
     <string name="library_organise_shelf">Organise %1$s</string>
     <string name="library_expanded">Expanded</string>
     <string name="library_collapsed">Collapsed</string>
@@ -492,4 +576,12 @@
     <string name="library_empty_shelf">Empty shelf</string>
     <string name="library_series_saved">Series saved</string>
     <string name="library_series_ungrouped">Books ungrouped</string>
+    <string name="book_progress_completed">%1$d%% completed</string>
+    <string name="up_next">Up next</string>
+    <string name="up_next_add">Add to Up next</string>
+    <string name="up_next_remove">Remove from Up next</string>
+    <string name="up_next_now_playing">Now playing</string>
+    <string name="up_next_hint">Drag to reorder · swipe a book away to remove it</string>
+    <string name="up_next_empty">Long-press a book in your library to add it to Up next.</string>
+    <string name="up_next_length">%1$dh %2$02dm</string>
 </resources>

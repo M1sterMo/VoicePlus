@@ -26,7 +26,7 @@ import voice.core.common.comparator.sortedNaturally
 import voice.core.data.Book
 import voice.core.data.BookId
 import voice.core.data.GridMode
-import voice.core.data.ListeningSessionEndReason
+import voice.core.data.isCompletion
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.LibraryOrganisationRepo
@@ -35,6 +35,7 @@ import voice.core.data.repo.internals.dao.RecentBookSearchDao
 import voice.core.data.store.BooksPerRowStore
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.GridModeStore
+import voice.core.data.store.UpNextStore
 import voice.core.featureflag.ExperimentalPlaybackPersistenceQualifier
 import voice.core.featureflag.FeatureFlag
 import voice.core.featureflag.FolderPickerInSettingsFeatureFlagQualifier
@@ -47,8 +48,10 @@ import voice.core.scanner.MediaScanTrigger
 import voice.core.search.BookSearch
 import voice.features.bookOverview.di.BookOverviewScope
 import voice.features.bookOverview.search.BookSearchViewState
+import voice.features.upNext.moved
 import voice.navigation.Destination
 import voice.navigation.Navigator
+import voice.navigation.Origin
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
 
@@ -76,6 +79,8 @@ class BookOverviewViewModel(
   @ExperimentalPlaybackPersistenceQualifier
   private val experimentalPlaybackPersistenceFeatureFlag: FeatureFlag<Boolean>,
   private val organisationRepo: LibraryOrganisationRepo,
+  @UpNextStore
+  private val upNextStore: DataStore<List<BookId>>,
 ) : RetainedViewModel() {
   private var searchActive by mutableStateOf(false)
   private var query by mutableStateOf("")
@@ -96,10 +101,12 @@ class BookOverviewViewModel(
       .collectAsState(initial = null).value
     val finishedAt = remember {
       sessionRepo.allSessions().map { sessions ->
+        // Same rule as the stats screen: the last completion, else the last listen, so the two agree.
         sessions
-          .filter { it.endReason == ListeningSessionEndReason.EndOfBook.id }
-          .groupBy({ it.bookId }, { it.endedAt })
-          .mapValues { (_, endings) -> endings.max() }
+          .groupBy { it.bookId }
+          .mapValues { (_, bookSessions) ->
+            (bookSessions.filter { it.isCompletion }.ifEmpty { bookSessions }).maxOf { it.endedAt }
+          }
       }
     }.collectAsState(initial = emptyMap()).value
     val currentBookId = remember { currentBookStoreDataStore.data }
@@ -110,8 +117,11 @@ class BookOverviewViewModel(
       .collectAsState(initial = null).value
     val booksPerRow = remember { booksPerRowStore.data }.collectAsState(initial = null).value?.coerceIn(2, 3)
     val organisation = remember { organisationRepo.flow() }.collectAsState(initial = null).value
+    val upNext = remember { upNextStore.data }.collectAsState(initial = null).value
     // Show the saved layout on the first populated frame, without a two-to-three-column shuffle.
-    if (gridMode == null || books == null || booksPerRow == null || organisation == null) return BookOverviewViewState.Loading
+    if (gridMode == null || books == null || booksPerRow == null || organisation == null || upNext == null) {
+      return BookOverviewViewState.Loading
+    }
     val noBooks = !scannerActive && books.isEmpty()
 
     val layoutMode = when (gridMode) {
@@ -135,6 +145,7 @@ class BookOverviewViewModel(
       layoutMode = layoutMode,
       booksPerRow = booksPerRow,
       organisation = organisation,
+      upNext = upNext,
       books = books
         .groupBy {
           it.category
@@ -231,11 +242,32 @@ class BookOverviewViewModel(
   }
 
   fun onBookClick(id: BookId) {
+    openPlayer(id)
+  }
+
+  /**
+   * Opening a book makes it the current one, here rather than in the player, which follows the
+   * current book and so must not claim it back when a stale player screen is restored.
+   */
+  private fun openPlayer(id: BookId) {
+    playerController.pauseIfCurrentBookDifferentFrom(id)
+    scope.launch { currentBookStoreDataStore.updateData { id } }
     navigator.goTo(Destination.Playback(id))
+  }
+
+  fun moveInUpNext(
+    id: BookId,
+    target: BookId,
+  ) {
+    scope.launch { upNextStore.updateData { it.moved(id, target) } }
   }
 
   fun onBookFolderClick() {
     navigator.goTo(Destination.FolderPicker)
+  }
+
+  fun onAddBooksClick() {
+    navigator.goTo(Destination.AddContent(Origin.Default))
   }
 
   fun onSearchActiveChange(active: Boolean) {
@@ -257,7 +289,7 @@ class BookOverviewViewModel(
       }
     }
     searchActive = false
-    navigator.goTo(Destination.Playback(id))
+    openPlayer(id)
   }
 
   fun playPause() {

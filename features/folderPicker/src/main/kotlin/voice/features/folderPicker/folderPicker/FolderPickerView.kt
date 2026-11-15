@@ -1,6 +1,7 @@
 package voice.features.folderPicker.folderPicker
 
 import android.net.Uri
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +32,7 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import voice.core.common.rootGraphAs
 import voice.core.data.folders.FolderType
+import voice.core.ui.plus
 import voice.features.folderPicker.FolderTypeIcon
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
@@ -116,7 +118,8 @@ private fun FolderOverviewView(
       )
     },
   ) { contentPadding ->
-    LazyColumn(contentPadding = contentPadding) {
+    // room below the last row so it can scroll clear of the add button
+    LazyColumn(contentPadding = contentPadding + PaddingValues(bottom = 88.dp)) {
       item { Spacer(modifier = Modifier.size(16.dp)) }
       items(viewState.items) { item ->
         ListItem(

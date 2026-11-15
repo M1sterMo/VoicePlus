@@ -30,6 +30,7 @@ retrofit-scalars = { module = "com.squareup.retrofit2:converter-scalars", versio
 retrofit-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 robolectric = "org.robolectric:robolectric:4.17"
 coil = "io.coil-kt:coil-compose:2.7.0"
+palette = "androidx.palette:palette:1.0.0"
 appCompat = "androidx.appcompat:appcompat:1.8.0"
 androidxCore = "androidx.core:core-ktx:1.19.0"
 kotlin-pluginForGradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -74,6 +75,7 @@ media3-testUtils-core = { module = "androidx.media3:media3-test-utils", version.
 media3-testUtils-robolectric = { module = "androidx.media3:media3-test-utils-robolectric", version.ref = "media3" }
 
 lifecycle = "androidx.lifecycle:lifecycle-runtime-ktx:2.11.0"
+lifecycle-compose = "androidx.lifecycle:lifecycle-runtime-compose:2.11.0"
 lifecycle-viewmodel-compose = "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0"
 
 compose-bom = "androidx.compose:compose-bom:2026.09.00"

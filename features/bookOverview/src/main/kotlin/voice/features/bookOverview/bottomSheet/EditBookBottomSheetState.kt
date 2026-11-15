@@ -3,10 +3,12 @@ package voice.features.bookOverview.bottomSheet
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
+import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.NotStarted
+import androidx.compose.material.icons.outlined.PlaylistRemove
 import androidx.compose.material.icons.outlined.Title
 import androidx.compose.ui.graphics.vector.ImageVector
 import voice.core.strings.R as StringsR
@@ -17,6 +19,8 @@ enum class BottomSheetItem(
   @StringRes val titleRes: Int,
   val icon: ImageVector,
 ) {
+  AddToUpNext(StringsR.string.up_next_add, Icons.AutoMirrored.Outlined.PlaylistAdd),
+  RemoveFromUpNext(StringsR.string.up_next_remove, Icons.Outlined.PlaylistRemove),
   EditBook(StringsR.string.edit_book_title, Icons.Outlined.Title),
   Series(StringsR.string.series_edit, Icons.AutoMirrored.Outlined.LibraryBooks),
   ManageSeries(StringsR.string.series_manage, Icons.AutoMirrored.Outlined.LibraryBooks),

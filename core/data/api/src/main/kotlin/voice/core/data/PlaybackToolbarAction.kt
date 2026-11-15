@@ -13,6 +13,7 @@ public enum class PlaybackToolbarAction {
   PLAYBACK_SPEED,
   CHAPTER_FIX,
   LISTENING_LOG,
+  UP_NEXT,
   ;
 
   public companion object {

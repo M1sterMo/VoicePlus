@@ -1,0 +1,7 @@
+Up next: queue books to play one after another.
+
+Refreshed listening stats, with finish dates and a page for each book.
+
+Library: series share character lists, sort by length, and hold a book to drag it.
+
+New player, widget and theme looks, plus fixes for M4B chapters and finish dates.

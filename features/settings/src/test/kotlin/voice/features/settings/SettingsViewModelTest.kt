@@ -23,6 +23,8 @@ import voice.core.data.GridMode
 import voice.core.data.LockscreenSecondaryTextMode
 import voice.core.data.LockscreenSliderMode
 import voice.core.data.MediaButtonClickAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.featureflag.MemoryFeatureFlag
 import voice.core.scanner.MediaScanTrigger
@@ -32,7 +34,9 @@ import voice.navigation.Navigator
 class SettingsViewModelTest {
 
   private val scope = TestScope()
-  private val useDarkThemeStore = MemoryDataStore(false)
+  private val themeModeStore = MemoryDataStore(ThemeMode.SYSTEM)
+  private val themeColorStore = MemoryDataStore(ThemeColor.DYNAMIC)
+  private val coverGlowStore = MemoryDataStore(true)
   private val autoRewindAmountStore = MemoryDataStore(10)
   private val seekTimeStore = MemoryDataStore(30)
   private val gridModeStore = MemoryDataStore(GridMode.GRID)
@@ -54,7 +58,9 @@ class SettingsViewModelTest {
   private val mediaScanTrigger = mockk<MediaScanTrigger>(relaxed = true)
 
   private val viewModel = SettingsViewModel(
-    useDarkThemeStore = useDarkThemeStore,
+    themeModeStore = themeModeStore,
+    themeColorStore = themeColorStore,
+    coverGlowStore = coverGlowStore,
     autoRewindAmountStore = autoRewindAmountStore,
     seekTimeStore = seekTimeStore,
     navigator = navigator,
@@ -110,6 +116,19 @@ class SettingsViewModelTest {
       val changed = awaitItem()
       changed.gridMode shouldBe GridMode.BOOKS
       changed.dialog shouldBe null
+    }
+  }
+
+  @Test
+  fun `theme, colour and cover glow are persisted`() = scope.runTest {
+    backgroundScope.launchMolecule(RecompositionMode.Immediate) { viewModel.viewState() }.test {
+      awaitItem().themeMode shouldBe ThemeMode.SYSTEM
+      viewModel.setThemeMode(ThemeMode.DARK)
+      awaitItem().themeMode shouldBe ThemeMode.DARK
+      viewModel.setThemeColor(ThemeColor.TEAL)
+      awaitItem().themeColor shouldBe ThemeColor.TEAL
+      viewModel.setCoverGlow(false)
+      awaitItem().coverGlow shouldBe false
     }
   }
 

@@ -21,15 +21,16 @@ internal class SttsVisitor : AtomVisitor {
       Logger.w("Unexpected version $version in stts atom, expected 0")
     } else {
       buffer.skipBytes(3) // flags
+      val track = parseOutput.currentTrack() ?: return
       val numberOfEntriesInSttsTable = buffer.readUnsignedIntToInt()
       Logger.v("Number of entries in stts: $numberOfEntriesInSttsTable")
-      val durations = (0 until numberOfEntriesInSttsTable).map {
+      if (!buffer.fitsEntries("stts", numberOfEntriesInSttsTable, 8)) return
+      track.durations = List(numberOfEntriesInSttsTable) {
         SttsEntry(
           sampleCount = buffer.readUnsignedInt(),
           sampleDuration = buffer.readUnsignedInt(),
         )
       }
-      parseOutput.durations.add(durations)
     }
   }
 }

@@ -17,6 +17,7 @@ import voice.core.data.repo.internals.getInt
 import voice.core.data.repo.internals.getString
 import voice.core.data.repo.internals.getStringOrNull
 import voice.core.data.repo.internals.mapRows
+import java.time.Instant
 import java.util.UUID
 import kotlin.random.Random
 
@@ -411,6 +412,76 @@ class DataBaseMigratorTest {
     }
 
     bookmarkCursor.close()
+  }
+
+  @Test
+  fun chapterRescanMigrationClearsFileLastModified() {
+    val name = "chapter-rescan"
+    helper.createDatabase(name, 69).use { db ->
+      db.execSQL(
+        """INSERT INTO chapters2 (id, name, duration, fileLastModified, markData, fileSize)
+           VALUES ('file', 'Chapter', 10, '2020-01-01T00:00:00Z', '[]', 5)""",
+      )
+    }
+    helper.runMigrationsAndValidate(name, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT fileLastModified FROM chapters2").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        cursor.getString(0) shouldBe Instant.EPOCH.toString()
+      }
+    }
+  }
+
+  @Test
+  fun charactersOfGroupedBooksBecomeTheirSeriesSharedList() {
+    val name = "series-characters"
+    helper.createDatabase(name, 71).use { db ->
+      db.execSQL("INSERT INTO librarySeries (id, name) VALUES ('dune', 'Dune')")
+      listOf(Triple("messiah", "dune", 7), Triple("dune1", "dune", 2), Triple("other", null, null)).forEach { (book, series, order) ->
+        db.execSQL(
+          "INSERT INTO libraryPlacement (bookId, shelfId, position, seriesId, seriesPosition) VALUES (?, 'other', 0, ?, ?)",
+          arrayOf<Any?>(book, series, order),
+        )
+      }
+      listOf(
+        listOf("messiah", "Paul", "Duke", 0),
+        listOf("messiah", "Hayt", "", 1),
+        listOf("dune1", "Paul", "Duke", 1),
+        listOf("dune1", "Chani", "", 0),
+        listOf("other", "Hari", "", 0),
+        listOf("gone", "Lost", "", 0),
+      ).forEach { (book, character, description, sortOrder) ->
+        db.execSQL(
+          "INSERT INTO book_character (bookId, name, description, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, '2020', '2021')",
+          arrayOf<Any>(book, character, description, sortOrder),
+        )
+      }
+    }
+    helper.runMigrationsAndValidate(name, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query(
+        "SELECT bookId, name, seriesId, sortOrder, updatedAt, ownerBookId FROM book_character ORDER BY seriesId, sortOrder, bookId",
+      ).use { cursor ->
+        buildList {
+          while (cursor.moveToNext()) {
+            add(
+              listOf(
+                cursor.getString(0),
+                cursor.getString(1),
+                cursor.getString(2),
+                cursor.getInt(3),
+                cursor.getString(4),
+                cursor.getString(5),
+              ),
+            )
+          }
+        }
+      } shouldBe listOf(
+        listOf("gone", "Lost", null, 0, "2021", "gone"),
+        listOf("other", "Hari", null, 0, "2021", "other"),
+        listOf("dune1", "Chani", "dune", 0, "2021", null),
+        listOf("dune1", "Paul", "dune", 1, "2021", null),
+        listOf("messiah", "Hayt", "dune", 2, "2021", null),
+      )
+    }
   }
 
   private object BookTable {

@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Paint
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
@@ -12,6 +14,9 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.datastore.core.DataStore
 import coil.imageLoader
 import coil.request.ImageRequest
+import coil.request.SuccessResult
+import coil.size.Scale
+import coil.transform.RoundedCornersTransformation
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -34,6 +39,8 @@ import voice.core.playback.playstate.PlayStateManager
 import voice.core.playback.receiver.WidgetButtonReceiver
 import voice.core.ui.dpToPxRounded
 import voice.features.widget.config.WidgetConfigStore
+import java.io.File
+import kotlin.math.roundToInt
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
@@ -73,16 +80,10 @@ class WidgetUpdater(
     updateMutex.withLock {
       val book = currentBookStore.data.first()?.let { currentBookResolver.book(it) }
       val seekSeconds = seekTimeStore.data.first()
-      val chapterName = book?.let { resolveCurrentChapterName(it) }
+      val chapterName = book?.let { resolveCurrentChapterName(it) }.orEmpty()
       val ids = appWidgetManager.getAppWidgetIds(ComponentName(context, BaseWidgetProvider::class.java))
       for (widgetId in ids) {
-        val alpha = configStore.getAlpha(widgetId)
-        val scale = configStore.getTextScale(widgetId)
-        if (book != null) {
-          initWidgetForPresentBook(widgetId, book, chapterName.orEmpty(), alpha, scale, seekSeconds)
-        } else {
-          initWidgetForAbsentBook(widgetId, alpha, scale, seekSeconds)
-        }
+        appWidgetManager.updateAppWidget(widgetId, render(widgetId, book, chapterName, seekSeconds))
       }
     }
   }
@@ -95,31 +96,121 @@ class WidgetUpdater(
       .ifBlank { book.currentChapter.name.orEmpty() }
   }
 
-  private suspend fun initWidgetForPresentBook(
+  private suspend fun render(
     widgetId: Int,
-    book: Book,
+    book: Book?,
     chapterName: String,
-    alpha: Int,
-    scale: Float,
+    seekSeconds: Int,
+  ): RemoteViews {
+    val opts = appWidgetManager.getAppWidgetOptions(widgetId)
+    val width = widgetWidth(opts)
+    val height = widgetHeight(opts)
+    // Until the launcher reports a size, show everything and let the host scale the cover.
+    val sizeKnown = width > 0 && height > 0
+    val gap = context.dpToPxRounded(12F)
+    val buttonHeight = context.dpToPxRounded(40F)
+    // 12dp normally; a widget too short for that (older ones could be resized down to 48dp) gets
+    // less, evenly, so the 40dp buttons still fit whole.
+    val padding = if (sizeKnown) gap.coerceAtMost((height - buttonHeight) / 2).coerceAtLeast(0) else gap
+    val coverHeight = (if (sizeKnown) height - 2 * padding else context.dpToPxRounded(96F)).coerceAtLeast(1)
+    val coverWidth = (coverHeight * configStore.getCoverShape(widgetId).aspectRatio).roundToInt().coerceAtLeast(1)
+    val scale = configStore.getTextScale(widgetId)
+    val titleSize = context.resources.getDimension(R.dimen.widget_title_size) * scale
+    val summarySize = context.resources.getDimension(R.dimen.widget_summary_size) * scale
+
+    val remoteViews = RemoteViews(context.packageName, R.layout.widget_compact)
+    remoteViews.setInt(R.id.widgetBackground, "setImageAlpha", configStore.getAlpha(widgetId))
+    remoteViews.setViewPadding(R.id.content, padding, padding, padding, padding)
+    remoteViews.setTextViewTextSize(R.id.title, TypedValue.COMPLEX_UNIT_PX, titleSize)
+    remoteViews.setTextViewTextSize(R.id.summary, TypedValue.COMPLEX_UNIT_PX, summarySize)
+    remoteViews.setOnClickPendingIntent(R.id.wholeWidget, mainActivityIntentProvider.toCurrentBook())
+    remoteViews.setImageViewBitmap(R.id.imageView, coverBitmap(book?.content?.cover, coverWidth, coverHeight))
+
+    // Visibility has to be set on every render, not merely hidden when needed: the host reuses the
+    // inflated view and applies only the actions this RemoteViews carries, so a GONE set earlier
+    // persists and leaves a playing book with no controls.
+    if (book == null) {
+      // No book, so nothing wires the controls up: leaving them visible offers buttons that do
+      // nothing (and that TalkBack still announces).
+      remoteViews.setTextViewText(R.id.title, context.getString(StringsR.string.widget_no_book))
+      remoteViews.setVisible(R.id.text, true)
+      remoteViews.setVisible(R.id.summary, false)
+      remoteViews.setVisible(R.id.progress, false)
+      remoteViews.setVisible(R.id.buttons, false)
+      return remoteViews
+    }
+
+    remoteViews.setTextViewText(R.id.title, book.content.name)
+    remoteViews.setTextViewText(R.id.summary, chapterName)
+    remoteViews.setProgressBar(R.id.progress, 100, book.progressPercent(), false)
+    bindButtons(remoteViews, seekSeconds)
+
+    // A 40dp button plus its 8dp spacing, both across the row and above it.
+    val buttonSize = context.dpToPxRounded(48F)
+    val progressRow = context.dpToPxRounded(12F)
+    val titleRow = textLineHeight(titleSize)
+    val summaryRow = textLineHeight(summarySize)
+    val availableHeight = if (sizeKnown) height - 2 * padding else Int.MAX_VALUE
+    remoteViews.setVisible(R.id.buttons, true)
+    // Hiding the whole text block, not just the title, also drops the gap so the buttons centre.
+    remoteViews.setVisible(R.id.text, availableHeight >= buttonSize + titleRow)
+    remoteViews.setVisible(R.id.progress, availableHeight >= buttonSize + titleRow + progressRow)
+    remoteViews.setVisible(R.id.summary, availableHeight >= buttonSize + titleRow + progressRow + summaryRow)
+
+    val buttonSlots = if (sizeKnown) (width - coverWidth - 2 * padding - gap) / buttonSize else 5
+    val chapterButtons = configStore.getChapterButtons(widgetId) && buttonSlots >= 5
+    remoteViews.setVisible(R.id.previousChapter, chapterButtons)
+    remoteViews.setVisible(R.id.nextChapter, chapterButtons)
+    remoteViews.setVisible(R.id.rewind, buttonSlots >= 3)
+    remoteViews.setVisible(R.id.fastForward, buttonSlots >= 3)
+    return remoteViews
+  }
+
+  private fun bindButtons(
+    remoteViews: RemoteViews,
     seekSeconds: Int,
   ) {
-    val opts = appWidgetManager.getAppWidgetOptions(widgetId)
-    val useWidth = widgetWidth(opts)
-    val useHeight = widgetHeight(opts)
-    val remoteViews = RemoteViews(context.packageName, R.layout.widget_compact)
-    initElements(
-      remoteViews = remoteViews,
-      book = book,
-      chapterName = chapterName,
-      coverSize = useHeight,
-      alpha = alpha,
-      scale = scale,
-      seekSeconds = seekSeconds,
-    )
-    if (useWidth > 0 && useHeight > 0) {
-      setVisibilities(remoteViews, useWidth, useHeight)
+    fun bind(
+      viewId: Int,
+      action: WidgetButtonReceiver.Action,
+    ) {
+      remoteViews.setOnClickPendingIntent(viewId, WidgetButtonReceiver.pendingIntent(context, action))
     }
-    appWidgetManager.updateAppWidget(widgetId, remoteViews)
+    bind(R.id.playPause, WidgetButtonReceiver.Action.PlayPause)
+    bind(R.id.rewind, WidgetButtonReceiver.Action.Rewind)
+    bind(R.id.fastForward, WidgetButtonReceiver.Action.FastForward)
+    bind(R.id.previousChapter, WidgetButtonReceiver.Action.PreviousChapter)
+    bind(R.id.nextChapter, WidgetButtonReceiver.Action.NextChapter)
+
+    // The glyph colours live in the drawables, not here: a colour resolved in this process gets
+    // baked into the RemoteViews and would not follow a system theme switch until the next redraw.
+    val playIcon = if (playStateManager.playState == PlayStateManager.PlayState.Playing) {
+      R.drawable.widget_ic_pause
+    } else {
+      R.drawable.widget_ic_play
+    }
+    remoteViews.setImageViewResource(R.id.playPause, playIcon)
+    remoteViews.setContentDescription(R.id.fastForward, context.getString(StringsR.string.widget_skip_forward, seekSeconds))
+    remoteViews.setContentDescription(R.id.rewind, context.getString(StringsR.string.widget_skip_back, seekSeconds))
+  }
+
+  /** The cover, center-cropped to the widget's cover shape with rounded corners; the placeholder art when there is none. */
+  private suspend fun coverBitmap(
+    cover: File?,
+    width: Int,
+    height: Int,
+  ): Bitmap {
+    suspend fun load(data: Any): Bitmap? {
+      val request = ImageRequest.Builder(context)
+        .data(data)
+        .size(width, height)
+        .scale(Scale.FILL)
+        .transformations(RoundedCornersTransformation(context.dpToPxRounded(12F).toFloat()))
+        .allowHardware(false)
+        .build()
+      return (context.imageLoader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+    }
+    return cover?.let { load(it) } ?: load(UiR.drawable.album_art)!!
   }
 
   private fun widgetWidth(opts: Bundle): Int {
@@ -132,155 +223,21 @@ class WidgetUpdater(
     return context.dpToPxRounded(opts.getInt(key).toFloat())
   }
 
-  private suspend fun initWidgetForAbsentBook(
-    widgetId: Int,
-    alpha: Int,
-    scale: Float,
-    seekSeconds: Int,
-  ) {
-    val remoteViews = RemoteViews(context.packageName, R.layout.widget_compact)
-    remoteViews.setImageViewResource(R.id.imageView, UiR.drawable.album_art)
-    remoteViews.setTextViewText(R.id.title, "")
-    remoteViews.setViewVisibility(R.id.summary, View.GONE)
-    // No book, so nothing wires these up: leaving them visible offers three controls that do
-    // nothing (and that TalkBack still announces as "Skip back"/"Skip forward").
-    remoteViews.setViewVisibility(R.id.rewindContainer, View.GONE)
-    remoteViews.setViewVisibility(R.id.playPause, View.GONE)
-    remoteViews.setViewVisibility(R.id.fastForwardContainer, View.GONE)
-    remoteViews.setOnClickPendingIntent(R.id.wholeWidget, mainActivityIntentProvider.toCurrentBook())
-    applyConfiguration(remoteViews, alpha, scale, seekSeconds)
-    appWidgetManager.updateAppWidget(widgetId, remoteViews)
-  }
-
   private val isPortrait: Boolean
     get() = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
-  private suspend fun initElements(
-    remoteViews: RemoteViews,
-    book: Book,
-    chapterName: String,
-    coverSize: Int,
-    alpha: Int,
-    scale: Float,
-    seekSeconds: Int,
-  ) {
-    // Visibility has to be restored on every render, not merely hidden on the absent-book path: the
-    // host reuses the inflated view and applies only the actions this RemoteViews carries, so a GONE
-    // set earlier persists and leaves a playing book with no controls. setHorizontalVisibility also
-    // restores the two skip containers, but it is skipped when the widget's size is unknown, so all
-    // three are restored here where a present book always passes.
-    remoteViews.setViewVisibility(R.id.playPause, View.VISIBLE)
-    remoteViews.setViewVisibility(R.id.rewindContainer, View.VISIBLE)
-    remoteViews.setViewVisibility(R.id.fastForwardContainer, View.VISIBLE)
-    remoteViews.setOnClickPendingIntent(R.id.playPause, WidgetButtonReceiver.pendingIntent(context, WidgetButtonReceiver.Action.PlayPause))
-    remoteViews.setOnClickPendingIntent(
-      R.id.fastForward,
-      WidgetButtonReceiver.pendingIntent(context, WidgetButtonReceiver.Action.FastForward),
-    )
-    remoteViews.setOnClickPendingIntent(R.id.rewind, WidgetButtonReceiver.pendingIntent(context, WidgetButtonReceiver.Action.Rewind))
-
-    val playIcon = if (playStateManager.playState == PlayStateManager.PlayState.Playing) {
-      UiR.drawable.ic_pause_white_36dp
-    } else {
-      UiR.drawable.ic_play_white_36dp
-    }
-    remoteViews.setImageViewResource(R.id.playPause, playIcon)
-    remoteViews.setTextViewText(R.id.title, book.content.name)
-    remoteViews.setTextViewText(R.id.summary, chapterName)
-    remoteViews.setOnClickPendingIntent(R.id.wholeWidget, mainActivityIntentProvider.toCurrentBook())
-
-    if (book.content.cover != null && coverSize > 0) {
-      val bitmap = context.imageLoader
-        .execute(
-          ImageRequest.Builder(context)
-            .data(book.content.cover)
-            .size(coverSize, coverSize)
-            .fallback(UiR.drawable.album_art)
-            .error(UiR.drawable.album_art)
-            .allowHardware(false)
-            .build(),
-        )
-        .drawable!!.toBitmap()
-      remoteViews.setImageViewBitmap(R.id.imageView, bitmap)
-    } else {
-      remoteViews.setImageViewResource(R.id.imageView, UiR.drawable.album_art)
-    }
-
-    applyConfiguration(remoteViews, alpha, scale, seekSeconds)
-  }
-
-  private fun applyConfiguration(
-    remoteViews: RemoteViews,
-    alpha: Int,
-    scale: Float,
-    seekSeconds: Int,
-  ) {
-    val skipText = "${seekSeconds}s"
-    remoteViews.setTextViewText(R.id.rewindText, skipText)
-    remoteViews.setTextViewText(R.id.fastForwardText, skipText)
-    remoteViews.setContentDescription(R.id.fastForward, context.getString(StringsR.string.widget_skip_forward, seekSeconds))
-    remoteViews.setContentDescription(R.id.rewind, context.getString(StringsR.string.widget_skip_back, seekSeconds))
-    remoteViews.setInt(R.id.widgetBackground, "setImageAlpha", alpha)
-    // The icon tint lives in the layouts (android:tint), not here: a colour resolved in this process
-    // gets baked into the RemoteViews, so switching the system theme left the icons on their old
-    // tint — near-black on a dark background — until the next playback event redrew them. Declaring
-    // it in XML lets the host re-resolve it on every re-inflation, and also covers the picker
-    // preview and the config screen's live preview, which never run this code.
-    remoteViews.setTextViewTextSize(R.id.title, TypedValue.COMPLEX_UNIT_SP, 14f * scale)
-    remoteViews.setTextViewTextSize(R.id.summary, TypedValue.COMPLEX_UNIT_SP, 12f * scale)
-    remoteViews.setTextViewTextSize(R.id.rewindText, TypedValue.COMPLEX_UNIT_SP, 11f * scale)
-    remoteViews.setTextViewTextSize(R.id.fastForwardText, TypedValue.COMPLEX_UNIT_SP, 11f * scale)
-  }
-
-  private fun setVisibilities(
-    remoteViews: RemoteViews,
-    width: Int,
-    height: Int,
-  ) {
-    setHorizontalVisibility(remoteViews, width, height)
-    setVerticalVisibility(remoteViews, height)
-  }
-
-  private fun setHorizontalVisibility(
-    remoteViews: RemoteViews,
-    widgetWidth: Int,
-    coverSize: Int,
-  ) {
-    val singleButtonSize = context.dpToPxRounded(8F + 36F + 8F)
-    var summarizedItemWidth = 3 * singleButtonSize + coverSize
-
-    remoteViews.setViewVisibility(R.id.imageView, View.VISIBLE)
-    remoteViews.setViewVisibility(R.id.rewindContainer, View.VISIBLE)
-    remoteViews.setViewVisibility(R.id.fastForwardContainer, View.VISIBLE)
-
-    if (summarizedItemWidth > widgetWidth) {
-      remoteViews.setViewVisibility(R.id.fastForwardContainer, View.GONE)
-      summarizedItemWidth -= singleButtonSize
-    }
-    if (summarizedItemWidth > widgetWidth) {
-      remoteViews.setViewVisibility(R.id.rewindContainer, View.GONE)
-    }
-  }
-
-  private fun setVerticalVisibility(
-    remoteViews: RemoteViews,
-    widgetHeight: Int,
-  ) {
-    val labelSize = context.resources.getDimensionPixelSize(R.dimen.widget_skip_label_size)
-    val buttonSize = context.dpToPxRounded(8F + 36F + 8F) + labelSize
-    val titleSize = context.resources.getDimensionPixelSize(R.dimen.list_text_primary_size)
-    val summarySize = context.resources.getDimensionPixelSize(R.dimen.list_text_secondary_size)
-    var summarizedItemsHeight = buttonSize + titleSize + summarySize
-
-    remoteViews.setViewVisibility(R.id.summary, View.VISIBLE)
-    remoteViews.setViewVisibility(R.id.title, View.VISIBLE)
-
-    if (summarizedItemsHeight > widgetHeight) {
-      remoteViews.setViewVisibility(R.id.summary, View.GONE)
-      summarizedItemsHeight -= summarySize
-    }
-    if (summarizedItemsHeight > widgetHeight) {
-      remoteViews.setViewVisibility(R.id.title, View.GONE)
-    }
-  }
 }
+
+private fun RemoteViews.setVisible(
+  viewId: Int,
+  visible: Boolean,
+) {
+  setViewVisibility(viewId, if (visible) View.VISIBLE else View.GONE)
+}
+
+/** A one-line TextView's height, font padding included. */
+private fun textLineHeight(textSize: Float): Int {
+  val metrics = Paint().apply { this.textSize = textSize }.fontMetricsInt
+  return metrics.bottom - metrics.top
+}
+
+internal fun Book.progressPercent(): Int = if (duration > 0) (position * 100 / duration).toInt() else 0

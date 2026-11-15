@@ -47,7 +47,6 @@
         <item quantity="one">%d ses dosyası</item>
         <item quantity="other">%d ses dosyası</item>
     </plurals>
-    <string name="folder_type_book_example_header">Bu, aşağıdaki kitapların algılanmasını sağlayacaktır</string>
     <string name="bookmark_just_now">Şimdi</string>
     <string name="migration_hint_title">Eski kitap konumlarına erişiliyor</string>
     <string name="migration_hint_confirm">Anladım</string>
@@ -70,11 +69,9 @@
     <string name="mark_as_completed">Tamamlandı olarak işaretle</string>
     <string name="pref_suggest_idea">Fikir öner</string>
     <string name="pref_report_issue">Sorun bildir</string>
-    <string name="folder_type_title">Dosyalarınız nasıl yapılandırılıyor?</string>
     <string name="pref_help_translating">Voice\'u çevirmeye yardım et</string>
     <string name="close">Kapat</string>
     <string name="delete">Sil</string>
-    <string name="folder_type_no_books">Voice herhangi bir kitap algılayamadı. Hiç ses dosyası var mı?</string>
     <string name="migration_detail_title">Eski kitap konumları</string>
     <string name="migration_detail_content_position_current_file_title">Geçerli dosya</string>
     <string name="voice_intro_first_book">Dinlemeye başlayabilmeniz için sesli kitap dizininizi ekleyelim!</string>
@@ -89,10 +86,8 @@
     <string name="search_hint">Ne arıyorsunuz?</string>
     <string name="media_session_root">Tüm sesli kitaplar</string>
     <string name="review.feedback.button.no">İptal et</string>
-    <string name="select_folder_subtitle">Tek bir dosyayı kitap olarak mı yoksa klasör olarak mı eklemek istiyorsunuz?</string>
     <string name="sleep_timer.title">Tatlı rüyalar! 🌙</string>
     <string name="onboarding.button_next">Sonraki</string>
-    <string name="select_folder_type_folder">Klasör</string>
     <string name="onboarding.completion.subtitle">İlk sesli kitabın dinlemen için hazır. Voice ile yolculuğunda iyi eğlenceler!</string>
     <string name="review.request.title">Voice\'den memnun musun?</string>
     <string name="pause">Beklet</string>
@@ -106,7 +101,6 @@
     <string name="review.request.button.yes">Şimdi puanla</string>
     <string name="cover_search.author">Yazar</string>
     <string name="storage_bug_button">İzin ver</string>
-    <string name="select_folder_type_file">Dosya</string>
     <string name="onboarding_welcome_title">Voice\'e hoş geldiniz!</string>
     <plurals name="minutes">
         <item quantity="one">%d dakika</item>

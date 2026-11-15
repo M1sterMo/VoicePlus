@@ -142,11 +142,10 @@ class BooksLibraryTest {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("current:book:${ids.last().value}"))
         compose.onNode(hasText(titles.last()) and hasAnyAncestor(hasTestTag("current:book:${ids.last().value}"))).assertIsDisplayed()
 
-        compose.onNodeWithContentDescription("Library options").performClick()
-        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performClick()
         // Appearance stays compact on the main settings page and opens its focused editor.
         compose.onNodeWithText("Appearance").assertIsDisplayed()
-        compose.onNodeWithText("Books · 2 per row").assertIsDisplayed()
+        compose.onNodeWithText("System theme · Books · 2 per row").assertIsDisplayed()
         compose.onNode(hasText("Appearance") and hasClickAction()).performClick()
         compose.onNodeWithText("Library view").assertIsDisplayed()
         listOf("List", "Grid", "Books").forEach { label ->

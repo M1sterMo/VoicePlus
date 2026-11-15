@@ -88,8 +88,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import kotlinx.coroutines.flow.first
 import voice.core.data.BookId
+import voice.core.ui.BookshelfCover
 import voice.features.bookOverview.views.BookshelfBook
-import voice.features.bookOverview.views.BookshelfCover
 import voice.features.bookOverview.views.booksColumnCount
 import kotlin.math.roundToInt
 import voice.core.strings.R as StringsR
@@ -217,7 +217,7 @@ private fun SeriesCovers(
             translationY = -index * 3.dp.toPx()
           }.testTag("${entry.key}:cover:$index"),
       ) {
-        BookshelfCover(book.value, compact = compact)
+        BookshelfCover(book.value.id, book.value.cover, compact = compact)
       }
     }
   }

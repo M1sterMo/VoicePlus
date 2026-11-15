@@ -57,9 +57,6 @@
         <item quantity="many">%d fichiers audio</item>
         <item quantity="other">%d fichiers audio</item>
     </plurals>
-    <string name="folder_type_book_example_header">Cela conduirait à la détection des livres suivants</string>
-    <string name="folder_type_no_books">Voice n\'a pu détecter aucun livre. Y a-t-il des fichiers audio ?</string>
-    <string name="folder_type_title">Comment vos fichiers sont ils structurés ?</string>
     <string name="bookmark_just_now">À l\'instant</string>
     <string name="voice_intro_first_book">Ajoutons un dossier de livres audio pour commencer à les écouter !</string>
     <string name="migration_hint_title">Accès aux anciennes positions de lecture</string>
@@ -128,9 +125,6 @@
     <string name="storage_bug_title">Permission requise</string>
     <string name="select_folder_title_onboarding">Ajoutez votre premier livre audio</string>
     <string name="select_folder_title_default">Ajoutez vos livres audio</string>
-    <string name="select_folder_type_file">Fichier</string>
-    <string name="select_folder_type_folder">Dossier</string>
-    <string name="select_folder_subtitle">Les livres sont-ils des fichiers ou des dossiers ?</string>
     <string name="auto_sleep_timer.title">Minuteur de veille automatique</string>
     <string name="auto_sleep_timer.subtitle">Démarrer automatiquement le minuteur de veille lorsque la lecture commence entre %1$s et %2$s</string>
     <string name="auto_sleep_timer.start" weblate-flags="max-length:16">Heure de début</string>

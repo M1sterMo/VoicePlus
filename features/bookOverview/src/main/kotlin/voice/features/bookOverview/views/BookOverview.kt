@@ -46,6 +46,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation3.runtime.NavEntry
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
@@ -59,6 +61,7 @@ import kotlinx.coroutines.launch
 import voice.core.common.rootGraphAs
 import voice.core.data.BookId
 import voice.core.data.LibraryOrganisation
+import voice.core.data.ShelfSort
 import voice.core.ui.PlayButton
 import voice.core.ui.VoiceTheme
 import voice.features.bookOverview.bottomSheet.BottomSheetContent
@@ -78,9 +81,12 @@ import voice.features.bookOverview.shelves.ShelfControls
 import voice.features.bookOverview.shelves.ShelfDialog
 import voice.features.bookOverview.shelves.ShelfFilter
 import voice.features.bookOverview.shelves.ShelfLibraryBar
+import voice.features.bookOverview.shelves.UP_NEXT
+import voice.features.bookOverview.shelves.bookOfItem
 import voice.features.bookOverview.shelves.librarySections
 import voice.features.bookOverview.shelves.rememberLibraryShelfDragState
 import voice.features.bookOverview.views.topbar.BookOverviewTopBar
+import voice.features.upNext.UpNextSheet
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import voice.navigation.SharedTransitionNavEntryProvider
@@ -211,12 +217,28 @@ fun BookOverviewScreen(
   var seriesOrigin by rememberSaveable { mutableStateOf(floatArrayOf(0f, 0f, 0f, 0f)) }
   val listState = remember { scrollState.newListState() }
   val gridState = remember { scrollState.newGridState() }
-  val libraryDrag = rememberLibraryShelfDragState(shelfViewModel::dropOnShelf)
-
-  LaunchedEffect(Unit) {
+  // The app stays alive in the background, so books copied meanwhile are found when it comes back.
+  // Opening the library also lands here; the view model's cooldown keeps this from re-walking often.
+  LifecycleEventEffect(Lifecycle.Event.ON_START) {
     bookOverviewViewModel.attach()
   }
   val viewState = bookOverviewViewModel.state()
+  val libraryDrag = rememberLibraryShelfDragState(
+    onDrop = shelfViewModel::dropOnShelf,
+    canDrop = { shelfId -> viewState.organisation?.shelves?.any { it.id == shelfId } == true },
+    // Dragging can only reorder Up next, or a shelf kept in the listener's own order with every book showing.
+    canReorder = { shelfId ->
+      shelfId == UP_NEXT ||
+        (shelfViewModel.filter == ShelfFilter.ALL && viewState.organisation?.shelves?.find { it.id == shelfId }?.sort == ShelfSort.MANUAL)
+    },
+    onReorder = { shelfId, itemId, targetId ->
+      if (shelfId == UP_NEXT) {
+        bookOverviewViewModel.moveInUpNext(bookOfItem(itemId), bookOfItem(targetId))
+      } else {
+        viewState.organisation?.let { shelfViewModel.reorderByDrag(it, shelfId, itemId, targetId) }
+      }
+    },
+  )
   DisposableEffect(viewState.layoutMode, listState, gridState) {
     onDispose {
       scrollState.captureIfNoRestorePending(viewState.layoutMode, listState, gridState)
@@ -249,6 +271,7 @@ fun BookOverviewScreen(
   )
 
   var showBottomSheet by remember { mutableStateOf(false) }
+  var showUpNext by rememberSaveable { mutableStateOf(false) }
   val flatBooks = viewState.books.values.flatMap { it.entries }.associate { it.toPair() }
   // Progress animates in each tile; only fields which affect membership/sorting rebuild sections.
   val sortInputs by remember(flatBooks) {
@@ -267,8 +290,8 @@ fun BookOverviewScreen(
     }
   }
   val current = viewState.books[BookOverviewCategory.CURRENT].orEmpty().keys.toList()
-  val sections = remember(flatBooks, current, viewState.organisation, shelfViewModel.filter, sortInputs) {
-    librarySections(flatBooks, current, viewState.organisation ?: LibraryOrganisation(), shelfViewModel.filter)
+  val sections = remember(flatBooks, current, viewState.organisation, shelfViewModel.filter, sortInputs, viewState.upNext) {
+    librarySections(flatBooks, current, viewState.organisation ?: LibraryOrganisation(), shelfViewModel.filter, viewState.upNext)
   }
   val seriesEntries = sections.flatMap { it.entries }
   LaunchedEffect(viewState.isLoading, sections.map { it.id }, viewState.layoutMode) {
@@ -286,13 +309,22 @@ fun BookOverviewScreen(
       scrollState.restore(viewState.layoutMode, listState, gridState, keys)
     }
   }
+  // Queueing a first book adds the Up next shelf above the top row, and lazy lists keep the row that
+  // was first in place, which would leave the new shelf just off screen. Follow it when near the top.
+  val upNextRows = sections.find { it.upNext }?.let { 1 + it.entries.size }
+  LaunchedEffect(upNextRows != null) {
+    if (upNextRows != null) {
+      if (listState.firstVisibleItemIndex <= upNextRows) listState.animateScrollToItem(0)
+      if (gridState.firstVisibleItemIndex <= upNextRows) gridState.animateScrollToItem(0)
+    }
+  }
   LaunchedEffect(viewState.isLoading, openSeries, seriesEntries.map { it.key }) {
     if (!viewState.isLoading && openSeries != null && seriesEntries.none { it.key == openSeries }) openSeries = null
   }
   Box {
     val overlayOpen =
       openSeries != null || shelfViewModel.dialog != null || shelfViewModel.draft != null || seriesViewModel.state != null ||
-        showBottomSheet
+        showBottomSheet || showUpNext
     BookOverview(
       openSeriesKey = openSeries.takeIf { seriesPrepared },
       modifier = Modifier.focusProperties {
@@ -309,7 +341,7 @@ fun BookOverviewScreen(
           viewState.organisation ?: LibraryOrganisation(),
           onSearch = { bookOverviewViewModel.onSearchActiveChange(true) },
           onSettings = bookOverviewViewModel::onSettingsClick,
-          onImport = bookOverviewViewModel::onBookFolderClick,
+          onImport = bookOverviewViewModel::onAddBooksClick,
           onAddToSeries = {
             seriesViewModel.create(shelfViewModel.selected.toList())
             shelfViewModel.cancelSelection()
@@ -317,7 +349,7 @@ fun BookOverviewScreen(
         )
       },
       snackbar = { SnackbarHost(snackbar) },
-      onShelfToggle = { section -> if (!section.current) shelfViewModel.toggleExpanded(section.id, section.expanded) },
+      onShelfToggle = { section -> if (!section.projection) shelfViewModel.toggleExpanded(section.id, section.expanded) },
       onShelfMenu = { shelfViewModel.dialog = ShelfDialog.Menu(it) },
       onShelfAdd = { shelfViewModel.addToShelf(it) },
       activeCoverKey = activeCoverKey,
@@ -326,8 +358,9 @@ fun BookOverviewScreen(
       selected = shelfViewModel.selected,
       onSelect = { shelfViewModel.toggle(it, viewState.organisation ?: LibraryOrganisation()) },
       organising = shelfViewModel.organising,
-      dragState = libraryDrag.takeIf { shelfViewModel.organising },
+      dragState = libraryDrag.takeIf { !shelfViewModel.selecting },
       onOrganise = shelfViewModel::chooseShelf,
+      onUpNextClick = { showUpNext = true },
       onSettingsClick = {
         scrollState.capture(viewState.layoutMode, listState, gridState)
         bookOverviewViewModel.onSettingsClick()
@@ -430,6 +463,7 @@ fun BookOverviewScreen(
       onToggleDeleteFiles = deleteBookViewModel::onToggleDeleteFiles,
     )
   }
+  if (showUpNext) UpNextSheet(onDismiss = { showUpNext = false })
   val editBookDraft by editBookViewModel.state.collectAsState()
   editBookDraft?.let { EditBookDialog(it, editBookViewModel) }
 
@@ -491,6 +525,7 @@ internal fun BookOverview(
   organising: Boolean = false,
   dragState: LibraryShelfDragState? = null,
   onOrganise: (Set<BookId>) -> Unit = {},
+  onUpNextClick: () -> Unit = {},
 ) {
   val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
   Scaffold(
@@ -558,6 +593,7 @@ internal fun BookOverview(
             organising = organising,
             dragState = dragState,
             onOrganise = onOrganise,
+            onUpNextClick = onUpNextClick,
             onBookClick = onBookClick,
             onBookLongClick = onBookLongClick,
             showPermissionBugCard = viewState.showStoragePermissionBugCard,
@@ -585,6 +621,7 @@ internal fun BookOverview(
             organising = organising,
             dragState = dragState,
             onOrganise = onOrganise,
+            onUpNextClick = onUpNextClick,
             onBookClick = onBookClick,
             onBookLongClick = onBookLongClick,
             showPermissionBugCard = viewState.showStoragePermissionBugCard,

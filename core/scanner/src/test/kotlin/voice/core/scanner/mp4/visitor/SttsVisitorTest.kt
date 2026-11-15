@@ -18,12 +18,12 @@ internal class SttsVisitorTest {
         0, 0, 0x04, 0, // sample duration
       ),
     )
-    val output = Mp4ChpaterExtractorOutput()
+    val output = Mp4ChpaterExtractorOutput().apply { currentTrackId = 1 }
 
     SttsVisitor().visit(buffer, output)
 
-    output.durations shouldBe listOf(
-      listOf(SttsEntry(sampleCount = 3_000_000_000L, sampleDuration = 1024L)),
+    output.tracks.getValue(1).durations shouldBe listOf(
+      SttsEntry(sampleCount = 3_000_000_000L, sampleDuration = 1024L),
     )
   }
 }

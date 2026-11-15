@@ -20,7 +20,7 @@ public data class LibraryShelf(
 }
 
 @Serializable
-public enum class ShelfSort { MANUAL, TITLE, AUTHOR, RECENTLY_ADDED }
+public enum class ShelfSort { MANUAL, TITLE, AUTHOR, RECENTLY_ADDED, SHORTEST, LONGEST }
 
 @Serializable
 @Entity(tableName = "librarySeries")
@@ -67,10 +67,12 @@ public data class LibraryOrganisation(
   }
 }
 
-/** An undo token contains organisation only, never playback, chapters, covers or bookmarks. */
+/** An undo token contains organisation and the character lists it reshaped, never playback, chapters, covers or bookmarks. */
 public data class LibraryChange(
   val before: LibraryOrganisation,
   val after: LibraryOrganisation,
+  val charactersBefore: List<BookCharacter> = emptyList(),
+  val charactersAfter: List<BookCharacter> = emptyList(),
 )
 
 public enum class LibraryEditError { EMPTY_NAME, DUPLICATE_SHELF, DUPLICATE_SERIES, CHOOSE_SHELF, STALE_ORDER }

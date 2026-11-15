@@ -214,6 +214,63 @@ class ListeningStatsTest {
   }
 
   @Test
+  fun `a book marked completed is dated by its mark, which is not listening`() {
+    val marked = BookId("content://marked")
+    val books = listOf(
+      book("content://earlier", name = "Earlier", isCompleted = true),
+      book("content://marked", name = "Marked", isCompleted = true),
+    )
+    val sessions = listOf(
+      session(
+        today.minusDays(5),
+        startHour = 9,
+        durationMinutes = 20,
+        bookId = BookId("content://earlier"),
+        endReason = ListeningSessionEndReason.EndOfBook.id,
+      ),
+      session(today.minusDays(3), startHour = 21, durationMinutes = 45, bookId = marked),
+      session(today, startHour = 8, durationMinutes = 0, bookId = marked, endReason = ListeningSessionEndReason.MarkedCompleted.id),
+    )
+
+    val state = stats(sessions, books)
+    state.finishedBooks.map { it.name } shouldBe listOf("Marked", "Earlier")
+    with(state.finishedBooks[0]) {
+      finishedDate shouldBe today
+      completionCount shouldBe 1
+      sessionCount shouldBe 1
+      listenedMs shouldBe 45 * 60_000L
+    }
+    state.todayMs shouldBe 0L
+    state.currentStreak shouldBe 0
+    state.avgSessionMs shouldBe (20 + 45) * 60_000L / 2
+  }
+
+  @Test
+  fun `a book marked completed before marks existed is dated by its last listen`() {
+    val unmarked = BookId("content://unmarked")
+    val books = listOf(
+      book("content://dated", name = "Dated", isCompleted = true),
+      book("content://unmarked", name = "Unmarked", isCompleted = true),
+    )
+    val sessions = listOf(
+      session(
+        today.minusDays(9),
+        startHour = 9,
+        durationMinutes = 20,
+        bookId = BookId("content://dated"),
+        endReason = ListeningSessionEndReason.EndOfBook.id,
+      ),
+      session(today.minusDays(4), startHour = 9, durationMinutes = 50, bookId = unmarked),
+      session(today.minusDays(2), startHour = 20, durationMinutes = 30, bookId = unmarked),
+    )
+
+    val finished = stats(sessions, books).finishedBooks
+    finished.map { it.name } shouldBe listOf("Unmarked", "Dated")
+    finished[0].finishedDate shouldBe today.minusDays(2)
+    finished[0].completionCount shouldBe null
+  }
+
+  @Test
   fun `a book finished before session tracking existed shows without duration or date, after dated ones`() {
     val tracked = BookId("content://tracked")
     val books = listOf(
@@ -487,5 +544,23 @@ class ListeningStatsTest {
       session(LocalDate.of(2026, 7, 28), startHour = 10, durationMinutes = 30), // Tuesday
     )
     stats(sessions).bestDayOfWeek shouldBe "Monday"
+  }
+
+  @Test
+  fun `a re-read is measured from its own first listen and cannot be re-dated before a listened finish`() {
+    val id = BookId("content://book")
+    val sessions = listOf(
+      session(today.minusDays(400), startHour = 9, durationMinutes = 60, bookId = id),
+      session(today.minusDays(390), startHour = 9, durationMinutes = 60, bookId = id, endReason = ListeningSessionEndReason.EndOfBook.id),
+      session(today.minusDays(4), startHour = 9, durationMinutes = 60, bookId = id),
+      session(today, startHour = 8, durationMinutes = 0, bookId = id, endReason = ListeningSessionEndReason.MarkedCompleted.id),
+    )
+
+    val book = stats(sessions).finishedBooks.single()
+    book.readStartDate shouldBe today.minusDays(4)
+    book.dailyMs.size shouldBe 5
+    book.firstListenedDate shouldBe today.minusDays(400)
+    book.canChangeFinishDate shouldBe true
+    book.finishDateFloor shouldBe today.minusDays(390)
   }
 }

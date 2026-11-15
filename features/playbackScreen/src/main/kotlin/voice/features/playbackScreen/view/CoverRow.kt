@@ -3,7 +3,9 @@ package voice.features.playbackScreen.view
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,16 +25,23 @@ internal fun CoverRow(
   bookId: BookId,
   sharedTransitionScope: SharedTransitionScope?,
   cover: ImmutableFile?,
+  bookJacket: Boolean,
+  glow: Boolean,
+  playing: Boolean,
   sleepTimerState: BookPlayViewState.SleepTimerViewState,
   onPlayClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  Box(modifier) {
+  // A jacket shrinks to the largest 2:3 box that fits, so the sleep timer badge stays on it.
+  Box(if (bookJacket) modifier.wrapContentSize().aspectRatio(2F / 3F, matchHeightConstraintsFirst = true) else modifier) {
     Cover(
       bookId = bookId,
       sharedTransitionScope = sharedTransitionScope,
       onDoubleClick = onPlayClick,
       cover = cover,
+      bookJacket = bookJacket,
+      playing = playing,
+      glow = glow,
     )
     when (sleepTimerState) {
       BookPlayViewState.SleepTimerViewState.Disabled -> {

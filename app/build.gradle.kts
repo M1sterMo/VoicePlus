@@ -40,8 +40,8 @@ android {
   defaultConfig {
     applicationId = "com.github.mistermo_vibecode.voiceplus"
     // Keep these as literals so F-Droid's tag checker can discover releases.
-    versionName = "1.29"
-    versionCode = 5408022
+    versionName = "1.30"
+    versionCode = 5408023
 
     testInstrumentationRunner = "voice.app.VoiceJUnitRunner"
   }
@@ -163,6 +163,7 @@ dependencies {
   implementation(projects.core.sleepTimer.api)
   implementation(projects.core.sleepTimer.impl)
   implementation(projects.features.sleepTimer)
+  implementation(projects.features.upNext)
   implementation(projects.features.settings)
   implementation(projects.features.folderPicker)
   implementation(projects.features.bookOverview)

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
 import voice.core.ui.ImmutableFile
+import voice.core.ui.formatTime
 import voice.core.ui.sharedBookCover
 import voice.features.bookOverview.overview.BookOverviewItemViewState
 import voice.features.bookOverview.overview.BookOverviewLayoutMode
@@ -77,6 +78,7 @@ internal fun ListBooks(
   organising: Boolean = false,
   dragState: LibraryShelfDragState? = null,
   onOrganise: (Set<BookId>) -> Unit = {},
+  onUpNextClick: () -> Unit = {},
 ) {
   Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     LazyColumn(
@@ -90,7 +92,7 @@ internal fun ListBooks(
           PermissionBugCard(onPermissionBugCardClick)
         }
       }
-      sections.filter { (!selecting && !organising) || !it.current }.forEachIndexed { index, section ->
+      sections.filter { (!selecting && !organising) || !it.projection }.forEachIndexed { index, section ->
         val expanded = section.expanded
         item(
           key = "header:${section.id}",
@@ -107,11 +109,12 @@ internal fun ListBooks(
               .padding(top = if (index == 0) 0.dp else 8.dp, start = 8.dp)
               .onGloballyPositioned { dragState?.registerShelf(section.id, it.boundsInRoot()) },
             title = section.title(),
-            count = section.count.takeUnless { section.current },
+            count = section.count.takeUnless { section.projection && !section.upNext },
             expanded = expanded,
-            onToggle = if (section.current) null else ({ onShelfToggle(section) }),
-            onMenu = if (section.current || selecting) null else ({ onShelfMenu(section.id) }),
+            onToggle = if (section.projection) null else ({ onShelfToggle(section) }),
+            onMenu = if (section.projection || selecting) null else ({ onShelfMenu(section.id) }),
             dropActive = dragState?.hoveredShelf == section.id,
+            onOpen = onUpNextClick.takeIf { section.upNext },
           )
         }
         if (expanded) {
@@ -143,11 +146,11 @@ internal fun ListBooks(
               activeCoverKey = activeCoverKey,
               sharedTransitionScope = sharedTransitionScope,
               openSeriesKey = openSeriesKey,
-              selecting = selecting && !section.current,
+              selecting = selecting && !section.projection,
               selected = selected,
               onSelect = onSelect,
               modifier = Modifier.animateItem(),
-              dragState = dragState.takeIf { organising },
+              dragState = dragState,
               onOrganise = if (organising) onOrganise else null,
             )
           }
@@ -167,6 +170,7 @@ internal fun ListBookRow(
   onBookLongClick: ((BookId) -> Unit)?,
   sharedTransitionScope: SharedTransitionScope?,
   modifier: Modifier = Modifier,
+  queuePosition: Int? = null,
 ) {
   ElevatedCard(
     shape = MaterialTheme.shapes.extraLarge,
@@ -231,6 +235,10 @@ internal fun ListBookRow(
           }
         }
 
+        if (queuePosition != null) {
+          QueueBadge(queuePosition, Modifier.padding(horizontal = 12.dp))
+        }
+
         if (book.finished) {
           CompletedMedal(
             size = 44.dp,
@@ -259,7 +267,8 @@ internal fun ListBookRow(
 @Composable
 internal fun BookOverviewItemViewState.statusLabel(): String {
   return when {
-    !finished -> remainingTime
+    showLength -> formatTime(durationMs)
+    !finished -> stringResource(StringsR.string.book_time_left, remainingTime)
     finishedOn != null -> stringResource(StringsR.string.book_finished_on, finishedOn)
     else -> stringResource(StringsR.string.book_header_completed)
   }

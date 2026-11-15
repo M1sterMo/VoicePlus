@@ -28,6 +28,7 @@ import voice.core.data.repo.internals.dao.RecentBookSearchDao
 import voice.core.data.repo.internals.migrations.Migration56
 import voice.core.data.repo.internals.migrations.Migration68
 import voice.core.data.repo.internals.migrations.Migration69
+import voice.core.data.repo.internals.migrations.Migration71
 
 @Database(
   entities = [
@@ -64,6 +65,7 @@ import voice.core.data.repo.internals.migrations.Migration69
     AutoMigration(from = 67, to = 68),
     AutoMigration(from = 68, to = 69, spec = Migration68::class),
     AutoMigration(from = 69, to = 70, spec = Migration69::class),
+    AutoMigration(from = 71, to = 72, spec = Migration71::class),
   ],
 )
 @TypeConverters(Converters::class)
@@ -81,7 +83,7 @@ public abstract class AppDb : RoomDatabase() {
   public abstract fun libraryOrganisationDao(): LibraryOrganisationDao
 
   internal companion object {
-    const val VERSION = 70
+    const val VERSION = 72
     const val DATABASE_NAME = "autoBookDB"
   }
 }

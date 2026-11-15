@@ -12,11 +12,14 @@ import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import voice.core.common.DispatcherProvider
 import voice.core.common.RetainedViewModel
 import voice.core.data.BookId
 import voice.core.data.repo.BookContentRepo
 import voice.core.data.store.CurrentBookStore
 import voice.core.data.store.ExcludedBooksStore
+import voice.core.data.store.UpNextStore
 import voice.core.logging.api.Logger
 import voice.core.playback.PlayerController
 import voice.core.scanner.MediaScanTrigger
@@ -40,6 +43,9 @@ class DeleteBookViewModel(
   private val playerController: PlayerController,
   @CurrentBookStore
   private val currentBookStoreId: DataStore<BookId?>,
+  @UpNextStore
+  private val upNextStore: DataStore<List<BookId>>,
+  private val dispatcherProvider: DispatcherProvider,
 ) : RetainedViewModel(),
   BottomSheetItemViewModel {
 
@@ -96,6 +102,7 @@ class DeleteBookViewModel(
       // or Android Auto browse — both resolve the current book without checking whether it's hidden.
       playerController.pauseIfCurrentBookIs(state.id)
       currentBookStoreId.updateData { current -> current.takeUnless { it == state.id } }
+      upNextStore.updateData { it - state.id }
 
       if (state.alsoDeleteFiles) {
         deleteFiles(state.id)
@@ -110,10 +117,13 @@ class DeleteBookViewModel(
    * without delete support otherwise leaves the user believing gigabytes were freed while the files
    * are still on disk, with the book now hidden so nothing ever surfaces them again.
    */
-  private fun deleteFiles(id: BookId) {
-    val deleted = runCatching { DocumentFile.fromSingleUri(application, id.toUri())?.delete() }
-      .onFailure { Logger.w(it, "Could not delete files for $id") }
-      .getOrNull() == true
+  private suspend fun deleteFiles(id: BookId) {
+    // A slow documents provider or a large folder blocks long enough for an ANR on the main thread.
+    val deleted = withContext(dispatcherProvider.io) {
+      runCatching { DocumentFile.fromSingleUri(application, id.toUri())?.delete() }
+        .onFailure { Logger.w(it, "Could not delete files for $id") }
+        .getOrNull() == true
+    }
     if (!deleted) {
       Logger.w("Deleting the files for $id failed; the book was removed from the library only")
       Toast.makeText(application, StringsR.string.remove_book_delete_failed, Toast.LENGTH_LONG).show()

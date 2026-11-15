@@ -4,5 +4,9 @@
   <color name="widget_background_color">#ff424242</color>
   <color name="widget_text_primary">#FFFFFF</color>
   <color name="widget_text_secondary">#B3FFFFFF</color>
-  <color name="widget_icon_tint">#FFFFFF</color>
+  <color name="widget_primary">#D0BCFF</color>
+  <color name="widget_on_primary">#381E72</color>
+  <color name="widget_tonal">#4F378B</color>
+  <color name="widget_on_tonal">#EADDFF</color>
+  <color name="widget_progress_track">#6B6670</color>
 </resources>

@@ -15,8 +15,18 @@ data class BookPlayViewState(
   val sleepTimerState: SleepTimerViewState,
   val playedTime: Duration,
   val duration: Duration,
+  val playbackSpeed: Float,
+  /** Whole-book progress, 0–1. */
+  val bookProgress: Float,
+  /** Whole-book audio time left; the view converts it to listening time at [playbackSpeed]. */
+  val bookTimeLeft: Duration,
   val playing: Boolean,
   val cover: ImmutableFile?,
+  /** Draw the cover as a 2:3 book jacket, matching the library's Books layout. */
+  val bookJacket: Boolean,
+  val coverGlow: Boolean,
+  /** Show the chapter's time left in place of its length. */
+  val chapterCountdown: Boolean,
   val skipSilence: Boolean,
   val characterCount: Int,
   val editChapterNamesVisible: Boolean,
@@ -41,6 +51,12 @@ data class BookPlayViewState(
     }
   }
 }
+
+/**
+ * Wall-clock listening time for this much audio at [speed]: at 2x, an hour of audio takes half an hour.
+ * Mirrors the library's speed-adjusted remaining time.
+ */
+internal fun Duration.atSpeed(speed: Float): Duration = if (speed > 0F) this / speed.toDouble() else this
 
 internal sealed interface BookPlayDialogViewState {
   data class SpeedDialog(val speed: Float) : BookPlayDialogViewState {
@@ -69,4 +85,6 @@ internal sealed interface BookPlayDialogViewState {
   value class SleepTimer(val viewState: SleepTimerViewState) : BookPlayDialogViewState
 
   data object ToolbarActions : BookPlayDialogViewState
+
+  data object UpNext : BookPlayDialogViewState
 }

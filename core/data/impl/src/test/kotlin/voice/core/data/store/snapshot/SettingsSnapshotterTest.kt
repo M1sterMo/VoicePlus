@@ -10,6 +10,8 @@ import org.junit.Test
 import voice.core.data.GridMode
 import voice.core.data.MediaButtonClickAction
 import voice.core.data.PlaybackToolbarAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.repo.internals.MemoryDataStore
 import voice.core.data.sleeptimer.SleepTimerPreference
 import kotlin.time.Duration.Companion.seconds
@@ -23,6 +25,10 @@ class SettingsSnapshotterTest {
 
   private class Stores {
     val darkTheme = MemoryDataStore(false)
+    val themeMode = MemoryDataStore(ThemeMode.SYSTEM)
+    val themeColor = MemoryDataStore(ThemeColor.DYNAMIC)
+    val coverGlow = MemoryDataStore(true)
+    val chapterCountdown = MemoryDataStore(false)
     val autoRewind = MemoryDataStore(2)
     val seekTime = MemoryDataStore(20)
     val fadeOut = MemoryDataStore(10.seconds)
@@ -38,6 +44,10 @@ class SettingsSnapshotterTest {
 
     fun snapshotter() = SettingsSnapshotter(
       darkTheme = darkTheme,
+      themeMode = themeMode,
+      themeColor = themeColor,
+      coverGlow = coverGlow,
+      chapterCountdown = chapterCountdown,
       autoRewind = autoRewind,
       seekTime = seekTime,
       fadeOut = fadeOut,
@@ -65,6 +75,10 @@ class SettingsSnapshotterTest {
     source.ignoreFileTags.updateData { true }
     source.playbackToolbarActions.updateData { setOf(PlaybackToolbarAction.LISTENING_LOG) }
     source.globalVolumeGain.updateData { 6F }
+    source.themeMode.updateData { ThemeMode.DARK }
+    source.themeColor.updateData { ThemeColor.TEAL }
+    source.coverGlow.updateData { false }
+    source.chapterCountdown.updateData { true }
 
     val captured = source.snapshotter().capture()
     val target = Stores()
@@ -78,6 +92,10 @@ class SettingsSnapshotterTest {
     target.ignoreFileTags.data.first() shouldBe true
     target.playbackToolbarActions.data.first() shouldBe setOf(PlaybackToolbarAction.LISTENING_LOG)
     target.globalVolumeGain.data.first() shouldBe 6F
+    target.themeMode.data.first() shouldBe ThemeMode.DARK
+    target.themeColor.data.first() shouldBe ThemeColor.TEAL
+    target.coverGlow.data.first() shouldBe false
+    target.chapterCountdown.data.first() shouldBe true
     // Untouched settings keep their defaults.
     target.autoRewind.data.first() shouldBe 2
   }

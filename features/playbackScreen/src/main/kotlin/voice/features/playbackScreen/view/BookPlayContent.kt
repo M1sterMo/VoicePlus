@@ -30,6 +30,7 @@ internal fun BookPlayContent(
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
   onCurrentChapterClick: () -> Unit,
+  onChapterTimeClick: () -> Unit,
   useLandscapeLayout: Boolean,
 ) {
   if (useLandscapeLayout) {
@@ -38,6 +39,9 @@ internal fun BookPlayContent(
         bookId = bookId,
         sharedTransitionScope = sharedTransitionScope,
         cover = viewState.cover,
+        bookJacket = viewState.bookJacket,
+        glow = viewState.coverGlow,
+        playing = viewState.playing,
         onPlayClick = onPlayClick,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
@@ -51,27 +55,16 @@ internal fun BookPlayContent(
           .weight(1F),
         verticalArrangement = Arrangement.Center,
       ) {
-        viewState.chapterName?.let { chapterName ->
-          ChapterRow(
-            chapterName = chapterName,
-            nextPreviousVisible = viewState.showPreviousNextButtons,
-            onSkipToNext = onSkipToNext,
-            onSkipToPrevious = onSkipToPrevious,
-            onCurrentChapterClick = onCurrentChapterClick,
-          )
-        }
-        Spacer(modifier = Modifier.size(20.dp))
-        SliderRow(
-          duration = viewState.duration,
-          playedTime = viewState.playedTime,
-          onSeek = onSeek,
-        )
-        Spacer(modifier = Modifier.size(16.dp))
-        PlaybackRow(
-          playing = viewState.playing,
+        PlaybackControls(
+          viewState = viewState,
           onPlayClick = onPlayClick,
           onRewindClick = onRewindClick,
           onFastForwardClick = onFastForwardClick,
+          onSeek = onSeek,
+          onSkipToNext = onSkipToNext,
+          onSkipToPrevious = onSkipToPrevious,
+          onCurrentChapterClick = onCurrentChapterClick,
+          onChapterTimeClick = onChapterTimeClick,
         )
       }
     }
@@ -82,36 +75,66 @@ internal fun BookPlayContent(
         sharedTransitionScope = sharedTransitionScope,
         onPlayClick = onPlayClick,
         cover = viewState.cover,
+        bookJacket = viewState.bookJacket,
+        glow = viewState.coverGlow,
+        playing = viewState.playing,
         sleepTimerState = viewState.sleepTimerState,
         modifier = Modifier
           .fillMaxWidth()
           .weight(1F)
           .padding(start = 16.dp, end = 16.dp, top = 8.dp),
       )
-      viewState.chapterName?.let { chapterName ->
-        Spacer(modifier = Modifier.size(16.dp))
-        ChapterRow(
-          chapterName = chapterName,
-          nextPreviousVisible = viewState.showPreviousNextButtons,
-          onSkipToNext = onSkipToNext,
-          onSkipToPrevious = onSkipToPrevious,
-          onCurrentChapterClick = onCurrentChapterClick,
-        )
-      }
-      Spacer(modifier = Modifier.size(20.dp))
-      SliderRow(
-        duration = viewState.duration,
-        playedTime = viewState.playedTime,
-        onSeek = onSeek,
-      )
       Spacer(modifier = Modifier.size(16.dp))
-      PlaybackRow(
-        playing = viewState.playing,
+      PlaybackControls(
+        viewState = viewState,
         onPlayClick = onPlayClick,
         onRewindClick = onRewindClick,
         onFastForwardClick = onFastForwardClick,
+        onSeek = onSeek,
+        onSkipToNext = onSkipToNext,
+        onSkipToPrevious = onSkipToPrevious,
+        onCurrentChapterClick = onCurrentChapterClick,
+        onChapterTimeClick = onChapterTimeClick,
       )
       Spacer(modifier = Modifier.size(24.dp))
     }
   }
+}
+
+/** Position first, then the chapter, then play: the same order in both layouts. */
+@Composable
+private fun PlaybackControls(
+  viewState: BookPlayViewState,
+  onPlayClick: () -> Unit,
+  onRewindClick: () -> Unit,
+  onFastForwardClick: () -> Unit,
+  onSeek: (Duration) -> Unit,
+  onSkipToNext: () -> Unit,
+  onSkipToPrevious: () -> Unit,
+  onCurrentChapterClick: () -> Unit,
+  onChapterTimeClick: () -> Unit,
+) {
+  SliderRow(
+    duration = viewState.duration,
+    playedTime = viewState.playedTime,
+    playbackSpeed = viewState.playbackSpeed,
+    onSeek = onSeek,
+    showRemaining = viewState.chapterCountdown,
+    onTimeClick = onChapterTimeClick,
+  )
+  viewState.chapterName?.let { chapterName ->
+    ChapterRow(
+      chapterName = chapterName,
+      nextPreviousVisible = viewState.showPreviousNextButtons,
+      onSkipToNext = onSkipToNext,
+      onSkipToPrevious = onSkipToPrevious,
+      onCurrentChapterClick = onCurrentChapterClick,
+    )
+  }
+  PlaybackRow(
+    playing = viewState.playing,
+    onPlayClick = onPlayClick,
+    onRewindClick = onRewindClick,
+    onFastForwardClick = onFastForwardClick,
+  )
 }

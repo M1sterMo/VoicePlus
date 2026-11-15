@@ -32,48 +32,18 @@ Built on [Voice](https://github.com/PaulWoitaschek/Voice) by Paul Woitaschek and
 
 ---
 
-## What's new in v1.29
+## Features
 
-- A book-inspired library with cropped portrait covers, subtle page edges, and a choice of two or three books per row
-- Personal shelves and series stacks, with editable ordering and drag-to-move between visible shelves; Current keeps your active books within reach
-- A focused Appearance editor for Books, Grid and List layouts
-- Edit titles and covers without rewriting audio files; edits survive rescans and travel with portable backups
-- More reliable chapter-number corrections when navigating backward through irregular chapter markers
-- Protection against accidental headphone or media-button resume after the sleep timer finishes
-- Optionally remember volume boost across all books
-- Updated playback libraries and refreshed phone and tablet screenshots
+- **Library**: personal shelves, series stacks with shared character lists, drag to arrange, and sorting by title, author, date added or length
+- **Up next**: queue books to play one after another
+- **Listening history**: a log with chapter positions, plus statistics with finish dates and records
+- **Sleep timer**: chapter countdowns, and a reset when you interact
+- **Your edits**: bookmarks, chapter names, titles and covers, all without changing your audio files
+- **Controls your way**: player toolbar, lock screen, media buttons, widget, theme and colors
+- **Backups**: Android system backup, plus automatic and manual saves to a folder you choose
+- **Private**: no accounts, ads, analytics or telemetry
 
-### Previous additions in v1.28
-
-- Customize the now-playing toolbar with up to four shortcuts; other actions stay in the menu
-- Toolbar choices are saved and included in settings backups
-- Add a quick bookmark directly from the bookmarks screen, or use the separate named-bookmark button
-- Completed books show a completion badge and finish date in the library
-- Refreshed dark-mode phone and tablet screenshots
-
-### Previous fixes in v1.27
-
-- Later Chapter Fix corrections preserve earlier chapter names and respect restored names
-- Long-press menus work in search results — thanks [@JamesDBartlett3](https://github.com/JamesDBartlett3)
-- Android Auto forward/rewind keys keep the correct direction without changing headset preferences — thanks [@geofgowan](https://github.com/geofgowan) for reporting
-
----
-
-## What's different from Voice
-
-- Listening Log with clear chapter positions and timestamps
-- Listening Statistics with trends, records, finished books, and relisten counts
-- Character lists for each book
-- Smarter sleep timer with interaction reset and chapter countdowns
-- Customizable lock-screen progress, secondary text, and playback controls
-- Flexible backup and restore — encrypted Android system backup plus automatic and manual saves to a folder you choose
-- Editable chapter names and tools to fix out-of-sync numbering
-- Hide and restore books from the library
-- Resizable widget with configurable opacity and text scale
-- Customizable media button actions (double/triple press)
-- Personal shelves, ordered series stacks, and a book-inspired library view
-- Portable title and cover edits that leave your audio files unchanged
-- Firebase removed entirely — no analytics or background telemetry
+See the [changelog](CHANGELOG.md) for what changed in each release.
 
 ---
 

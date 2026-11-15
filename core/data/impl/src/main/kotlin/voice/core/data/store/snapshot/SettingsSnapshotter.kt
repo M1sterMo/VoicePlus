@@ -17,9 +17,13 @@ import kotlinx.serialization.json.Json
 import voice.core.data.GridMode
 import voice.core.data.MediaButtonClickAction
 import voice.core.data.PlaybackToolbarAction
+import voice.core.data.ThemeColor
+import voice.core.data.ThemeMode
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.AutoRewindAmountStore
 import voice.core.data.store.BooksPerRowStore
+import voice.core.data.store.ChapterCountdownStore
+import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.DarkThemeStore
 import voice.core.data.store.ExperimentalPlaybackPersistenceStore
 import voice.core.data.store.FadeOutStore
@@ -31,6 +35,8 @@ import voice.core.data.store.MediaButtonTripleClickHandlerStore
 import voice.core.data.store.PlaybackToolbarActionsStore
 import voice.core.data.store.SeekTimeStore
 import voice.core.data.store.SleepTimerPreferenceStore
+import voice.core.data.store.ThemeColorStore
+import voice.core.data.store.ThemeModeStore
 import kotlin.time.Duration
 
 /**
@@ -44,6 +50,10 @@ import kotlin.time.Duration
 @Inject
 internal class SettingsSnapshotter(
   @DarkThemeStore darkTheme: DataStore<Boolean>,
+  @ThemeModeStore themeMode: DataStore<ThemeMode>,
+  @ThemeColorStore themeColor: DataStore<ThemeColor>,
+  @CoverGlowStore coverGlow: DataStore<Boolean>,
+  @ChapterCountdownStore chapterCountdown: DataStore<Boolean>,
   @AutoRewindAmountStore autoRewind: DataStore<Int>,
   @SeekTimeStore seekTime: DataStore<Int>,
   @FadeOutStore fadeOut: DataStore<Duration>,
@@ -74,6 +84,10 @@ internal class SettingsSnapshotter(
 
   private val entries: List<Entry<*>> = listOf(
     Entry("darkTheme", darkTheme, Boolean.serializer()),
+    Entry("themeMode", themeMode, ThemeMode.serializer()),
+    Entry("themeColor", themeColor, ThemeColor.serializer()),
+    Entry("coverGlow", coverGlow, Boolean.serializer()),
+    Entry("chapterCountdown", chapterCountdown, Boolean.serializer()),
     Entry("autoRewind", autoRewind, Int.serializer()),
     Entry("seekTime", seekTime, Int.serializer()),
     Entry("fadeOut", fadeOut, Duration.serializer()),

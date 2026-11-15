@@ -14,8 +14,10 @@ dependencies {
   implementation(projects.core.ui)
   implementation(projects.core.sleepTimer.api)
   implementation(projects.features.sleepTimer)
+  implementation(projects.features.upNext)
 
   implementation(libs.coil)
+  implementation(libs.palette)
   implementation(libs.androidxCore)
   implementation(libs.navigation3.ui)
 

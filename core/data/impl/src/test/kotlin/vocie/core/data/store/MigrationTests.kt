@@ -20,10 +20,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import voice.core.common.AppInfoProvider
 import voice.core.data.GridMode
+import voice.core.data.ThemeMode
 import voice.core.data.store.AutoRewindAmountStore
 import voice.core.data.store.DarkThemeStore
 import voice.core.data.store.GridModeStore
 import voice.core.data.store.SeekTimeStore
+import voice.core.data.store.ThemeModeStore
 import voice.core.data.store.VoiceDataStoreFactory
 import voice.core.data.store.intPrefsDataMigration
 
@@ -45,6 +47,9 @@ interface MigrationTestGraph {
 
   @GridModeStore
   val gridModeStore: DataStore<GridMode>
+
+  @ThemeModeStore
+  val themeModeStore: DataStore<ThemeMode>
 
   @Provides
   val application: Application get() = ApplicationProvider.getApplicationContext()
@@ -107,6 +112,17 @@ class MigrationTests {
     val store = testGraph.darkThemeStore
     store.data.first() shouldBe expected
     sharedPreferences.contains("darkTheme") shouldBe false
+  }
+
+  @Test
+  fun `the old dark theme switch migrates to the dark theme mode`() = runTest {
+    sharedPreferences.edit {
+      clear()
+      putBoolean("darkTheme", true)
+    }
+
+    testGraph.themeModeStore.data.first() shouldBe ThemeMode.DARK
+    testGraph.darkThemeStore.data.first() shouldBe false
   }
 
   @Test

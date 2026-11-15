@@ -116,8 +116,7 @@ class AppLaunchSmokeTest {
       composeRule.waitUntilAtLeastOneExists(hasScrollToIndexAction(), 10_000)
       composeRule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(targetBookName))
       composeRule.onNode(hasText(targetBookName) and hasClickAction()).assertIsDisplayed()
-      composeRule.onNode(hasContentDescription("Library options")).performClick()
-      composeRule.onNode(hasText("Settings")).performClick()
+      composeRule.onNode(hasContentDescription("Settings")).performClick()
       composeRule.waitUntilAtLeastOneExists(hasContentDescription("Close"), 10_000)
       composeRule.onNode(hasContentDescription("Close")).performClick()
 

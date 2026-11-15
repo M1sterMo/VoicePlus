@@ -4,7 +4,7 @@
   android:id="@+id/wholeWidget"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  tools:ignore="ContentDescription,HardcodedText,UseAppTint,UseCompoundDrawables">
+  tools:ignore="ContentDescription,HardcodedText">
 
   <ImageView
     android:id="@+id/widgetBackground"
@@ -16,137 +16,124 @@
   <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
 
     <ImageView
       android:id="@+id/imageView"
       android:layout_width="wrap_content"
       android:layout_height="match_parent"
       android:adjustViewBounds="true"
-      android:contentDescription="@string/content_cover"
-      android:src="@drawable/album_art" />
+      android:background="@drawable/widget_cover_preview"
+      android:clipToOutline="true"
+      android:scaleType="centerCrop"
+      android:src="@drawable/album_art"
+      tools:targetApi="31" />
 
     <LinearLayout
       android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
       android:layout_weight="1"
-      android:layout_height="match_parent"
-      android:gravity="center"
       android:orientation="vertical">
 
+      <!-- Weighted so that, when the widget is too short, this block gives up space and the
+           buttons below keep their full size. The gap above the buttons is this
+           block's bottom padding, so it gives way too. -->
       <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="8dp"
-        android:layout_marginRight="8dp"
-        android:gravity="center_vertical|center_horizontal"
-        android:orientation="vertical">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        android:paddingBottom="8dp"
+        tools:ignore="NestedWeights">
 
         <TextView
           android:id="@+id/title"
-          android:layout_width="wrap_content"
+          android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:ellipsize="end"
+          android:fontFamily="sans-serif-medium"
           android:maxLines="1"
           android:text="The Count of Monte Cristo"
           android:textColor="@color/widget_text_primary"
-          android:textSize="14sp" />
+          android:textSize="@dimen/widget_title_size" />
 
         <TextView
           android:id="@+id/summary"
-          android:layout_width="wrap_content"
+          android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:ellipsize="end"
           android:maxLines="1"
           android:text="Chapter 05 - Marseille"
           android:textColor="@color/widget_text_secondary"
-          android:textSize="12sp" />
+          android:textSize="@dimen/widget_summary_size" />
+
+        <ProgressBar
+          style="?android:attr/progressBarStyleHorizontal"
+          android:layout_width="match_parent"
+          android:layout_height="4dp"
+          android:layout_marginTop="8dp"
+          android:max="100"
+          android:maxHeight="4dp"
+          android:minHeight="4dp"
+          android:progress="40"
+          android:progressBackgroundTint="@color/widget_progress_track"
+          android:progressDrawable="@drawable/widget_progress"
+          android:progressTint="@color/widget_primary" />
       </LinearLayout>
 
       <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:divider="@drawable/notification_divider"
-        android:dividerPadding="8dp"
-        android:gravity="center_horizontal|center_vertical"
-        android:orientation="horizontal"
-        android:showDividers="middle">
+        android:gravity="center"
+        android:orientation="horizontal">
 
-        <LinearLayout
-          android:id="@+id/rewindContainer"
-          android:orientation="vertical"
-          android:gravity="center"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content">
-          <ImageView
-            android:id="@+id/rewind"
-            android:tint="@color/widget_icon_tint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/widget_skip_back_a11y"
-            android:paddingTop="8dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="2dp"
-            android:src="@drawable/ic_rewind_white_36dp" />
-          <TextView
-            android:id="@+id/rewindText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="30s"
-            android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
-        </LinearLayout>
+        <ImageView
+          android:id="@+id/previousChapter"
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginHorizontal="4dp"
+          android:background="@drawable/widget_button_tonal"
+          android:padding="8dp"
+          android:src="@drawable/widget_ic_skip_previous"
+          android:visibility="gone" />
 
-        <LinearLayout
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:orientation="vertical"
-          android:gravity="center">
-          <ImageView
-            android:id="@+id/playPause"
-            android:tint="@color/widget_icon_tint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/play_pause"
-            android:padding="8dp"
-            android:src="@drawable/ic_play_white_36dp" />
-          <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:visibility="invisible" />
-        </LinearLayout>
+        <ImageView
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginHorizontal="4dp"
+          android:background="@drawable/widget_button_tonal"
+          android:padding="8dp"
+          android:src="@drawable/widget_ic_replay" />
 
-        <LinearLayout
-          android:id="@+id/fastForwardContainer"
-          android:orientation="vertical"
-          android:gravity="center"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content">
-          <ImageView
-            android:id="@+id/fastForward"
-            android:tint="@color/widget_icon_tint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/widget_skip_forward_a11y"
-            android:paddingTop="8dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="2dp"
-            android:src="@drawable/ic_fast_forward_white_36dp" />
-          <TextView
-            android:id="@+id/fastForwardText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="30s"
-            android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
-        </LinearLayout>
+        <ImageView
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginHorizontal="4dp"
+          android:background="@drawable/widget_button_primary"
+          android:padding="8dp"
+          android:src="@drawable/widget_ic_play" />
 
+        <ImageView
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginHorizontal="4dp"
+          android:background="@drawable/widget_button_tonal"
+          android:padding="8dp"
+          android:src="@drawable/widget_ic_forward" />
+
+        <ImageView
+          android:id="@+id/nextChapter"
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:layout_marginHorizontal="4dp"
+          android:background="@drawable/widget_button_tonal"
+          android:padding="8dp"
+          android:src="@drawable/widget_ic_skip_next"
+          android:visibility="gone" />
       </LinearLayout>
     </LinearLayout>
   </LinearLayout>

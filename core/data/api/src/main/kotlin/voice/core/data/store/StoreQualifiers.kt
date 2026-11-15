@@ -8,6 +8,10 @@ public annotation class OnboardingCompletedStore
 @Qualifier
 public annotation class CurrentBookStore
 
+/** The books queued to play after the current one, in order. */
+@Qualifier
+public annotation class UpNextStore
+
 @Qualifier
 public annotation class AutoRewindAmountStore
 
@@ -23,8 +27,22 @@ public annotation class GridModeStore
 @Qualifier
 public annotation class BooksPerRowStore
 
+/** The Android 9 dark-theme switch; only read to migrate into [ThemeModeStore]. */
 @Qualifier
 public annotation class DarkThemeStore
+
+@Qualifier
+public annotation class ThemeModeStore
+
+@Qualifier
+public annotation class ThemeColorStore
+
+@Qualifier
+public annotation class CoverGlowStore
+
+/** Whether the player shows the chapter's time left instead of its length. */
+@Qualifier
+public annotation class ChapterCountdownStore
 
 @Qualifier
 public annotation class FadeOutStore

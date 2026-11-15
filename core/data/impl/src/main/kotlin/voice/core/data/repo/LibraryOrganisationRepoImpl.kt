@@ -23,6 +23,7 @@ import java.util.UUID
 @ContributesBinding(AppScope::class)
 public class LibraryOrganisationRepoImpl(private val db: AppDb) : LibraryOrganisationRepo {
   private val dao get() = db.libraryOrganisationDao()
+  private val characters get() = db.bookCharacterDao()
 
   override fun flow(): Flow<LibraryOrganisation> = dao.changes().map { get() }.distinctUntilChanged()
   override suspend fun get(): LibraryOrganisation = dao.get()
@@ -31,8 +32,10 @@ public class LibraryOrganisationRepoImpl(private val db: AppDb) : LibraryOrganis
   private suspend fun edit(update: (LibraryOrganisation) -> LibraryOrganisation): LibraryChange = db.transaction {
     val before = dao.get()
     val after = update(before)
+    val charactersBefore = characters.all()
     dao.replace(before, after)
-    LibraryChange(before, after)
+    characters.followSeries(before.placements)
+    LibraryChange(before, after, charactersBefore, characters.all())
   }
 
   override suspend fun createShelf(name: String): LibraryChange = edit { state ->
@@ -188,7 +191,12 @@ public class LibraryOrganisationRepoImpl(private val db: AppDb) : LibraryOrganis
     )
     // A later edit may have put another item on a newly created shelf; do not orphan it on undo.
     if (runCatching { restored.validate() }.isFailure) return@transaction false
+    // Character lists go back exactly as they were, so only while nobody has edited them since.
+    val liveCharacters = characters.all()
+    val reshaped = change.charactersBefore.toSet() != change.charactersAfter.toSet()
+    if (reshaped && liveCharacters.toSet() != change.charactersAfter.toSet()) return@transaction false
     dao.replace(current, restored)
+    if (reshaped) characters.restore(liveCharacters, change.charactersBefore)
     true
   }
 }

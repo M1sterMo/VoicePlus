@@ -103,14 +103,13 @@ internal class OsWipeRestorer(
     val bookmarksByBook = snapshot.bookmarks.groupBy { it.bookId }
     val overridesByBook = snapshot.chapterNameOverrides.groupBy { it.bookId }
     val sessionsByBook = snapshot.sessions.groupBy { it.bookId }
-    val charactersByBook = snapshot.characters.groupBy { it.bookId }
     val snapshotBooks = snapshot.books
       // Hidden books DO participate: the scan has already put their files back on disk under new
       // ids, so skipping them would leave them visible and dataless. They are re-keyed with their
       // data and their NEW ids are added to the hidden set below, so they stay hidden.
       .filter { it.id !in excludedIds || it.id in snapshot.hiddenBooks }
       .map { dto ->
-        toSnapshotBook(dto, snapChapterById, bookmarksByBook, overridesByBook, sessionsByBook, charactersByBook)
+        toSnapshotBook(dto, snapChapterById, bookmarksByBook, overridesByBook, sessionsByBook)
       }
 
     // 4. Pure, deterministic, never-cross-attach re-key.
@@ -119,6 +118,7 @@ internal class OsWipeRestorer(
     // 5. Persist the matched books, keyed entirely to the new ids. Atomic; additive; freshness-aware.
     val liveById = liveBooks.associateBy { it.id.value }
     appDb.transaction {
+      val placementsBefore = organisationDao.placements()
       organisationDao.restore(snapshot, result.matched.associate { it.sourceId to it.content.id.value })
       // A previous partial run may have kept a then-unmatched book's sessions under its dead old id
       // (see the unmatched block below). Those raw rows carry dead chapter ids and unclamped
@@ -137,9 +137,8 @@ internal class OsWipeRestorer(
           }
       }
       // Seed the natural-key dedup sets INSIDE the transaction so a concurrent caller can't make us
-      // double-insert the autoGenerate-PK rows (sessions / characters).
+      // double-insert the autoGenerate-PK sessions.
       val seenSessionKeys = listeningSessionDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
-      val seenCharacterKeys = bookCharacterDao.all().mapTo(mutableSetOf()) { it.naturalKey() }
       result.matched.forEach { matched ->
         val live = liveById[matched.content.id.value]
         // Portable artwork wins; legacy JSON bundles retain the freshly scanned cover. Newer
@@ -159,10 +158,6 @@ internal class OsWipeRestorer(
           // ListeningSession has an autoGenerate PK; dedup on a natural key so a re-run can't double-count,
           // and insert with a fresh id so a snapshot-generation id can't collide with a live row.
           if (seenSessionKeys.add(session.naturalKey())) listeningSessionDao.insert(session.copy(id = 0))
-        }
-        matched.characters.forEach { character ->
-          // BookCharacter also has an autoGenerate PK; same natural-key dedup + fresh id.
-          if (seenCharacterKeys.add(character.naturalKey())) bookCharacterDao.insert(character.copy(id = 0))
         }
         // Listening EVENTS are deliberately not re-keyed: they are seek/skip decorations on the log, and
         // carrying them across dead-URI chapter ids isn't worth the mapping surface. The same-device
@@ -190,6 +185,18 @@ internal class OsWipeRestorer(
           val session = dto.toListeningSession()
           if (seenSessionKeys.add(session.naturalKey())) listeningSessionDao.insert(session.copy(id = 0))
         }
+      // Characters follow their books onto the new ids. A series' shared list outlives the book a
+      // character was added in: if that book is not found, the character keeps its old id (and shows
+      // no origin chip) until a later run finds the book and moves it across.
+      val newIds = result.matched.associate { it.sourceId to it.content.id }
+      newIds.forEach { (old, new) -> if (old != new.value) bookCharacterDao.reKeyOrigin(BookId(old), new) }
+      bookCharacterDao.followSeries(placementsBefore)
+      bookCharacterDao.insertRestored(
+        snapshot.characters.map { it.toBookCharacter() }.mapNotNull { character ->
+          val owner = character.ownerBookId?.let { newIds[it.value] ?: return@mapNotNull null }
+          character.copy(bookId = newIds[character.bookId.value] ?: character.bookId, ownerBookId = owner)
+        },
+      )
     }
 
     // Translate the hidden set onto the new ids: the snapshot's hidden ids died with the wipe, and
@@ -238,7 +245,6 @@ internal class OsWipeRestorer(
     bookmarksByBook: Map<String, List<BookmarkDto>>,
     overridesByBook: Map<String, List<ChapterNameOverrideDto>>,
     sessionsByBook: Map<String, List<ListeningSessionDto>>,
-    charactersByBook: Map<String, List<BookCharacterDto>>,
   ): SnapshotBook {
     val bookRelPath = DeviceRelativePath.documentId(dto.id.toUri())
     val bookChapters = dto.chapters.mapNotNull { snapChapterById[it] }
@@ -255,7 +261,6 @@ internal class OsWipeRestorer(
       bookmarks = bookmarksByBook[dto.id].orEmpty(),
       overrides = overridesByBook[dto.id].orEmpty(),
       sessions = sessionsByBook[dto.id].orEmpty(),
-      characters = charactersByBook[dto.id].orEmpty(),
     )
   }
 
@@ -283,6 +288,21 @@ internal class OsWipeRestorer(
 // with a fresh id and dedup on these keys instead.
 internal fun ListeningSession.naturalKey(): String = "${bookId.value}|${startedAt.toEpochMilli()}|$startPositionMs"
 
-internal fun BookCharacter.naturalKey(): String = "${bookId.value}|$name|${createdAt.toEpochMilli()}"
+// The list a character is in, the book it was added in, and its name and creation time.
+internal fun BookCharacter.naturalKey(): String = "${seriesId ?: ownerBookId?.value}|${bookId.value}|$name|${createdAt.toEpochMilli()}"
+
+/**
+ * Inserts restored characters that the list they land in does not already hold, then lets series
+ * members' own lists join their series. Call once the restored organisation is in place.
+ */
+internal suspend fun BookCharacterDao.insertRestored(characters: List<BookCharacter>) {
+  val seen = all().mapTo(mutableSetOf()) { it.naturalKey() }
+  characters.forEach { character ->
+    // A book that is in a series now reads its series' list, so that is the list to check.
+    val landing = character.copy(seriesId = character.seriesId ?: character.ownerBookId?.let { seriesOf(it) })
+    if (seen.add(landing.naturalKey())) insert(character.copy(id = 0))
+  }
+  followSeries()
+}
 
 internal fun ListeningEvent.naturalKey(): String = "${bookId.value}|${at.toEpochMilli()}|$type|$positionMs"

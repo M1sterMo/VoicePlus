@@ -19,14 +19,11 @@ class BottomSheetViewModel(private val viewModels: Set<@JvmSuppressWildcards Bot
   var bookId: BookId? = null
     private set
 
-  internal fun bookSelected(bookId: BookId) {
+  /** Returns once the items are ready, so the sheet never opens on the previous book's items. */
+  internal suspend fun bookSelected(bookId: BookId) {
+    val items = viewModels.flatMap { it.items(bookId) }.toSet().sorted()
     this.bookId = bookId
-    scope.launch {
-      val items = viewModels.flatMap { it.items(bookId) }
-        .toSet()
-        .sorted()
-      _state.value = EditBookBottomSheetState(items)
-    }
+    _state.value = EditBookBottomSheetState(items)
   }
 
   internal fun onItemClick(item: BottomSheetItem) {

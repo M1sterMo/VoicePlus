@@ -21,6 +21,7 @@ import voice.core.common.RetainedViewModel
 import voice.core.common.resolveChapterName
 import voice.core.data.Book
 import voice.core.data.BookId
+import voice.core.data.GridMode
 import voice.core.data.ListeningEventType
 import voice.core.data.PlaybackToolbarAction
 import voice.core.data.byMarkKey
@@ -31,8 +32,10 @@ import voice.core.data.repo.BookRepository
 import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
-import voice.core.data.store.CurrentBookStore
+import voice.core.data.store.ChapterCountdownStore
+import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.GlobalVolumeGainStore
+import voice.core.data.store.GridModeStore
 import voice.core.data.store.PlaybackToolbarActionsStore
 import voice.core.data.store.SleepTimerPreferenceStore
 import voice.core.logging.api.Logger
@@ -63,8 +66,6 @@ class BookPlayViewModel(
   private val player: PlayerController,
   private val sleepTimer: SleepTimer,
   private val playStateManager: PlayStateManager,
-  @CurrentBookStore
-  private val currentBookStoreId: DataStore<BookId?>,
   private val navigator: Navigator,
   private val bookmarkRepository: BookmarkRepo,
   private val characterRepo: BookCharacterRepo,
@@ -78,6 +79,12 @@ class BookPlayViewModel(
   private val toolbarActionsStore: DataStore<Set<PlaybackToolbarAction>>,
   @GlobalVolumeGainStore
   private val globalVolumeGainStore: DataStore<Float?>,
+  @GridModeStore
+  private val gridModeStore: DataStore<GridMode>,
+  @CoverGlowStore
+  private val coverGlowStore: DataStore<Boolean>,
+  @ChapterCountdownStore
+  private val chapterCountdownStore: DataStore<Boolean>,
   @Assisted
   private val bookId: BookId,
 ) : RetainedViewModel(MainScope(dispatcherProvider)) {
@@ -87,13 +94,6 @@ class BookPlayViewModel(
 
   private val _dialogState = mutableStateOf<BookPlayDialogViewState?>(null)
   internal val dialogState: State<BookPlayDialogViewState?> get() = _dialogState
-
-  init {
-    scope.launch {
-      player.pauseIfCurrentBookDifferentFrom(bookId)
-      currentBookStoreId.updateData { bookId }
-    }
-  }
 
   @Composable
   fun viewState(): BookPlayViewState? {
@@ -118,6 +118,10 @@ class BookPlayViewModel(
     // Held until the store answers so a customised toolbar never flashes the default set first.
     val toolbarActions = remember { toolbarActionsStore.data }.collectAsState(initial = null).value
       ?: return null
+    // Held like the toolbar, so a Books-layout user never sees the square cover flash first.
+    val gridMode = remember { gridModeStore.data }.collectAsState(initial = null).value ?: return null
+    val coverGlow = remember { coverGlowStore.data }.collectAsState(initial = null).value ?: return null
+    val chapterCountdown = remember { chapterCountdownStore.data }.collectAsState(initial = null).value ?: return null
 
     val currentMark = book.currentChapter.markForPosition(book.content.positionInChapter)
     val positionInCurrentMark = if (isPlaying && currentMark.durationMs > 0) {
@@ -146,7 +150,13 @@ class BookPlayViewModel(
       chapterName = chapterName.takeIf { hasMoreThanOneChapter },
       duration = currentMark.durationMs.milliseconds,
       playedTime = positionInCurrentMark.milliseconds,
+      playbackSpeed = book.content.playbackSpeed,
+      bookProgress = (book.position.toFloat() / book.duration).coerceIn(0F, 1F),
+      bookTimeLeft = (book.duration - book.position).coerceAtLeast(0).milliseconds,
       cover = book.content.cover?.let(::ImmutableFile),
+      bookJacket = gridMode == GridMode.BOOKS,
+      coverGlow = coverGlow,
+      chapterCountdown = chapterCountdown,
       skipSilence = book.content.skipSilence,
       characterCount = characterCount,
       // Gate on chapter MARKS (what the editor actually lists), not raw markData — otherwise the
@@ -154,6 +164,10 @@ class BookPlayViewModel(
       editChapterNamesVisible = hasMoreThanOneChapter,
       toolbarActions = toolbarActions,
     )
+  }
+
+  fun onChapterTimeClick() {
+    scope.launch { chapterCountdownStore.updateData { !it } }
   }
 
   fun onCustomizeToolbarClick() {
@@ -398,6 +412,10 @@ class BookPlayViewModel(
 
   fun onCharacterListClick() {
     navigator.goTo(Destination.CharacterList(bookId))
+  }
+
+  fun onUpNextClick() {
+    _dialogState.value = BookPlayDialogViewState.UpNext
   }
 
   fun onBookmarkLongClick() {

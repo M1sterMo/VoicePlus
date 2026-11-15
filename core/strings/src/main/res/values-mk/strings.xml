@@ -19,7 +19,6 @@
     <string name="generic_error_message">Настана грешка 😢</string>
     <string name="book_header_current">Тековни</string>
     <string name="pref_help_translating">Поможете за превод на Voice</string>
-    <string name="folder_type_no_books">Voice не можеше да пронајде книги. Дали сте сигурни дека има аудио датотеки?</string>
     <string name="cover">Корица</string>
     <string name="play_pause">Пушти / Пауза</string>
     <string name="fast_forward">Побрзо напред</string>
@@ -60,8 +59,6 @@
     <string name="folder_mode_root">Режим на книги на највисоко ниво: Подфолдерите се книги</string>
     <string name="folder_mode_author">Режим на автор-книга: Подфолдерите се автори, под-подфолдерите се книги.</string>
     <string name="book_header_completed">Комплетирани</string>
-    <string name="folder_type_book_example_header">Следните книги ќе бидат детектирани</string>
-    <string name="folder_type_title">Како се структурирани вашите датотеки?</string>
     <string name="voice_intro_first_book">Ајде да ги додадеме вашите аудио книги за да почнете со слушање!</string>
     <string name="migration_detail_title">Стари позиции во книгата</string>
     <string name="migration_detail_content_root">Главен фолдер</string>
@@ -80,9 +77,6 @@
     <string name="storage_bug_button">Дај пермисија</string>
     <string name="select_folder_title_onboarding">Додајте ја вашата прва аудио книга</string>
     <string name="select_folder_title_default">Додајте ги вашите аудио книги</string>
-    <string name="select_folder_type_file">Датотека</string>
-    <string name="select_folder_type_folder">Фолдер</string>
-    <string name="select_folder_subtitle">Дали сакате да додадете една датотека како една книга или еден фолдер како книга?</string>
     <string name="onboarding_welcome_title">Добредојдовте во Voice!</string>
     <string name="onboarding.button_next">Наредна</string>
     <string name="onboarding.explanation.title">Вашата библиотека, на Ваш начин</string>
