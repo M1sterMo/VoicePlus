@@ -26,7 +26,7 @@ data class BookPlayViewState(
   val bookJacket: Boolean,
   val coverGlow: Boolean,
   /** Show the chapter's time left in place of its length. */
-  val chapterCountdown: Boolean = false,
+  val chapterCountdown: Boolean,
   val skipSilence: Boolean,
   val characterCount: Int,
   val editChapterNamesVisible: Boolean,

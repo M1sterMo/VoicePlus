@@ -129,6 +129,7 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       cover = null,
       bookJacket = false,
       coverGlow = true,
+      chapterCountdown = false,
       duration = 10.minutes,
       playedTime = 3.minutes,
       playbackSpeed = 1F,

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,8 +20,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import voice.core.strings.R
 import voice.core.ui.formatTime
 import voice.features.playbackScreen.atSpeed
 import kotlin.math.abs
@@ -72,16 +77,17 @@ internal fun SliderRow(
     }
     // Labels show listening time at the current speed; the slider itself stays on audio time.
     val listeningMs = duration.atSpeed(playbackSpeed).inWholeMilliseconds
+    val elapsedMs = (listeningMs * displayedFraction).toLong()
     // The label lives in the same Row as the slider, so its width sets the track's width. Pin it
     // to the widest string it can show (the full duration) via an invisible template — otherwise
     // every digit change mid-drag resizes the track and the thumb hops under a steady finger.
     Box(contentAlignment = Alignment.CenterEnd) {
       Text(
         text = formatTime(timeMs = listeningMs, durationMs = listeningMs),
-        modifier = Modifier.alpha(0F),
+        modifier = Modifier.alpha(0F).clearAndSetSemantics {},
       )
       Text(
-        text = formatTime(timeMs = (listeningMs * displayedFraction).toLong(), durationMs = listeningMs),
+        text = formatTime(timeMs = elapsedMs, durationMs = listeningMs),
       )
     }
     Slider(
@@ -101,11 +107,21 @@ internal fun SliderRow(
       },
     )
     // Tapping the length swaps it for a countdown of the chapter, and back, as upstream Voice does.
-    Box(Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onTimeClick), contentAlignment = Alignment.CenterEnd) {
-      Text(text = "−" + formatTime(timeMs = listeningMs, durationMs = listeningMs), modifier = Modifier.alpha(0F))
+    Box(
+      Modifier
+        .minimumInteractiveComponentSize()
+        .clip(MaterialTheme.shapes.small)
+        .clickable(onClickLabel = stringResource(R.string.chapter_time_toggle), role = Role.Button, onClick = onTimeClick),
+      contentAlignment = Alignment.CenterEnd,
+    ) {
+      Text(
+        text = "−" + formatTime(timeMs = listeningMs, durationMs = listeningMs),
+        modifier = Modifier.alpha(0F).clearAndSetSemantics {},
+      )
       Text(
         text = if (showRemaining) {
-          "−" + formatTime(timeMs = (listeningMs * (1 - displayedFraction)).toLong(), durationMs = listeningMs)
+          // Rounded up, so elapsed and remaining always add up to the chapter's length.
+          "−" + formatTime(timeMs = listeningMs - elapsedMs + 999, durationMs = listeningMs)
         } else {
           formatTime(timeMs = listeningMs, durationMs = listeningMs)
         },

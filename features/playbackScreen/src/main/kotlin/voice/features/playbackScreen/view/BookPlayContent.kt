@@ -56,15 +56,15 @@ internal fun BookPlayContent(
         verticalArrangement = Arrangement.Center,
       ) {
         PlaybackControls(
-          viewState,
-          onPlayClick,
-          onRewindClick,
-          onFastForwardClick,
-          onSeek,
-          onSkipToNext,
-          onSkipToPrevious,
-          onCurrentChapterClick,
-          onChapterTimeClick,
+          viewState = viewState,
+          onPlayClick = onPlayClick,
+          onRewindClick = onRewindClick,
+          onFastForwardClick = onFastForwardClick,
+          onSeek = onSeek,
+          onSkipToNext = onSkipToNext,
+          onSkipToPrevious = onSkipToPrevious,
+          onCurrentChapterClick = onCurrentChapterClick,
+          onChapterTimeClick = onChapterTimeClick,
         )
       }
     }
@@ -86,15 +86,15 @@ internal fun BookPlayContent(
       )
       Spacer(modifier = Modifier.size(16.dp))
       PlaybackControls(
-        viewState,
-        onPlayClick,
-        onRewindClick,
-        onFastForwardClick,
-        onSeek,
-        onSkipToNext,
-        onSkipToPrevious,
-        onCurrentChapterClick,
-        onChapterTimeClick,
+        viewState = viewState,
+        onPlayClick = onPlayClick,
+        onRewindClick = onRewindClick,
+        onFastForwardClick = onFastForwardClick,
+        onSeek = onSeek,
+        onSkipToNext = onSkipToNext,
+        onSkipToPrevious = onSkipToPrevious,
+        onCurrentChapterClick = onCurrentChapterClick,
+        onChapterTimeClick = onChapterTimeClick,
       )
       Spacer(modifier = Modifier.size(24.dp))
     }

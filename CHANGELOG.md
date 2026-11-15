@@ -2,11 +2,11 @@
 
 ## v1.30 — Up Next, Shared Characters & Refreshed Stats
 
-- Up next: queue books to play one after another, from the book menu or the queue view, which shows what's playing and what's next.
+- Up next: queue books to play one after another from the book menu, and reorder them in the queue view or by dragging on the library's Up next shelf.
 - Character lists are shared by every book in a series, with a "Book N" tag showing where each character was added.
 - Listening stats: refreshed page and a new sheet for each finished book; books marked completed now get a finish date, which can be changed.
 - Library: sort by book length, hold and drag to reorder or move books, add and settings buttons on the top bar, and "left" after the time remaining.
-- Player: book progress and time left above the chapter bar, chapter times that follow playback speed, a book-style cover in Books view, and a glow in the cover's colours.
+- Player: book progress and time left under the title, the position slider above the chapter switcher, a tap on the chapter length for a countdown (remembered), chapter times that follow playback speed, a book-style cover in Books view, and a glow in the cover's colours.
 - Restyled widget with square or book covers and optional chapter buttons.
 - Simpler adding of books, with a step that finds and counts the books in a folder.
 - Appearance: light, dark or system theme, colour choices and pictured layout options.

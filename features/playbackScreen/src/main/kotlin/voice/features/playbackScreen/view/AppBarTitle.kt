@@ -35,13 +35,16 @@ internal fun AppBarTitle(
     ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
       // The large bar gives its title no end inset; match the 16dp edge of the times below.
       Row(if (large) Modifier.fillMaxWidth().padding(end = 16.dp) else Modifier) {
+        // One line: a narrow landscape title slot would otherwise wrap it and clip the second line.
         Text(
           stringResource(R.string.book_progress_completed, (viewState.bookProgress * 100).toInt()),
           if (large) Modifier.weight(1F) else Modifier,
+          softWrap = false,
         )
-        if (!large) Text(" · ")
+        if (!large) Text(" · ", softWrap = false)
         Text(
           stringResource(R.string.book_time_left, formatTime(viewState.bookTimeLeft.atSpeed(viewState.playbackSpeed).inWholeMilliseconds)),
+          softWrap = false,
         )
       }
     }
