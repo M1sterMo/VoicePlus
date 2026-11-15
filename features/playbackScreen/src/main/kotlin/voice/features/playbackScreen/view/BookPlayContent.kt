@@ -98,7 +98,7 @@ internal fun BookPlayContent(
   }
 }
 
-/** Position first, then the book's progress, the chapter, and play: the same order in both layouts. */
+/** Position first, then the chapter, then play: the same order in both layouts. */
 @Composable
 private fun PlaybackControls(
   viewState: BookPlayViewState,
@@ -115,11 +115,6 @@ private fun PlaybackControls(
     playedTime = viewState.playedTime,
     playbackSpeed = viewState.playbackSpeed,
     onSeek = onSeek,
-  )
-  BookProgressRow(
-    progress = viewState.bookProgress,
-    timeLeft = viewState.bookTimeLeft,
-    playbackSpeed = viewState.playbackSpeed,
   )
   viewState.chapterName?.let { chapterName ->
     ChapterRow(

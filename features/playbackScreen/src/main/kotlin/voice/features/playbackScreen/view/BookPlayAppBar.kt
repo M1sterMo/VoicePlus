@@ -133,7 +133,7 @@ internal fun BookPlayAppBar(
       },
       actions = appBarActions,
       title = {
-        AppBarTitle(viewState.title)
+        AppBarTitle(viewState)
       },
     )
   } else {
@@ -143,7 +143,7 @@ internal fun BookPlayAppBar(
       },
       actions = appBarActions,
       title = {
-        AppBarTitle(viewState.title)
+        AppBarTitle(viewState)
       },
     )
   }
