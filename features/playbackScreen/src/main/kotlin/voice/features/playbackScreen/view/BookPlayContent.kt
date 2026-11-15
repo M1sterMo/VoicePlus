@@ -54,33 +54,15 @@ internal fun BookPlayContent(
           .weight(1F),
         verticalArrangement = Arrangement.Center,
       ) {
-        viewState.chapterName?.let { chapterName ->
-          ChapterRow(
-            chapterName = chapterName,
-            nextPreviousVisible = viewState.showPreviousNextButtons,
-            onSkipToNext = onSkipToNext,
-            onSkipToPrevious = onSkipToPrevious,
-            onCurrentChapterClick = onCurrentChapterClick,
-          )
-        }
-        Spacer(modifier = Modifier.size(20.dp))
-        BookProgressRow(
-          progress = viewState.bookProgress,
-          timeLeft = viewState.bookTimeLeft,
-          playbackSpeed = viewState.playbackSpeed,
-        )
-        SliderRow(
-          duration = viewState.duration,
-          playedTime = viewState.playedTime,
-          playbackSpeed = viewState.playbackSpeed,
-          onSeek = onSeek,
-        )
-        Spacer(modifier = Modifier.size(16.dp))
-        PlaybackRow(
-          playing = viewState.playing,
-          onPlayClick = onPlayClick,
-          onRewindClick = onRewindClick,
-          onFastForwardClick = onFastForwardClick,
+        PlaybackControls(
+          viewState,
+          onPlayClick,
+          onRewindClick,
+          onFastForwardClick,
+          onSeek,
+          onSkipToNext,
+          onSkipToPrevious,
+          onCurrentChapterClick,
         )
       }
     }
@@ -100,36 +82,58 @@ internal fun BookPlayContent(
           .weight(1F)
           .padding(start = 16.dp, end = 16.dp, top = 8.dp),
       )
-      viewState.chapterName?.let { chapterName ->
-        Spacer(modifier = Modifier.size(16.dp))
-        ChapterRow(
-          chapterName = chapterName,
-          nextPreviousVisible = viewState.showPreviousNextButtons,
-          onSkipToNext = onSkipToNext,
-          onSkipToPrevious = onSkipToPrevious,
-          onCurrentChapterClick = onCurrentChapterClick,
-        )
-      }
-      Spacer(modifier = Modifier.size(20.dp))
-      BookProgressRow(
-        progress = viewState.bookProgress,
-        timeLeft = viewState.bookTimeLeft,
-        playbackSpeed = viewState.playbackSpeed,
-      )
-      SliderRow(
-        duration = viewState.duration,
-        playedTime = viewState.playedTime,
-        playbackSpeed = viewState.playbackSpeed,
-        onSeek = onSeek,
-      )
       Spacer(modifier = Modifier.size(16.dp))
-      PlaybackRow(
-        playing = viewState.playing,
-        onPlayClick = onPlayClick,
-        onRewindClick = onRewindClick,
-        onFastForwardClick = onFastForwardClick,
+      PlaybackControls(
+        viewState,
+        onPlayClick,
+        onRewindClick,
+        onFastForwardClick,
+        onSeek,
+        onSkipToNext,
+        onSkipToPrevious,
+        onCurrentChapterClick,
       )
       Spacer(modifier = Modifier.size(24.dp))
     }
   }
+}
+
+/** Position first, then the book's progress, the chapter, and play: the same order in both layouts. */
+@Composable
+private fun PlaybackControls(
+  viewState: BookPlayViewState,
+  onPlayClick: () -> Unit,
+  onRewindClick: () -> Unit,
+  onFastForwardClick: () -> Unit,
+  onSeek: (Duration) -> Unit,
+  onSkipToNext: () -> Unit,
+  onSkipToPrevious: () -> Unit,
+  onCurrentChapterClick: () -> Unit,
+) {
+  SliderRow(
+    duration = viewState.duration,
+    playedTime = viewState.playedTime,
+    playbackSpeed = viewState.playbackSpeed,
+    onSeek = onSeek,
+  )
+  BookProgressRow(
+    progress = viewState.bookProgress,
+    timeLeft = viewState.bookTimeLeft,
+    playbackSpeed = viewState.playbackSpeed,
+  )
+  viewState.chapterName?.let { chapterName ->
+    ChapterRow(
+      chapterName = chapterName,
+      nextPreviousVisible = viewState.showPreviousNextButtons,
+      onSkipToNext = onSkipToNext,
+      onSkipToPrevious = onSkipToPrevious,
+      onCurrentChapterClick = onCurrentChapterClick,
+    )
+  }
+  PlaybackRow(
+    playing = viewState.playing,
+    onPlayClick = onPlayClick,
+    onRewindClick = onRewindClick,
+    onFastForwardClick = onFastForwardClick,
+  )
 }
