@@ -1,9 +1,11 @@
 package voice.features.playbackScreen.view
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,10 +14,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import voice.core.ui.formatTime
@@ -95,9 +99,18 @@ internal fun SliderRow(
         dragging = false
       },
     )
-    Text(
-      text = formatTime(timeMs = listeningMs, durationMs = listeningMs),
-    )
+    // Tapping the length swaps it for a countdown of the chapter, and back, as upstream Voice does.
+    var showRemaining by rememberSaveable { mutableStateOf(false) }
+    Box(Modifier.clip(MaterialTheme.shapes.small).clickable { showRemaining = !showRemaining }, contentAlignment = Alignment.CenterEnd) {
+      Text(text = "−" + formatTime(timeMs = listeningMs, durationMs = listeningMs), modifier = Modifier.alpha(0F))
+      Text(
+        text = if (showRemaining) {
+          "−" + formatTime(timeMs = (listeningMs * (1 - displayedFraction)).toLong(), durationMs = listeningMs)
+        } else {
+          formatTime(timeMs = listeningMs, durationMs = listeningMs)
+        },
+      )
+    }
   }
 }
 
