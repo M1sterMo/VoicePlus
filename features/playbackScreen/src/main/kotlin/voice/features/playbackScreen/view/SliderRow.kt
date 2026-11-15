@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +32,8 @@ internal fun SliderRow(
   playedTime: Duration,
   playbackSpeed: Float,
   onSeek: (Duration) -> Unit,
+  showRemaining: Boolean,
+  onTimeClick: () -> Unit,
   enabled: Boolean = true,
 ) {
   Row(
@@ -100,8 +101,7 @@ internal fun SliderRow(
       },
     )
     // Tapping the length swaps it for a countdown of the chapter, and back, as upstream Voice does.
-    var showRemaining by rememberSaveable { mutableStateOf(false) }
-    Box(Modifier.clip(MaterialTheme.shapes.small).clickable { showRemaining = !showRemaining }, contentAlignment = Alignment.CenterEnd) {
+    Box(Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onTimeClick), contentAlignment = Alignment.CenterEnd) {
       Text(text = "−" + formatTime(timeMs = listeningMs, durationMs = listeningMs), modifier = Modifier.alpha(0F))
       Text(
         text = if (showRemaining) {

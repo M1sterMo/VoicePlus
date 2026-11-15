@@ -97,6 +97,13 @@ public interface StoreModule {
 
   @Provides
   @SingleIn(AppScope::class)
+  @ChapterCountdownStore
+  private fun chapterCountdown(factory: VoiceDataStoreFactory): DataStore<Boolean> {
+    return factory.boolean("chapterCountdown", defaultValue = false)
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
   @AutoRewindAmountStore
   private fun autoRewindAmount(
     factory: VoiceDataStoreFactory,

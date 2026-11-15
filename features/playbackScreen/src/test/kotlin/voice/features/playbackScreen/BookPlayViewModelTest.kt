@@ -120,6 +120,7 @@ class BookPlayViewModelTest {
     globalVolumeGainStore = globalVolumeGainStore,
     gridModeStore = MemoryDataStore(GridMode.FOLLOW_DEVICE),
     coverGlowStore = MemoryDataStore(true),
+    chapterCountdownStore = MemoryDataStore(false),
     bookId = book.id,
     dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
   )
@@ -540,6 +541,20 @@ class BookPlayViewModelTest {
   }
 
   @Test
+  fun `tapping the chapter time remembers the countdown choice`() = scope.runTest {
+    val store = MemoryDataStore(false)
+    val viewModel = viewModel(chapterCountdownStore = store)
+
+    viewModel.onChapterTimeClick()
+    yield()
+    store.data.first() shouldBe true
+
+    viewModel.onChapterTimeClick()
+    yield()
+    store.data.first() shouldBe false
+  }
+
+  @Test
   fun `customize toolbar opens its dialog and the view state carries the pinned set`() = scope.runTest {
     val store = MemoryDataStore(setOf(PlaybackToolbarAction.BOOKMARKS))
     val viewModel = viewModel(toolbarActionsStore = store)
@@ -560,6 +575,7 @@ class BookPlayViewModelTest {
     playStateFlow: MutableStateFlow<PlayStateManager.PlayState> = MutableStateFlow(PlayStateManager.PlayState.Paused),
     toolbarActionsStore: MemoryDataStore<Set<PlaybackToolbarAction>> = MemoryDataStore(PlaybackToolbarAction.DEFAULT),
     gridMode: GridMode = GridMode.FOLLOW_DEVICE,
+    chapterCountdownStore: MemoryDataStore<Boolean> = MemoryDataStore(false),
   ): BookPlayViewModel {
     return BookPlayViewModel(
       bookRepository = mockk {
@@ -590,6 +606,7 @@ class BookPlayViewModelTest {
       globalVolumeGainStore = globalVolumeGainStore,
       gridModeStore = MemoryDataStore(gridMode),
       coverGlowStore = MemoryDataStore(true),
+      chapterCountdownStore = chapterCountdownStore,
       bookId = book.id,
       dispatcherProvider = DispatcherProvider(scope.coroutineContext, scope.coroutineContext, scope.coroutineContext),
     )

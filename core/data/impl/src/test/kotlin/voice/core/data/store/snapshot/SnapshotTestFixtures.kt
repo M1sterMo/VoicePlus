@@ -25,6 +25,7 @@ internal fun testSettingsSnapshotter(): SettingsSnapshotter = SettingsSnapshotte
   themeMode = MemoryDataStore(ThemeMode.SYSTEM),
   themeColor = MemoryDataStore(ThemeColor.DYNAMIC),
   coverGlow = MemoryDataStore(true),
+  chapterCountdown = MemoryDataStore(false),
   autoRewind = MemoryDataStore(2),
   seekTime = MemoryDataStore(20),
   fadeOut = MemoryDataStore(10.seconds),

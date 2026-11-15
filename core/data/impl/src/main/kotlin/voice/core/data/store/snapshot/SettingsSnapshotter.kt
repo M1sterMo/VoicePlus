@@ -22,6 +22,7 @@ import voice.core.data.ThemeMode
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.AutoRewindAmountStore
 import voice.core.data.store.BooksPerRowStore
+import voice.core.data.store.ChapterCountdownStore
 import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.DarkThemeStore
 import voice.core.data.store.ExperimentalPlaybackPersistenceStore
@@ -52,6 +53,7 @@ internal class SettingsSnapshotter(
   @ThemeModeStore themeMode: DataStore<ThemeMode>,
   @ThemeColorStore themeColor: DataStore<ThemeColor>,
   @CoverGlowStore coverGlow: DataStore<Boolean>,
+  @ChapterCountdownStore chapterCountdown: DataStore<Boolean>,
   @AutoRewindAmountStore autoRewind: DataStore<Int>,
   @SeekTimeStore seekTime: DataStore<Int>,
   @FadeOutStore fadeOut: DataStore<Duration>,
@@ -85,6 +87,7 @@ internal class SettingsSnapshotter(
     Entry("themeMode", themeMode, ThemeMode.serializer()),
     Entry("themeColor", themeColor, ThemeColor.serializer()),
     Entry("coverGlow", coverGlow, Boolean.serializer()),
+    Entry("chapterCountdown", chapterCountdown, Boolean.serializer()),
     Entry("autoRewind", autoRewind, Int.serializer()),
     Entry("seekTime", seekTime, Int.serializer()),
     Entry("fadeOut", fadeOut, Duration.serializer()),

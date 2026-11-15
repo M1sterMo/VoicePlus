@@ -92,6 +92,7 @@ fun BookPlayScreen(
     onSkipToNext = viewModel::next,
     onSkipToPrevious = viewModel::previous,
     onCurrentChapterClick = viewModel::onCurrentChapterClick,
+    onChapterTimeClick = viewModel::onChapterTimeClick,
     useLandscapeLayout = LocalConfiguration.current.orientation == ORIENTATION_LANDSCAPE,
     snackbarHostState = snackbarHostState,
     onEditChapterNamesClick = if (viewState.editChapterNamesVisible) viewModel::onEditChapterNamesClick else null,

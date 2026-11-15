@@ -32,6 +32,7 @@ import voice.core.data.repo.BookRepository
 import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
+import voice.core.data.store.ChapterCountdownStore
 import voice.core.data.store.CoverGlowStore
 import voice.core.data.store.GlobalVolumeGainStore
 import voice.core.data.store.GridModeStore
@@ -82,6 +83,8 @@ class BookPlayViewModel(
   private val gridModeStore: DataStore<GridMode>,
   @CoverGlowStore
   private val coverGlowStore: DataStore<Boolean>,
+  @ChapterCountdownStore
+  private val chapterCountdownStore: DataStore<Boolean>,
   @Assisted
   private val bookId: BookId,
 ) : RetainedViewModel(MainScope(dispatcherProvider)) {
@@ -118,6 +121,7 @@ class BookPlayViewModel(
     // Held like the toolbar, so a Books-layout user never sees the square cover flash first.
     val gridMode = remember { gridModeStore.data }.collectAsState(initial = null).value ?: return null
     val coverGlow = remember { coverGlowStore.data }.collectAsState(initial = null).value ?: return null
+    val chapterCountdown = remember { chapterCountdownStore.data }.collectAsState(initial = null).value ?: return null
 
     val currentMark = book.currentChapter.markForPosition(book.content.positionInChapter)
     val positionInCurrentMark = if (isPlaying && currentMark.durationMs > 0) {
@@ -152,6 +156,7 @@ class BookPlayViewModel(
       cover = book.content.cover?.let(::ImmutableFile),
       bookJacket = gridMode == GridMode.BOOKS,
       coverGlow = coverGlow,
+      chapterCountdown = chapterCountdown,
       skipSilence = book.content.skipSilence,
       characterCount = characterCount,
       // Gate on chapter MARKS (what the editor actually lists), not raw markData — otherwise the
@@ -159,6 +164,10 @@ class BookPlayViewModel(
       editChapterNamesVisible = hasMoreThanOneChapter,
       toolbarActions = toolbarActions,
     )
+  }
+
+  fun onChapterTimeClick() {
+    scope.launch { chapterCountdownStore.updateData { !it } }
   }
 
   fun onCustomizeToolbarClick() {

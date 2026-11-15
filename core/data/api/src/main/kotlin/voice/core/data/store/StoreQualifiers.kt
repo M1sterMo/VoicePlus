@@ -40,6 +40,10 @@ public annotation class ThemeColorStore
 @Qualifier
 public annotation class CoverGlowStore
 
+/** Whether the player shows the chapter's time left instead of its length. */
+@Qualifier
+public annotation class ChapterCountdownStore
+
 @Qualifier
 public annotation class FadeOutStore
 

@@ -28,6 +28,7 @@ class SettingsSnapshotterTest {
     val themeMode = MemoryDataStore(ThemeMode.SYSTEM)
     val themeColor = MemoryDataStore(ThemeColor.DYNAMIC)
     val coverGlow = MemoryDataStore(true)
+    val chapterCountdown = MemoryDataStore(false)
     val autoRewind = MemoryDataStore(2)
     val seekTime = MemoryDataStore(20)
     val fadeOut = MemoryDataStore(10.seconds)
@@ -46,6 +47,7 @@ class SettingsSnapshotterTest {
       themeMode = themeMode,
       themeColor = themeColor,
       coverGlow = coverGlow,
+      chapterCountdown = chapterCountdown,
       autoRewind = autoRewind,
       seekTime = seekTime,
       fadeOut = fadeOut,
@@ -76,6 +78,7 @@ class SettingsSnapshotterTest {
     source.themeMode.updateData { ThemeMode.DARK }
     source.themeColor.updateData { ThemeColor.TEAL }
     source.coverGlow.updateData { false }
+    source.chapterCountdown.updateData { true }
 
     val captured = source.snapshotter().capture()
     val target = Stores()
@@ -92,6 +95,7 @@ class SettingsSnapshotterTest {
     target.themeMode.data.first() shouldBe ThemeMode.DARK
     target.themeColor.data.first() shouldBe ThemeColor.TEAL
     target.coverGlow.data.first() shouldBe false
+    target.chapterCountdown.data.first() shouldBe true
     // Untouched settings keep their defaults.
     target.autoRewind.data.first() shouldBe 2
   }

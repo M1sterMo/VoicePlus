@@ -30,6 +30,7 @@ internal fun BookPlayContent(
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
   onCurrentChapterClick: () -> Unit,
+  onChapterTimeClick: () -> Unit,
   useLandscapeLayout: Boolean,
 ) {
   if (useLandscapeLayout) {
@@ -63,6 +64,7 @@ internal fun BookPlayContent(
           onSkipToNext,
           onSkipToPrevious,
           onCurrentChapterClick,
+          onChapterTimeClick,
         )
       }
     }
@@ -92,6 +94,7 @@ internal fun BookPlayContent(
         onSkipToNext,
         onSkipToPrevious,
         onCurrentChapterClick,
+        onChapterTimeClick,
       )
       Spacer(modifier = Modifier.size(24.dp))
     }
@@ -109,12 +112,15 @@ private fun PlaybackControls(
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
   onCurrentChapterClick: () -> Unit,
+  onChapterTimeClick: () -> Unit,
 ) {
   SliderRow(
     duration = viewState.duration,
     playedTime = viewState.playedTime,
     playbackSpeed = viewState.playbackSpeed,
     onSeek = onSeek,
+    showRemaining = viewState.chapterCountdown,
+    onTimeClick = onChapterTimeClick,
   )
   viewState.chapterName?.let { chapterName ->
     ChapterRow(
