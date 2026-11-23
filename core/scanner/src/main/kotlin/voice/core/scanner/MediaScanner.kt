@@ -75,12 +75,12 @@ internal class MediaScanner(
     // doesn't hold reconciling back. A partial failure deeper inside a folder is not detected.
     val aConfiguredFolderIsUnlisted = folders.values.flatten().any { !it.childrenListed }
     val reconciles = files.isNotEmpty() && !aConfiguredFolderIsUnlisted
-    // Before the books found again are reconciled, so they can be told apart from the ones that moved. A scan
-    // that can't reconcile can't tell a moved book from an unreadable one, so only books gone before count.
+    // before the books found again are reconciled, so they can be told apart from the ones that moved
     val previousBooks = PreviousBooks(
-      library = contentRepo.all().filter { reconciles || !it.isActive },
+      library = contentRepo.all(),
       scanned = foundIds.toSet(),
       excluded = excludedIds,
+      reconciles = reconciles,
       chapterRepo = chapterRepo,
     )
     if (reconciles) {

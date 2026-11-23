@@ -110,13 +110,18 @@ internal class ProgressCarryOver(
 /** The library as it was before a scan, to find the books a newly found book was before. */
 internal class PreviousBooks(
   library: List<BookContent>,
-  scanned: Set<BookId>,
+  private val scanned: Set<BookId>,
   excluded: Set<String>,
+  // a scan that couldn't list every folder can't tell a moved book from one it couldn't see
+  reconciles: Boolean,
   private val chapterRepo: ChapterRepo,
 ) {
 
   // a hidden or deleted book stays behind: its files show up as a new book
-  private val books = library.filter { it.id !in scanned && it.id.value !in excluded }
+  private val books = library.filter { it.id !in scanned && it.id.value !in excluded && (reconciles || !it.isActive) }
+
+  // a book with the files of one played and still there is a copy of it
+  private val stillThere = library.filter { it.id in scanned && it.lastPlayedAt != Instant.EPOCH }
 
   private val byDocument: Map<String, List<BookContent>> = books
     .flatMap { book -> book.chapters.map { it.documentKey() to book } }
@@ -174,15 +179,14 @@ internal class PreviousBooks(
   private suspend fun withSameFiles(chapters: List<ChapterId>): Predecessors? {
     val stored = chapters.map { chapterRepo.get(it) ?: return null }
     val files = stored.fingerprints() ?: return null
-    val book = byFiles()[files] ?: return null
+    val book = byFiles()[files]?.takeIf { it.id !in scanned } ?: return null
     return Predecessors(books = listOf(book), chapters = book.chapters.zip(chapters).toMap(), sameBook = book)
   }
 
   private suspend fun byFiles(): Map<List<FileFingerprint>, BookContent> {
     byFiles?.let { return it }
-    return books
-      // of copies with the same files, the one played last wins
-      .sortedBy { it.lastPlayedAt }
+    // of copies with the same files, the one played last wins, and one still there over all
+    return (books.sortedBy { it.lastPlayedAt } + stillThere)
       .mapNotNull { book ->
         val chapters = book.chapters.map { chapterRepo.get(it) ?: return@mapNotNull null }
         chapters.fingerprints()?.let { it to book }

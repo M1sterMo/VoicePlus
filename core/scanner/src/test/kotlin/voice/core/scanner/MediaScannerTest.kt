@@ -643,6 +643,26 @@ class MediaScannerTest {
   }
 
   @Test
+  fun aCopyOfAMovedBookTakesNothingFromWhereItWasBefore() = test {
+    val audiobooks = folder("audiobooks")
+    val before = File(audiobooks, "Bravo")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(before, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.update(BookId(before.toUri())) { it.copy(positionInChapter = 500, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+    val after = File(audiobooks, "Bravo Moved")
+    check(before.renameTo(after))
+    scan(FolderType.Root, audiobooks)
+    bookMover.moves.size shouldBe 1
+
+    val copy = File(audiobooks, "Copy")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(copy, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+
+    bookMover.moves.size shouldBe 1
+    bookContentRepo.get(BookId(copy.toUri()))!!.positionInChapter shouldBe 0
+  }
+
+  @Test
   fun aHiddenBookThatMovedDoesNotHandItsProgressOn() = test {
     val audiobooks = folder("audiobooks")
     val before = File(audiobooks, "Old name")
