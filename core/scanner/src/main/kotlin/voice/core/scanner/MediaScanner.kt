@@ -10,6 +10,7 @@ import voice.core.data.folders.AudiobookFolders
 import voice.core.data.folders.FolderType
 import voice.core.data.isAudioFile
 import voice.core.data.repo.BookContentRepo
+import voice.core.data.repo.ChapterRepo
 import voice.core.data.store.ExcludedBooksStore
 import voice.core.documentfile.CachedDocumentFile
 import voice.core.documentfile.walk
@@ -24,6 +25,8 @@ internal class MediaScanner(
   private val audiobookFolders: AudiobookFolders,
   @ExcludedBooksStore
   private val excludedBooksStore: DataStore<Set<String>>,
+  private val chapterRepo: ChapterRepo,
+  private val progressCarryOver: ProgressCarryOver,
 ) {
 
   suspend fun scan(
@@ -72,6 +75,13 @@ internal class MediaScanner(
     // a whole folder dropping out (the multi-folder case); a partial failure deeper inside a
     // still-readable folder is not detected.
     val aConfiguredFolderIsEmpty = folders.values.flatten().any { it.isDirectory && it.children.isEmpty() }
+    // before the books found again are reconciled, so they can be told apart from the ones that moved
+    val previousBooks = PreviousBooks(
+      library = contentRepo.all(),
+      scanned = foundIds.toSet(),
+      excluded = excludedIds,
+      chapterRepo = chapterRepo,
+    )
     if (files.isNotEmpty() && !aConfiguredFolderIsEmpty) {
       contentRepo.setAllInactiveExcept(activeIds)
     } else if (files.isNotEmpty()) {
@@ -89,7 +99,7 @@ internal class MediaScanner(
     files
       .sortedBy { it.audioFileCount() }
       .forEach { file ->
-        scan(file, excludedIds, forceReParse)
+        scan(file, excludedIds, forceReParse, previousBooks)
       }
   }
 
@@ -104,6 +114,7 @@ internal class MediaScanner(
     file: CachedDocumentFile,
     excludedIds: Set<String>,
     forceReParse: Boolean,
+    previousBooks: PreviousBooks,
   ) {
     if (BookId(file.uri).value in excludedIds) return
 
@@ -149,5 +160,7 @@ internal class MediaScanner(
       validateIntegrity(updated, chapters)
       updated
     }
+    // a removed folder's book doesn't take over anyone's progress
+    if (isManaged) progressCarryOver.carryOver(content.id, previousBooks)
   }
 }
