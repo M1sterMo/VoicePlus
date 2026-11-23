@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import voice.core.data.BookId
 import voice.core.data.repo.BookContentRepo
 import voice.core.documentfile.CachedDocumentFile
@@ -44,6 +46,9 @@ internal constructor(
 ) : AudiobookFolders {
 
   private val scope = MainScope()
+
+  // Adding a folder edits several stores; two quick edits of one folder must not interleave and lose it.
+  private val storeEdits = Mutex()
 
   // Grants live outside the stores, so a grant taken again for a folder that is already configured would change
   // nothing the flows below see.
@@ -103,15 +108,17 @@ internal constructor(
     takePermission(uri)
     grantsChanged.update { it + 1 }
     scope.launch {
-      dataStore(type).updateData {
-        it + uri
+      storeEdits.withLock {
+        dataStore(type).updateData {
+          it + uri
+        }
+        // A folder has one type, so adding it again with another type moves it instead of finding its books
+        // twice. The other stores are edited directly: remove() would release the grant just taken and
+        // deactivate the folder's books. Added first, so a scan in between never misses its books.
+        FolderType.entries
+          .filter { it != type }
+          .forEach { otherType -> dataStore(otherType).updateData { it - uri } }
       }
-      // A folder has one type, so adding it again with another type moves it instead of finding its books
-      // twice. The other stores are edited directly: remove() would release the grant just taken and
-      // deactivate the folder's books. Added first, so a scan in between never misses its books.
-      FolderType.entries
-        .filter { it != type }
-        .forEach { otherType -> dataStore(otherType).updateData { it - uri } }
     }
   }
 
@@ -145,23 +152,25 @@ internal constructor(
       Logger.w("Could not release uri permission for $uri")
     }
     scope.launch {
-      dataStore(folderType).updateData { folders ->
-        folders - uri
-      }
-      // Deactivate the books that came from the removed folder, so the library reflects the removal
-      // immediately — scoped to that folder's books via pure URI membership, no scanner reconcile.
-      // Best-effort: a DB failure is logged, not propagated, so it can't crash the app or leave the
-      // folder half-removed; the next overview scan reconciles regardless (and a book that also sits
-      // under a separately-configured overlapping grant simply re-activates on that scan).
-      try {
-        bookContentRepo.all()
-          .filter { it.isActive && FolderMembership.isBookUnderFolder(it.id.value.toUri(), uri, folderType) }
-          // update, not put: a scan may write the same book meanwhile, and a put of this stale copy would undo it
-          .forEach { book -> bookContentRepo.update(book.id) { it.copy(isActive = false) } }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (t: Throwable) {
-        Logger.e(t, "Failed to deactivate books for removed folder $uri")
+      storeEdits.withLock {
+        dataStore(folderType).updateData { folders ->
+          folders - uri
+        }
+        // Deactivate the books that came from the removed folder, so the library reflects the removal
+        // immediately — scoped to that folder's books via pure URI membership, no scanner reconcile.
+        // Best-effort: a DB failure is logged, not propagated, so it can't crash the app or leave the
+        // folder half-removed; the next overview scan reconciles regardless (and a book that also sits
+        // under a separately-configured overlapping grant simply re-activates on that scan).
+        try {
+          bookContentRepo.all()
+            .filter { it.isActive && FolderMembership.isBookUnderFolder(it.id.value.toUri(), uri, folderType) }
+            // update, not put: a scan may write the same book meanwhile, and a put of this stale copy would undo it
+            .forEach { book -> bookContentRepo.update(book.id) { it.copy(isActive = false) } }
+        } catch (e: CancellationException) {
+          throw e
+        } catch (t: Throwable) {
+          Logger.e(t, "Failed to deactivate books for removed folder $uri")
+        }
       }
     }
   }

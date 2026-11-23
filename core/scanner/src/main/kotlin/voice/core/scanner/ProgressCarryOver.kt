@@ -4,8 +4,10 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.core.net.toUri
 import dev.zacsweers.metro.Inject
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.ChapterId
@@ -15,6 +17,7 @@ import voice.core.data.repo.BookContentRepo
 import voice.core.data.repo.BookMover
 import voice.core.data.repo.ChapterRepo
 import voice.core.data.toUri
+import java.time.Instant
 
 /**
  * Audio files show up under a new book id when a book folder is renamed or moved, when a folder's mode
@@ -31,12 +34,23 @@ internal class ProgressCarryOver(
   // two copies of a book carrying over at the same time would split its bookmarks and history between them
   private val mutex = Mutex()
 
+  // All or nothing: a scan restarted halfway would leave bookmarks moved but the position behind.
   suspend fun carryOver(
     id: BookId,
     previousBooks: PreviousBooks,
-  ) = mutex.withLock {
-    val content = contentRepo.get(id) ?: return@withLock
-    val predecessors = previousBooks.of(content) ?: return@withLock
+  ) = withContext(NonCancellable) {
+    mutex.withLock { carryOverNow(id, previousBooks) }
+  }
+
+  private suspend fun carryOverNow(
+    id: BookId,
+    previousBooks: PreviousBooks,
+  ) {
+    val content = contentRepo.get(id) ?: return
+    // Only a book that was never played takes over. That's every book the scan just added, and it stays
+    // true until the carry-over is done, so one that a restarted scan left out is picked up by the next.
+    if (content.lastPlayedAt != Instant.EPOCH) return
+    val predecessors = previousBooks.of(content) ?: return
     val moved = predecessors.chapters
     val playedHere = predecessors.books.filter { it.currentChapter in moved }
     bookMover.move(
@@ -46,7 +60,6 @@ internal class ProgressCarryOver(
       sameBook = predecessors.sameBook?.id,
       playedHere = playedHere.map { it.id },
     )
-    // a carry-over that runs again, on the next scan, changes nothing: the position only comes along if it's newer
     val source = playedHere.maxByOrNull { it.lastPlayedAt }?.takeIf { it.lastPlayedAt > content.lastPlayedAt }
     contentRepo.update(id) { current ->
       val withBook = predecessors.sameBook?.let { current.withUserDataOf(it) } ?: current
@@ -63,12 +76,27 @@ internal class ProgressCarryOver(
         )
       }
     }
+    // The old book handed over what it had, so it has nothing to hand over again: not to a later copy, not to a
+    // deleted book's files coming back, and its name can't override a newer one.
+    predecessors.sameBook?.let { sameBook ->
+      contentRepo.update(sameBook.id) {
+        it.copy(
+          lastPlayedAt = Instant.EPOCH,
+          nameOverridden = false,
+          chapterNameOffset = 0,
+          seriesGroup = null,
+          seriesOrder = null,
+          cover = null,
+        )
+      }
+    }
   }
 
   private fun BookContent.withUserDataOf(sameBook: BookContent): BookContent {
     return copy(
       addedAt = minOf(addedAt, sameBook.addedAt),
-      name = if (sameBook.nameOverridden) sameBook.name else name,
+      // a name given to the new book already is newer
+      name = if (!nameOverridden && sameBook.nameOverridden) sameBook.name else name,
       nameOverridden = nameOverridden || sameBook.nameOverridden,
       chapterNameOffset = if (chapterNameOffset == 0) sameBook.chapterNameOffset else chapterNameOffset,
       seriesGroup = seriesGroup ?: sameBook.seriesGroup,
@@ -89,7 +117,6 @@ internal class PreviousBooks(
 
   // a hidden or deleted book stays behind: its files show up as a new book
   private val books = library.filter { it.id !in scanned && it.id.value !in excluded }
-  private val inLibrary = library.filter { it.isActive }.map { it.id }.toSet()
 
   private val byDocument: Map<String, List<BookContent>> = books
     .flatMap { book -> book.chapters.map { it.documentKey() to book } }
@@ -99,13 +126,14 @@ internal class PreviousBooks(
 
   suspend fun of(content: BookContent): Predecessors? {
     if (books.isEmpty()) return null
-    val isNew = content.id !in inLibrary
+    // A book played already is a copy, not the one that moved. Never played is what a scan gives a book it
+    // adds, and it lasts until the carry-over is done, unlike "not in the library when the scan started".
+    val isNew = content.lastPlayedAt == Instant.EPOCH
     return sharingDocuments(content, isNew)
-      // a book that was in the library already is a copy, not the one that moved
       ?: if (isNew) withSameFiles(content.chapters) else null
   }
 
-  private fun sharingDocuments(
+  private suspend fun sharingDocuments(
     content: BookContent,
     isNew: Boolean,
   ): Predecessors? {
@@ -115,7 +143,10 @@ internal class PreviousBooks(
     val moved = books
       .flatMap { it.chapters }
       .mapNotNull { chapter -> chapterByKey[chapter.documentKey()]?.let { chapter to it } }
+      // the same document can hold another file by now, like after replacing a book's files
+      .filter { (old, new) -> sameSize(old, new) }
       .toMap()
+    if (moved.isEmpty()) return null
     // a split up book gets its names from its files, and a book that was in the library already keeps its own
     val bookKey = content.id.toUri().documentKey()
     val sameBook = if (isNew) {
@@ -124,6 +155,16 @@ internal class PreviousBooks(
       null
     }
     return Predecessors(books = books, chapters = moved, sameBook = sameBook)
+  }
+
+  private suspend fun sameSize(
+    old: ChapterId,
+    new: ChapterId,
+  ): Boolean {
+    val oldSize = chapterRepo.get(old)?.fileSize ?: 0
+    val newSize = chapterRepo.get(new)?.fileSize ?: 0
+    // some providers don't report sizes
+    return oldSize <= 0 || newSize <= 0 || oldSize == newSize
   }
 
   private suspend fun withSameFiles(chapters: List<ChapterId>): Predecessors? {

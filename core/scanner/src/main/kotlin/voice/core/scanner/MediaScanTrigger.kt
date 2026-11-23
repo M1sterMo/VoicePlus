@@ -110,15 +110,16 @@ internal constructor(
     skipIfCompletedWithin: Duration? = null,
   ): Job = synchronized(scanLock) {
     Logger.i("scanForFiles with restartIfScanning=$restartIfScanning, forceReParse=$forceReParse")
-    if (forceReParse) forceReParsePending = true
     val current = scanningJob
     if (current?.isActive == true && !restartIfScanning) {
       return@synchronized current
     }
+    if (forceReParse) forceReParsePending = true
+    // cancelled right away, so a restart that is itself restarted before it runs can't leave it scanning
+    current?.cancel()
     val job = scope.launch {
       // The scan mutex makes this wait until the cancelled scan has unwound, so a restart can't leave the
       // flag stuck.
-      current?.cancel()
       scanMutex.withLock {
         val force = forceReParsePending
         val foldersWithUri = audiobookFolders.all().first()

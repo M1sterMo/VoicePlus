@@ -50,8 +50,9 @@ internal interface BookMoveDao {
     to: BookId,
   )
 
-  @Query("UPDATE OR REPLACE chapter_name_overrides SET bookId = :to, chapterId = :new WHERE chapterId = :old")
+  @Query("UPDATE OR REPLACE chapter_name_overrides SET bookId = :to, chapterId = :new WHERE bookId IN (:from) AND chapterId = :old")
   suspend fun moveOverrides(
+    from: List<String>,
     to: String,
     old: String,
     new: String,

@@ -557,6 +557,12 @@ class MediaScannerTest {
     // the next scan finds nothing new to carry over
     scan(FolderType.Root, audiobooks)
     bookContentRepo.get(newId) shouldBe moved
+
+    // the old book handed everything over, so its files showing up again elsewhere start fresh
+    bookContentRepo.get(oldId)!!.let {
+      it.lastPlayedAt shouldBe Instant.EPOCH
+      it.nameOverridden shouldBe false
+    }
   }
 
   @Test

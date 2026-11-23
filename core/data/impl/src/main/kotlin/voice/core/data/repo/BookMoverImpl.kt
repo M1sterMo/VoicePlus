@@ -36,11 +36,14 @@ internal constructor(
         dao.moveBookmarks(others, to, old, new)
         dao.moveEvents(others, to, old, new)
         dao.moveSessions(others, to, old, new)
-        dao.moveSessionEnds(to, old, new)
-        dao.moveOverrides(to = to.value, old = old.value, new = new.value)
+        dao.moveOverrides(from = others.map { it.value }, to = to.value, old = old.value, new = new.value)
       }
       if (sameBook != null && sameBook != to) {
         dao.moveRemainingSessions(sameBook, to)
+      }
+      // once every session is here: one can end in a chapter before the one it started in
+      chapters.forEach { (old, new) -> dao.moveSessionEnds(to, old, new) }
+      if (sameBook != null && sameBook != to) {
         dao.moveCharacters(sameBook, to)
         dao.moveCharacterLists(sameBook, to)
         // its shelf, series and position, in place of the one the new book got when it was added

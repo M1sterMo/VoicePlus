@@ -76,6 +76,8 @@ class BookMoverImplTest {
     db.bookmarkDao().addBookmark(bookmark)
     db.bookmarkDao().addBookmark(bookmarkInGoneChapter)
     db.listeningSessionDao().insert(session(oldChapters[0], end = oldChapters[1]))
+    // skipped back: started in the second chapter, ended in the first
+    db.listeningSessionDao().insert(session(oldChapters[1], end = oldChapters[0]))
     db.listeningSessionDao().insert(session(gone))
     db.listeningEventDao().insert(ListeningEvent(bookId = old, type = 0, chapterId = oldChapters[0], positionMs = 5, at = Instant.EPOCH))
     db.chapterNameOverrideDao().insert(ChapterNameOverride(oldChapters[1].value, 0, old.value, "Prologue"))
@@ -93,6 +95,7 @@ class BookMoverImplTest {
     db.bookmarkDao().all().toSet() shouldBe setOf(bookmark.copy(bookId = new, chapterId = newChapters[1]), bookmarkInGoneChapter)
     db.listeningSessionDao().all().map { Triple(it.bookId, it.chapterId, it.endChapterId) }.toSet() shouldBe setOf(
       Triple(new, newChapters[0], newChapters[1]),
+      Triple(new, newChapters[1], newChapters[0]),
       // a session in a chapter that's gone still counts for the book
       Triple(new, gone, null),
     )

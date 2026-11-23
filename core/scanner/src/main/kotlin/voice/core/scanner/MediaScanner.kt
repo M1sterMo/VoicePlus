@@ -75,14 +75,16 @@ internal class MediaScanner(
     // a whole folder dropping out (the multi-folder case); a partial failure deeper inside a
     // still-readable folder is not detected.
     val aConfiguredFolderIsEmpty = folders.values.flatten().any { it.isDirectory && it.children.isEmpty() }
-    // before the books found again are reconciled, so they can be told apart from the ones that moved
+    val reconciles = files.isNotEmpty() && !aConfiguredFolderIsEmpty
+    // Before the books found again are reconciled, so they can be told apart from the ones that moved. A scan
+    // that can't reconcile can't tell a moved book from an unreadable one, so only books gone before count.
     val previousBooks = PreviousBooks(
-      library = contentRepo.all(),
+      library = contentRepo.all().filter { reconciles || !it.isActive },
       scanned = foundIds.toSet(),
       excluded = excludedIds,
       chapterRepo = chapterRepo,
     )
-    if (files.isNotEmpty() && !aConfiguredFolderIsEmpty) {
+    if (reconciles) {
       contentRepo.setAllInactiveExcept(activeIds)
     } else if (files.isNotEmpty()) {
       Logger.w("Skipping reconciliation: a configured folder returned no entries (likely dropped permission).")
