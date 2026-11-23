@@ -240,6 +240,19 @@ public interface StoreModule {
 
   @Provides
   @SingleIn(AppScope::class)
+  @NoEmbeddedCoverStore
+  private fun noEmbeddedCover(factory: VoiceDataStoreFactory): DataStore<Set<String>> {
+    return factory.create(
+      serializer = SetSerializer(String.serializer()),
+      defaultValue = emptySet(),
+      fileName = "noEmbeddedCover",
+      // only a cache: a damaged file must not stop the cover search
+      replaceCorruptedWithDefault = true,
+    )
+  }
+
+  @Provides
+  @SingleIn(AppScope::class)
   @NotStartedExpandedStore
   private fun notStartedExpanded(factory: VoiceDataStoreFactory): DataStore<Boolean> {
     return factory.boolean("notStartedExpanded", defaultValue = true)

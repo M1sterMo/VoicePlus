@@ -67,4 +67,10 @@
   <exclude
     domain="file"
     path="datastore/openListeningSession.tmp" />
+  <exclude
+      domain="file"
+      path="datastore/noEmbeddedCover" />
+  <exclude
+      domain="file"
+      path="datastore/noEmbeddedCover.tmp" />
 </full-backup-content>

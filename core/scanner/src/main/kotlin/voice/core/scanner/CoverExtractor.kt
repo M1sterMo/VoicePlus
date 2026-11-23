@@ -13,9 +13,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.withTimeout
 import voice.core.logging.api.Logger
 import voice.core.scanner.matroska.MatroskaCoverExtractor
 import java.io.File
+import kotlin.time.Duration.Companion.minutes
 
 @Inject
 internal class CoverExtractor(
@@ -23,10 +25,11 @@ internal class CoverExtractor(
   private val matroskaCoverExtractor: MatroskaCoverExtractor,
 ) {
 
+  /** Writes the embedded cover of [input] to [outputFile]. Returns whether it has one, or null if it can't be read now. */
   suspend fun extractCover(
     input: Uri,
     outputFile: File,
-  ): Boolean {
+  ): Boolean? {
     val fileType = FileTypes.inferFileTypeFromUri(input)
     val extension = (input.path ?: "").substringAfterLast(delimiter = ".", missingDelimiterValue = "").lowercase()
     if (fileType == FileTypes.MATROSKA || extension == "mka" || extension == "mkv") {
@@ -34,7 +37,7 @@ internal class CoverExtractor(
     }
 
     val trackGroups = retrieveMetadata(input)
-      ?: return false
+      ?: return null
 
     repeat(trackGroups.length) { trackGroupIndex ->
       val trackGroup = trackGroups[trackGroupIndex]
@@ -73,7 +76,8 @@ internal class CoverExtractor(
     return try {
       MetadataRetriever.Builder(context, MediaItem.fromUri(uri))
         .build()
-        .use { it.retrieveTrackGroups().await() }
+        // a file the storage app never delivers, like a stalled cloud download, would hold up the scan for good
+        .use { withTimeout(1.minutes) { it.retrieveTrackGroups().await() } }
     } catch (e: Exception) {
       if (e is CancellationException) currentCoroutineContext().ensureActive()
       Logger.w(e, "Error retrieving metadata")

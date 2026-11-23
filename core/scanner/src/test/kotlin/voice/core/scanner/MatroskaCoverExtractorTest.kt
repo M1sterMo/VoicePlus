@@ -3,8 +3,8 @@ package voice.core.scanner
 import androidx.core.net.toUri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.file.shouldBeAFile
+import io.kotest.matchers.shouldBe
 import org.junit.BeforeClass
 import org.junit.Rule
 import org.junit.Test
@@ -30,8 +30,16 @@ class MatroskaCoverExtractorTest {
       input = testFile.toUri(),
       outputFile = coverFile,
     )
-    extracted.shouldBeTrue()
+    extracted shouldBe true
     coverFile.shouldBeAFile()
+  }
+
+  @Test
+  fun `a file that can't be read has no answer, not no cover`() {
+    val coverExtractor = MatroskaCoverExtractor(ApplicationProvider.getApplicationContext())
+    val missing = File(temporaryFolder.root, "missing.mka")
+
+    coverExtractor.extract(input = missing.toUri(), outputFile = temporaryFolder.newFile("cover.jpg")) shouldBe null
   }
 
   companion object {

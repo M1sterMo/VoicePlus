@@ -108,7 +108,7 @@ public class BookEditDraftStore internal constructor(
     }
     var adopted = false
     try {
-      if (book.chapters.take(5).any { extractor.extractCover(it.id.toUri(), cover) }) {
+      if (book.chapters.take(5).any { extractor.extractCover(it.id.toUri(), cover) == true }) {
         withContext(NonCancellable) { adopted = stageCover(current.token, cover) }
         return adopted
       }

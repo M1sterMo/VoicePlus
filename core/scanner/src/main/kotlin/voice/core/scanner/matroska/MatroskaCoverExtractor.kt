@@ -25,10 +25,11 @@ internal class MatroskaCoverExtractor(private val context: Context) {
     val priority: Int,
   )
 
+  /** Whether [input] has a cover attached, written to [outputFile]; null if the file can't be read or parsed. */
   fun extract(
     input: Uri,
     outputFile: File,
-  ): Boolean {
+  ): Boolean? {
     return try {
       SafSeekableDataSource(context.contentResolver, input).use { dataSource ->
         val reader = EBMLReader(dataSource)
@@ -68,8 +69,10 @@ internal class MatroskaCoverExtractor(private val context: Context) {
       }
     } catch (e: RuntimeException) {
       // jebml throws undeclared exceptions, so we need to wrap them
+      // An open failure (offline storage, dropped permission) looks the same as a parse error here, so neither
+      // counts as having no cover: that would be remembered, and the file never read again.
       Logger.e(e, "Error extracting cover from Matroska file: $input")
-      return false
+      return null
     }
   }
 
