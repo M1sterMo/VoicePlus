@@ -4,22 +4,13 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import voice.core.data.BookId
 import voice.core.ui.BookshelfCover
@@ -34,10 +25,13 @@ internal fun BookshelfBook(
   modifier: Modifier = Modifier,
   coverModifier: Modifier = Modifier,
   detailsModifier: Modifier = Modifier,
+  chipModifier: Modifier = Modifier,
   title: String = book.name,
   overline: String? = null,
   onCoverReady: () -> Unit = {},
   compact: Boolean = false,
+  /** A series stack's shade, kept by the jacket behind while it flies out of the stack: see [stackShade]. */
+  coverShade: Float = 0f,
 ) {
   Column(
     modifier = modifier
@@ -47,51 +41,27 @@ internal fun BookshelfBook(
         onClick = { onBookClick(book.id) },
         onLongClick = onBookLongClick?.let { { it(book.id) } },
       )
-      .padding(horizontal = 4.dp, vertical = 8.dp),
+      .padding(horizontal = 4.dp, vertical = BooksTileVerticalPadding),
   ) {
     Box {
-      BookshelfCover(book.id, book.cover, coverModifier, sharedTransitionScope, onCoverReady, compact)
+      BookshelfCover(
+        book.id,
+        book.cover,
+        coverModifier,
+        sharedTransitionScope,
+        onCoverReady,
+        compact,
+        shade = coverShade,
+      )
       if (book.finished) {
         CompletedMedal(size = if (compact) 24.dp else 32.dp, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
       }
+      // On the jacket's front: past the binding, which is up to 16dp wide, and short of the page edges.
+      TileTimeChip(book, compact, chipModifier.align(Alignment.BottomStart).padding(start = 16.dp, end = 10.dp, bottom = 10.dp))
     }
-    Column(detailsModifier) {
-      Spacer(Modifier.height(8.dp))
-      if (overline != null) {
-        Text(
-          overline,
-          style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.primary,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-      }
-      Text(
-        text = title,
-        modifier = Modifier.clearAndSetSemantics { text = AnnotatedString(book.name) },
-        style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Spacer(Modifier.height(4.dp))
-      Text(
-        text = book.statusLabel(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Spacer(Modifier.height(6.dp))
-      if (!book.finished && book.progress > 0f) {
-        LinearProgressIndicator(
-          progress = { book.progress },
-          modifier = Modifier.fillMaxWidth().height(2.dp),
-          drawStopIndicator = {},
-        )
-      } else {
-        Spacer(Modifier.height(2.dp))
-      }
-    }
+    TileDetails(book, title, overline, compact, detailsModifier)
   }
 }
+
+/** Above and below a Books tile; two of them make the gap between rows, as Grid's row spacing does. */
+internal val BooksTileVerticalPadding = 10.dp

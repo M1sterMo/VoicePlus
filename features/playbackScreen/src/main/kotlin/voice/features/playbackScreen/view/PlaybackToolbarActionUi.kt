@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.CollectionsBookmark
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.ui.graphics.vector.ImageVector
 import voice.core.data.PlaybackToolbarAction
@@ -19,6 +20,7 @@ internal val PlaybackToolbarAction.icon: ImageVector
     PlaybackToolbarAction.CHAPTER_FIX -> Icons.Outlined.EditNote
     PlaybackToolbarAction.LISTENING_LOG -> Icons.Outlined.History
     PlaybackToolbarAction.UP_NEXT -> Icons.AutoMirrored.Outlined.QueueMusic
+    PlaybackToolbarAction.ABOUT_BOOK -> Icons.Outlined.Info
   }
 
 internal val PlaybackToolbarAction.labelRes: Int
@@ -29,4 +31,5 @@ internal val PlaybackToolbarAction.labelRes: Int
     PlaybackToolbarAction.CHAPTER_FIX -> StringsR.string.chapter_fix_menu
     PlaybackToolbarAction.LISTENING_LOG -> StringsR.string.listening_log
     PlaybackToolbarAction.UP_NEXT -> StringsR.string.up_next
+    PlaybackToolbarAction.ABOUT_BOOK -> StringsR.string.about_book
   }

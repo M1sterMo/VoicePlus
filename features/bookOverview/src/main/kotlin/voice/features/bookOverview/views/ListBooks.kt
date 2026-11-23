@@ -28,30 +28,35 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import voice.core.data.BookId
 import voice.core.ui.ImmutableFile
-import voice.core.ui.formatTime
+import voice.core.ui.RatingLabel
+import voice.core.ui.formatShortTime
 import voice.core.ui.sharedBookCover
 import voice.features.bookOverview.overview.BookOverviewItemViewState
 import voice.features.bookOverview.overview.BookOverviewLayoutMode
 import voice.features.bookOverview.shelves.LibraryEntryTile
 import voice.features.bookOverview.shelves.LibrarySection
 import voice.features.bookOverview.shelves.LibraryShelfDragState
+import voice.features.bookOverview.shelves.boundsInRootOrNull
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
 
@@ -98,6 +103,9 @@ internal fun ListBooks(
           key = "header:${section.id}",
           contentType = "header",
         ) {
+          // Where the heading is, read only while something is being dragged.
+          val header = remember { arrayOfNulls<LayoutCoordinates>(1) }
+          val headerBounds = remember { { header[0]?.boundsInRootOrNull() } }
           DisposableEffect(dragState, section.id) {
             onDispose { dragState?.unregisterShelf(section.id) }
           }
@@ -107,7 +115,10 @@ internal fun ListBooks(
               .background(MaterialTheme.colorScheme.surface)
               .testTag("shelf-header:${section.id}")
               .padding(top = if (index == 0) 0.dp else 8.dp, start = 8.dp)
-              .onGloballyPositioned { dragState?.registerShelf(section.id, it.boundsInRoot()) },
+              .onPlaced {
+                header[0] = it
+                dragState?.registerShelf(section.id, headerBounds)
+              },
             title = section.title(),
             count = section.count.takeUnless { section.projection && !section.upNext },
             expanded = expanded,
@@ -217,12 +228,7 @@ internal fun ListBookRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
           ) {
-            Text(
-              text = book.statusLabel(),
-              style = MaterialTheme.typography.labelMedium,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 1,
-            )
+            StatusWithRating(book, MaterialTheme.typography.labelMedium, Modifier.weight(1f, fill = false))
 
             if (!book.finished && book.progress > 0f) {
               Text(
@@ -263,12 +269,45 @@ internal fun ListBookRow(
   }
 }
 
-/** Remaining time while listening; the finish date, or plain "Completed", once done. */
+/** The book's status line, with its star rating after it when rated. */
 @Composable
-internal fun BookOverviewItemViewState.statusLabel(): String {
+internal fun StatusWithRating(
+  book: BookOverviewItemViewState,
+  style: TextStyle,
+  modifier: Modifier = Modifier,
+) {
+  Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text(
+      text = book.statusLabel(),
+      modifier = Modifier.weight(1f, fill = false),
+      style = style,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
+    book.rating?.let { RatingLabel(it, style = style) }
+  }
+}
+
+/**
+ * Time left at the listener's speed while listening (issue #6), and otherwise the book's length
+ * (Discussion #32), written like "14h 20m". A shelf sorted by length shows every book's length.
+ * A finished book in a list row says when it was finished instead; a tile has no room for that,
+ * and its medal already says it. Empty while a book's length is still unknown.
+ *
+ * @param sayLeft false drops the word "left", where the bar and percentage already say it.
+ */
+@Composable
+internal fun BookOverviewItemViewState.statusLabel(
+  tile: Boolean = false,
+  sayLeft: Boolean = true,
+): String {
+  val listening = !showLength && !finished && progress > 0f
   return when {
-    showLength -> formatTime(durationMs)
-    !finished -> stringResource(StringsR.string.book_time_left, remainingTime)
+    listening && !sayLeft -> formatShortTime(remainingMs)
+    listening -> stringResource(StringsR.string.book_time_left, formatShortTime(remainingMs))
+    durationMs <= 0 && !finished -> ""
+    showLength || !finished || tile -> if (durationMs > 0) formatShortTime(durationMs) else ""
     finishedOn != null -> stringResource(StringsR.string.book_finished_on, finishedOn)
     else -> stringResource(StringsR.string.book_header_completed)
   }

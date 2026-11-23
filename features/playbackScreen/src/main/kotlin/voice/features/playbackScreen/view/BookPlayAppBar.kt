@@ -37,6 +37,7 @@ internal fun BookPlayAppBar(
   onListeningLogClick: () -> Unit,
   onCharacterListClick: () -> Unit,
   onUpNextClick: () -> Unit,
+  onAboutBookClick: () -> Unit,
   onCustomizeToolbarClick: () -> Unit,
   onCloseClick: () -> Unit,
   useLandscapeLayout: Boolean,
@@ -54,6 +55,7 @@ internal fun BookPlayAppBar(
       PlaybackToolbarAction.CHAPTER_FIX -> onEditChapterNamesClick?.invoke()
       PlaybackToolbarAction.LISTENING_LOG -> onListeningLogClick()
       PlaybackToolbarAction.UP_NEXT -> onUpNextClick()
+      PlaybackToolbarAction.ABOUT_BOOK -> onAboutBookClick()
     }
   }
 

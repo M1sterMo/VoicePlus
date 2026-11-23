@@ -31,6 +31,8 @@ data class BookPlayViewState(
   val characterCount: Int,
   val editChapterNamesVisible: Boolean,
   val toolbarActions: Set<PlaybackToolbarAction>,
+  /** Ask for a rating: the book has ended, is unrated, and has not been asked about before. */
+  val ratePrompt: Boolean,
 ) {
 
   sealed interface SleepTimerViewState {
@@ -87,4 +89,6 @@ internal sealed interface BookPlayDialogViewState {
   data object ToolbarActions : BookPlayDialogViewState
 
   data object UpNext : BookPlayDialogViewState
+
+  data object AboutBook : BookPlayDialogViewState
 }

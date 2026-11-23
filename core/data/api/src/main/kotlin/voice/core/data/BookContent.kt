@@ -37,6 +37,19 @@ public data class BookContent(
   /** Keeps a title chosen in Edit book from being replaced by a metadata re-scan. */
   @ColumnInfo(defaultValue = "0")
   val nameOverridden: Boolean = false,
+  /**
+   * The synopsis from a desc.txt or the file tags, refreshed whenever the book's tags are read again.
+   * Null until the book has been looked at for one, which lets books added before synopses pick theirs up once.
+   * Empty when there was none.
+   */
+  val synopsis: String? = null,
+  /** A synopsis typed in Edit book. Wins over [synopsis] and survives re-scans; empty hides the file's. */
+  val userSynopsis: String? = null,
+  /** The listener's own 1–5 star rating; null when unrated. */
+  val rating: Int? = null,
+  /** Whether the end-of-book card has already asked for a rating, so it asks once per book. */
+  @ColumnInfo(defaultValue = "0")
+  val ratingPrompted: Boolean = false,
 ) {
 
   @Ignore
@@ -48,3 +61,6 @@ public data class BookContent(
     }
   }
 }
+
+/** What to show as this book's synopsis, or null when there is none. */
+public val BookContent.shownSynopsis: String? get() = (userSynopsis ?: synopsis)?.takeIf { it.isNotBlank() }

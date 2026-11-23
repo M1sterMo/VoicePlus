@@ -169,6 +169,10 @@ internal object RestoreReKeyer {
         seriesGroup = snap.content.seriesGroup,
         seriesOrder = snap.content.seriesOrder,
         nameOverridden = snap.content.nameOverridden,
+        synopsis = snap.content.synopsis,
+        userSynopsis = snap.content.userSynopsis,
+        rating = snap.content.rating?.takeIf { it in 1..5 },
+        ratingPrompted = snap.content.ratingPrompted,
       )
     }.getOrNull() ?: return null
 

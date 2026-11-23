@@ -68,6 +68,7 @@ import voice.core.common.rootGraphAs
 import voice.core.data.BookId
 import voice.core.data.LibraryOrganisation
 import voice.core.data.ShelfSort
+import voice.core.ui.AboutBookSheet
 import voice.core.ui.HoldSplashScreenWhile
 import voice.core.ui.PlayButton
 import voice.core.ui.VoiceTheme
@@ -215,6 +216,7 @@ fun BookOverviewScreen(
   }
   val bookOverviewViewModel = bookGraph.bookOverviewViewModel
   val editBookViewModel = bookGraph.editBookViewModel
+  val aboutBookViewModel = bookGraph.aboutBookViewModel
   val bottomSheetViewModel = bookGraph.bottomSheetViewModel
   val deleteBookViewModel = bookGraph.deleteBookViewModel
   val seriesViewModel = bookGraph.seriesViewModel
@@ -422,6 +424,7 @@ fun BookOverviewScreen(
         SeriesDetails(
           entry = if (showEntireSeries) seriesEntry.copy(books = seriesEntry.allBooks) else seriesEntry,
           onShowAll = if (!showEntireSeries && seriesEntry.books.size < seriesEntry.allBooks.size) ({ showEntireSeries = true }) else null,
+          layout = viewState.layoutMode,
           booksPerRow = viewState.booksPerRow,
           origin = Rect(seriesOrigin[0], seriesOrigin[1], seriesOrigin[2], seriesOrigin[3]),
           onPrepare = { seriesPrepared = true },
@@ -465,6 +468,7 @@ fun BookOverviewScreen(
       onSave = { seriesViewModel.save() },
       onUngroup = { seriesViewModel.save(ungroup = true) },
       onShelfChange = seriesViewModel::selectShelf,
+      jackets = viewState.layoutMode == BookOverviewLayoutMode.Books,
     )
   }
   val deleteBookViewState = deleteBookViewModel.state.value
@@ -479,6 +483,10 @@ fun BookOverviewScreen(
   if (showUpNext) UpNextSheet(onDismiss = { showUpNext = false })
   val editBookDraft by editBookViewModel.state.collectAsState()
   editBookDraft?.let { EditBookDialog(it, editBookViewModel) }
+  val aboutBook by remember(aboutBookViewModel) { aboutBookViewModel.state }.collectAsState(initial = null)
+  aboutBook?.let {
+    AboutBookSheet(it, onDismiss = aboutBookViewModel::dismiss, onRate = aboutBookViewModel::rate, onEdit = aboutBookViewModel::edit)
+  }
 
   if (showBottomSheet) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -691,7 +699,7 @@ internal class BookOverviewPreviewParameterProvider : PreviewParameterProvider<B
       cover = null,
       progress = 0.8F,
       id = BookId(UUID.randomUUID().toString()),
-      remainingTime = "01:04",
+      remainingMs = 64_000L,
     )
   }
 

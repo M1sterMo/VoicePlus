@@ -186,6 +186,7 @@ class ScanFolderRemovalRaceTest {
         ignoreFileTagsStore = mockk { every { data } returns ignoreFileTags },
       ),
       bookParser = BookParser(
+        context = ApplicationProvider.getApplicationContext(),
         contentRepo = bookContentRepo,
         mediaAnalyzer = mediaAnalyzer,
         fileFactory = FileBasedDocumentFactory,

@@ -24,6 +24,14 @@ fun formatTime(
   }
 }
 
+/** A length at a glance: "14h 20m", or "45m" under an hour. Never "0m" for time that is still there. */
+fun formatShortTime(timeMs: Long): String {
+  if (timeMs in 1 until 60_000) return "1m"
+  val h = timeMs.hours()
+  val m = timeMs.minutes()
+  return if (h > 0) "${h}h ${m}m" else "${m}m"
+}
+
 private fun Long.digits(): Int {
   return if (this == 0L) {
     0

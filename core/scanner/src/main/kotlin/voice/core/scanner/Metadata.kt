@@ -14,6 +14,8 @@ internal data class Metadata(
   val narrator: String?,
   val series: String?,
   val part: String?,
+  /** An explicit description tag, or failing that the comment tag; null when the file has neither. */
+  val synopsis: String? = null,
 ) {
 
   internal class Builder(val fileName: String) {
@@ -25,6 +27,8 @@ internal data class Metadata(
     var narrator: String? = null
     var series: String? = null
     var part: String? = null
+    var description: String? = null
+    var comment: String? = null
     val vorbisChapterNames = mutableMapOf<Int, String>()
     val vorbisChapterStarts = mutableMapOf<Int, Long>()
 
@@ -52,6 +56,7 @@ internal data class Metadata(
         narrator = narrator,
         series = series,
         part = part,
+        synopsis = (description ?: comment)?.trim()?.takeIf { it.isNotEmpty() },
       )
     }
   }

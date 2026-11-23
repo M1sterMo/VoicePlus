@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -11,12 +12,15 @@ import kotlinx.coroutines.flow.map
 import voice.core.data.Book
 import voice.core.data.BookId
 import voice.core.data.ChapterId
+import voice.core.data.GridMode
 import voice.core.data.ListeningSession
 import voice.core.data.ListeningSessionEndReason
+import voice.core.data.isBooks
 import voice.core.data.isCompletion
 import voice.core.data.isCompletionMark
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.ListeningSessionRepo
+import voice.core.data.store.GridModeStore
 import voice.core.ui.ImmutableFile
 import voice.navigation.Navigator
 import java.net.URLDecoder
@@ -37,11 +41,18 @@ class ListeningStatsViewModel(
   private val sessionRepo: ListeningSessionRepo,
   private val bookRepo: BookRepository,
   private val navigator: Navigator,
+  @GridModeStore
+  private val gridModeStore: DataStore<GridMode>,
 ) {
 
-  /** Null while the first aggregation is still in flight, so the screen can tell "loading" from "no data". */
+  /**
+   * Null while the first aggregation, or the library's look, is still loading, so the screen can tell
+   * "loading" from "no data".
+   */
   @Composable
   fun viewState(): ListeningStatsViewState? {
+    // Covers follow the library's look, as the player's does: jackets in Books, the whole square art otherwise.
+    val gridMode by remember { gridModeStore.data }.collectAsState(initial = null)
     val combined by remember {
       // Only stable library metadata is consumed from bookRepo, but its flow re-emits on every
       // position save (~1/second while playing). Deriving and de-duplicating it here keeps the
@@ -58,6 +69,8 @@ class ListeningStatsViewModel(
               lastChapter = lastChapter?.id,
               lastChapterDurationMs = lastChapter?.duration ?: 0L,
               playbackSpeed = book.content.playbackSpeed,
+              rating = book.content.rating,
+              durationMs = book.duration,
             )
           }
         }
@@ -72,7 +85,8 @@ class ListeningStatsViewModel(
         )
       }
     }.collectAsState(initial = null)
-    return combined
+    val jackets = gridMode?.isBooks ?: return null
+    return remember(combined, jackets) { combined?.copy(bookJackets = jackets) }
   }
 
   fun onClose() {
@@ -84,7 +98,7 @@ class ListeningStatsViewModel(
     book: FinishedBookStats,
     date: LocalDate,
   ) {
-    val bookId = book.bookId ?: return
+    val bookId = book.bookId
     val zone = ZoneId.systemDefault()
     val at = if (date == LocalDate.now()) Instant.now() else date.atTime(LocalTime.NOON).atZone(zone).toInstant()
     val mark = book.finishMark
@@ -107,6 +121,13 @@ class ListeningStatsViewModel(
       )
     }
   }
+
+  suspend fun rate(
+    book: FinishedBookStats,
+    rating: Int?,
+  ) {
+    bookRepo.updateBook(book.bookId) { it.copy(rating = rating, ratingPrompted = true) }
+  }
 }
 
 data class LibraryBookInfo(
@@ -117,6 +138,8 @@ data class LibraryBookInfo(
   val lastChapter: ChapterId? = null,
   val lastChapterDurationMs: Long = 0L,
   val playbackSpeed: Float = 1f,
+  val rating: Int? = null,
+  val durationMs: Long = 0L,
 )
 
 internal fun computeStats(
@@ -283,6 +306,9 @@ private fun finishedBooks(
         readStartDate = readStart,
         dailyMs = dailySpan(allSessions, zone, readStart, finishedOn),
         playbackSpeed = primary.playbackSpeed,
+        // The rating is the copy that rate() writes to, so clearing it always shows.
+        rating = primary.rating,
+        durationMs = primary.durationMs,
         bookId = primary.id,
         lastChapter = primary.lastChapter,
         // A finish reached by listening is a fact; a hand-marked or inferred one can be corrected.
@@ -462,12 +488,15 @@ data class FinishedBookStats(
   val longestSessionMs: Long = 0L,
   val dailyMs: List<Long> = emptyList(),
   val playbackSpeed: Float = 1f,
-  val bookId: BookId? = null,
+  val bookId: BookId,
   val lastChapter: ChapterId? = null,
   val finishMark: ListeningSession? = null,
   val canChangeFinishDate: Boolean = false,
   val finishDateFloor: LocalDate? = null,
   val readStartDate: LocalDate? = null,
+  val rating: Int? = null,
+  /** The book's own length, against which [listenedMs] (real time, at the listener's speeds) compares. */
+  val durationMs: Long = 0L,
 )
 
 data class ListeningStatsViewState(
@@ -489,6 +518,8 @@ data class ListeningStatsViewState(
   val longestStreak: Int,
   val bestDayOfWeek: String?,
   val finishedBooks: List<FinishedBookStats>,
+  /** Draw covers as 2:3 book jackets, matching the library's Books layout; square covers otherwise. */
+  val bookJackets: Boolean = false,
 ) {
   companion object {
     val Empty = ListeningStatsViewState(

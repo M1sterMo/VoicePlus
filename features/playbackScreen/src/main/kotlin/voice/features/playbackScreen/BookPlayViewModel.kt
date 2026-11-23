@@ -26,11 +26,13 @@ import voice.core.data.ListeningEventType
 import voice.core.data.PlaybackToolbarAction
 import voice.core.data.byMarkKey
 import voice.core.data.durationMs
+import voice.core.data.isBooks
 import voice.core.data.markForPosition
 import voice.core.data.repo.BookCharacterRepo
 import voice.core.data.repo.BookRepository
 import voice.core.data.repo.BookmarkRepo
 import voice.core.data.repo.ChapterNameOverrideRepo
+import voice.core.data.repo.LibraryOrganisationRepo
 import voice.core.data.sleeptimer.SleepTimerPreference
 import voice.core.data.store.ChapterCountdownStore
 import voice.core.data.store.CoverGlowStore
@@ -49,7 +51,9 @@ import voice.core.sleeptimer.SleepTimer
 import voice.core.sleeptimer.SleepTimerMode
 import voice.core.sleeptimer.SleepTimerMode.TimedWithDuration
 import voice.core.sleeptimer.SleepTimerState
+import voice.core.ui.AboutBookState
 import voice.core.ui.ImmutableFile
+import voice.core.ui.aboutBookState
 import voice.core.ui.formatTime
 import voice.features.playbackScreen.batteryOptimization.BatteryOptimization
 import voice.features.sleepTimer.SleepTimerViewState
@@ -70,6 +74,7 @@ class BookPlayViewModel(
   private val bookmarkRepository: BookmarkRepo,
   private val characterRepo: BookCharacterRepo,
   private val chapterNameOverrideRepo: ChapterNameOverrideRepo,
+  private val organisation: LibraryOrganisationRepo,
   private val volumeGainFormatter: VolumeGainFormatter,
   private val batteryOptimization: BatteryOptimization,
   dispatcherProvider: DispatcherProvider,
@@ -154,7 +159,7 @@ class BookPlayViewModel(
       bookProgress = (book.position.toFloat() / book.duration).coerceIn(0F, 1F),
       bookTimeLeft = (book.duration - book.position).coerceAtLeast(0).milliseconds,
       cover = book.content.cover?.let(::ImmutableFile),
-      bookJacket = gridMode == GridMode.BOOKS,
+      bookJacket = gridMode.isBooks,
       coverGlow = coverGlow,
       chapterCountdown = chapterCountdown,
       skipSilence = book.content.skipSilence,
@@ -163,7 +168,25 @@ class BookPlayViewModel(
       // entry is hidden for the common one-file-per-chapter book whose files carry no embedded marks.
       editChapterNamesVisible = hasMoreThanOneChapter,
       toolbarActions = toolbarActions,
+      // The saved position, not the live one, so the card appears once the end is reached and stored.
+      ratePrompt = persistedBook.duration > 0 && persistedBook.position >= persistedBook.duration - BOOK_END_MS &&
+        persistedBook.content.rating == null && !persistedBook.content.ratingPrompted,
     )
+  }
+
+  internal val aboutBook: Flow<AboutBookState?> by lazy { aboutBookState(bookRepository, organisation, bookId) }
+
+  fun onAboutBookClick() {
+    _dialogState.value = BookPlayDialogViewState.AboutBook
+  }
+
+  /** Rating from the player also settles the end-of-book question. */
+  fun rate(rating: Int?) {
+    scope.launch { bookRepository.updateBook(bookId) { it.copy(rating = rating, ratingPrompted = true) } }
+  }
+
+  fun dismissRatePrompt() {
+    scope.launch { bookRepository.updateBook(bookId) { it.copy(ratingPrompted = true) } }
   }
 
   fun onChapterTimeClick() {
@@ -485,3 +508,6 @@ private fun SleepTimerState.toViewState(): BookPlayViewState.SleepTimerViewState
   is SleepTimerState.Enabled.WithDuration -> BookPlayViewState.SleepTimerViewState.Enabled.WithDuration(this.leftDuration)
   is SleepTimerState.Enabled.WithEndOfChapter -> BookPlayViewState.SleepTimerViewState.Enabled.WithEndOfChapter(this.chaptersRemaining)
 }
+
+/** Within this much of the end a book counts as finished, as in the library. */
+private const val BOOK_END_MS = 5_000L

@@ -49,3 +49,13 @@ public data class Book(
     return this
   }
 }
+
+/**
+ * Wall-clock listening time left at this book's playback speed, not raw audio time —
+ * at 2x, a 2h remainder is one real hour (GitHub issue #6).
+ */
+public fun Book.realTimeRemainingMs(): Long {
+  val remaining = (duration - position).coerceAtLeast(0)
+  val speed = content.playbackSpeed
+  return if (speed > 0f) (remaining / speed.toDouble()).toLong() else remaining
+}

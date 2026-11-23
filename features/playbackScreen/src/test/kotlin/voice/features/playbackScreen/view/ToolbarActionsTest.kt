@@ -3,6 +3,7 @@ package voice.features.playbackScreen.view
 import io.kotest.matchers.collections.shouldContainExactly
 import org.junit.Test
 import voice.core.data.PlaybackToolbarAction
+import voice.core.data.PlaybackToolbarAction.ABOUT_BOOK
 import voice.core.data.PlaybackToolbarAction.BOOKMARKS
 import voice.core.data.PlaybackToolbarAction.CHAPTER_FIX
 import voice.core.data.PlaybackToolbarAction.CHARACTER_LIST
@@ -16,7 +17,7 @@ class ToolbarActionsTest {
   fun `defaults pin the three original icons and overflow the rest`() {
     val (pinned, overflow) = partitionToolbarActions(PlaybackToolbarAction.DEFAULT, chapterFixAvailable = true)
     pinned shouldContainExactly listOf(BOOKMARKS, CHARACTER_LIST, PLAYBACK_SPEED)
-    overflow shouldContainExactly listOf(CHAPTER_FIX, LISTENING_LOG, UP_NEXT)
+    overflow shouldContainExactly listOf(CHAPTER_FIX, LISTENING_LOG, UP_NEXT, ABOUT_BOOK)
   }
 
   @Test
@@ -29,13 +30,13 @@ class ToolbarActionsTest {
   fun `chapter fix is dropped everywhere when the book has nothing to fix`() {
     val (pinned, overflow) = partitionToolbarActions(setOf(CHAPTER_FIX, BOOKMARKS), chapterFixAvailable = false)
     pinned shouldContainExactly listOf(BOOKMARKS)
-    overflow shouldContainExactly listOf(CHARACTER_LIST, PLAYBACK_SPEED, LISTENING_LOG, UP_NEXT)
+    overflow shouldContainExactly listOf(CHARACTER_LIST, PLAYBACK_SPEED, LISTENING_LOG, UP_NEXT, ABOUT_BOOK)
   }
 
   @Test
   fun `pins beyond the cap fall back to the overflow`() {
     val (pinned, overflow) = partitionToolbarActions(PlaybackToolbarAction.entries.toSet(), chapterFixAvailable = true)
     pinned shouldContainExactly listOf(BOOKMARKS, CHARACTER_LIST, PLAYBACK_SPEED, CHAPTER_FIX)
-    overflow shouldContainExactly listOf(LISTENING_LOG, UP_NEXT)
+    overflow shouldContainExactly listOf(LISTENING_LOG, UP_NEXT, ABOUT_BOOK)
   }
 }

@@ -110,6 +110,7 @@ class BookPlayViewModelTest {
     characterRepo = mockk<BookCharacterRepo> {
       every { characterCount(any()) } returns flowOf(0)
     },
+    organisation = mockk(relaxed = true),
     chapterNameOverrideRepo = mockk {
       every { overridesForBook(any()) } returns flowOf(emptyList())
     },
@@ -467,14 +468,15 @@ class BookPlayViewModelTest {
   }
 
   @Test
-  fun `the cover is a book jacket only in the Books library layout`() = scope.runTest {
+  fun `the cover is a book jacket whenever the library shows Books`() = scope.runTest {
     for (gridMode in GridMode.entries) {
       backgroundScope.launchMolecule(RecompositionMode.Immediate) {
         viewModel(gridMode = gridMode).viewState()
       }.test {
         var state = awaitItem()
         while (state == null) state = awaitItem()
-        state.bookJacket shouldBe (gridMode == GridMode.BOOKS)
+        // The default follows the device, and the library shows Books for it.
+        state.bookJacket shouldBe (gridMode == GridMode.BOOKS || gridMode == GridMode.FOLLOW_DEVICE)
       }
     }
   }
@@ -596,6 +598,7 @@ class BookPlayViewModelTest {
       characterRepo = mockk {
         every { characterCount(any()) } returns flowOf(0)
       },
+      organisation = mockk(relaxed = true),
       chapterNameOverrideRepo = mockk {
         every { overridesForBook(any()) } returns flowOf(emptyList())
       },

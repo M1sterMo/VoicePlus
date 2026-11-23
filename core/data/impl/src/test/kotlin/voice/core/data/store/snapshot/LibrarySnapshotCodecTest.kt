@@ -51,9 +51,33 @@ class LibrarySnapshotCodecTest {
 
   @Test
   fun `BookContent round-trips through dto`() {
-    val original = book("b1", active = true).copy(seriesGroup = "My series", seriesOrder = 3, series = "Imported metadata")
+    val original = book("b1", active = true).copy(
+      seriesGroup = "My series",
+      seriesOrder = 3,
+      series = "Imported metadata",
+      synopsis = "From the file",
+      userSynopsis = "Typed",
+      rating = 4,
+      ratingPrompted = true,
+    )
     val restored = original.toDto().toBookContentOrNull()
     restored shouldBe original
+  }
+
+  @Test
+  fun `backups from before synopses leave books unrated and due for a synopsis scan`() {
+    val dto = book("b1", active = true).toDto().copy(synopsis = null, userSynopsis = null, rating = null, ratingPrompted = false)
+    val legacy = json.encodeToString(BookContentDto.serializer(), dto)
+      .replace(Regex(""",\"(synopsis|userSynopsis|rating|ratingPrompted)\":[^,}]*"""), "")
+    val restored = json.decodeFromString(BookContentDto.serializer(), legacy).toBookContentOrNull()!!
+    restored.synopsis shouldBe null
+    restored.rating shouldBe null
+    restored.ratingPrompted shouldBe false
+  }
+
+  @Test
+  fun `an out-of-range rating from a backup is dropped`() {
+    book("b1", active = true).toDto().copy(rating = 9).toBookContentOrNull()!!.rating shouldBe null
   }
 
   @Test

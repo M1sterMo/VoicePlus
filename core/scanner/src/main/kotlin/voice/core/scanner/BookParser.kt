@@ -1,5 +1,6 @@
 package voice.core.scanner
 
+import android.content.Context
 import android.net.Uri
 import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.Inject
@@ -18,6 +19,7 @@ import java.time.Instant
 
 @Inject
 internal class BookParser(
+  private val context: Context,
   private val contentRepo: BookContentRepo,
   private val mediaAnalyzer: MediaAnalyzer,
   private val fileFactory: CachedDocumentFileFactory,
@@ -33,7 +35,8 @@ internal class BookParser(
   ): BookContent {
     val id = BookId(file.uri)
     val existing = contentRepo.get(id)
-    if (existing != null && !forceReParse) {
+    // A null synopsis means the book predates synopses: read its files once more to pick one up.
+    if (existing != null && !forceReParse && existing.synopsis != null) {
       return existing
     }
 
@@ -50,9 +53,11 @@ internal class BookParser(
 
     // When re-parsing an existing book (e.g. after toggling "ignore file tags"), only the
     // metadata derived from tags/file names is refreshed. Playback-related state such as the
-    // position, speed and added/last-played timestamps is preserved.
+    // position, speed and added/last-played timestamps is preserved. The one-time synopsis
+    // look-up for books from before synopses changes nothing else.
     val content = if (existing != null) {
       contentRepo.update(id) { current ->
+        if (!forceReParse) return@update current.copy(synopsis = parsed.synopsis)
         current.copy(
           author = parsed.author,
           name = if (current.nameOverridden) current.name else parsed.name,
@@ -60,6 +65,7 @@ internal class BookParser(
           narrator = parsed.narrator,
           series = parsed.series,
           part = parsed.part,
+          synopsis = parsed.synopsis,
         )
       } ?: parsed.also { contentRepo.put(it) }
     } else {
@@ -94,8 +100,24 @@ internal class BookParser(
       narrator = analyzed?.narrator,
       series = analyzed?.series,
       part = analyzed?.part,
+      // Empty, not null, once looked for: a synopsis file beside the audio wins over the tags.
+      synopsis = file.synopsisFile() ?: analyzed?.synopsis ?: "",
     ).also {
       validateIntegrity(it, chapters)
+    }
+  }
+
+  /** The text of a desc.txt or description.txt in a folder book, as audiobook managers write them. */
+  private fun CachedDocumentFile.synopsisFile(): String? {
+    if (!isDirectory) return null
+    val file = children.firstOrNull { it.isFile && it.name?.lowercase() in SYNOPSIS_FILES && it.length in 1..MAX_SYNOPSIS_BYTES }
+      ?: return null
+    return try {
+      context.contentResolver.openInputStream(file.uri)?.use { it.readBytes().decodeToString() }
+        ?.removePrefix("\uFEFF")?.trim()?.takeIf { it.isNotEmpty() }
+    } catch (e: Exception) {
+      Logger.w(e, "Could not read ${file.uri}")
+      null
     }
   }
 
@@ -133,3 +155,6 @@ internal fun Uri.filePath(): String? {
     ?.dropWhile { it != ':' }
     ?.removePrefix(":")
 }
+
+private val SYNOPSIS_FILES = setOf("desc.txt", "description.txt")
+private const val MAX_SYNOPSIS_BYTES = 64 * 1024L

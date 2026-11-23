@@ -146,6 +146,7 @@
     </plurals>
     <string name="listening_stats_undated">No finish date</string>
     <string name="listening_stats_listening">Listening</string>
+    <string name="listening_stats_book_length">Book length</string>
     <string name="listening_stats_start_to_finish">Start to finish</string>
     <string name="listening_stats_day_by_day">Day by day</string>
     <string name="listening_stats_longest_session">Longest session</string>
@@ -208,6 +209,22 @@
     <string name="edit_book_embedded_cover">Use embedded cover</string>
     <string name="edit_book_no_embedded_cover">No embedded cover was found.</string>
     <string name="edit_book_local_description">Saved in VoicePlus and included in your configured backups. Audio files stay unchanged.</string>
+    <string name="edit_book_synopsis_label">Synopsis</string>
+    <string name="edit_book_file_synopsis">Use the file\'s synopsis</string>
+    <string name="about_book">About this book</string>
+    <string name="about_book_narrator">Narrated by %1$s</string>
+    <string name="about_book_no_synopsis">No synopsis yet. Add one in Edit book, or put a desc.txt beside the audio files.</string>
+    <string name="about_book_add_synopsis">Add synopsis</string>
+    <string name="about_book_less">Less</string>
+    <plurals name="rating_label">
+      <item quantity="one">%1$d out of 5 stars</item>
+      <item quantity="other">%1$d out of 5 stars</item>
+    </plurals>
+    <string name="rating_not_rated">Not rated</string>
+    <string name="rating_star">Rate %1$d of 5</string>
+    <string name="rating_prompt_title">You finished %1$s</string>
+    <string name="rating_prompt_body">How would you rate it?</string>
+    <string name="rating_prompt_not_now">Not now</string>
     <string name="mark_as_completed">Mark as Completed</string>
     <string name="mark_as_current">Mark as Current</string>
     <string name="mark_as_not_started">Mark as Not Started Yet</string>
@@ -518,6 +535,11 @@
   <plurals name="series_book_count">
     <item quantity="one">%d book</item>
     <item quantity="other">%d books</item>
+  </plurals>
+  <!-- Quantity follows the series' total, the second number. -->
+  <plurals name="series_finished_count">
+    <item quantity="one">%1$d of %2$d finished</item>
+    <item quantity="other">%1$d of %2$d finished</item>
   </plurals>
   <string name="shelf_move">Move to shelf</string>
   <string name="shelf_move_series">Move entire series to shelf</string>

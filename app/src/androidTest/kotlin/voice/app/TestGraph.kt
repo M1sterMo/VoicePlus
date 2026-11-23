@@ -24,6 +24,8 @@ interface TestGraph : AppGraph {
   fun inject(target: BooksLibraryTest)
   fun inject(target: SeriesGroupingTest)
   fun inject(target: ShelvesLibraryTest)
+  fun inject(target: AboutBookTest)
+  fun inject(target: LibraryScrollPerfTest)
 
   val mediaButtonTestGraphFactory: MediaButtonTestGraph.Factory
 

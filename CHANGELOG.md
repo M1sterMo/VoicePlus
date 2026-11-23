@@ -1,5 +1,22 @@
 # VoicePlus Changelog
 
+## v1.31 — About This Book, Ratings & a New Grid
+
+- About this book: a sheet with the cover, author, narrator, series, genre, length and synopsis, opened from the first item of a book's long-press menu or from an optional player toolbar button ([#39](https://github.com/M1sterMo/VoicePlus/discussions/39)).
+- Synopses come from a `desc.txt` or `description.txt` beside the audio, or from the files' description or comment tags; existing books pick theirs up on the next scan. A synopsis typed in Edit book wins, survives rescans and backups, and "Use the file's synopsis" goes back to the file's.
+- Ratings: give a book 1–5 stars in its About sheet, when the player reaches its end (asked once per book), or from its page in listening stats. Ratings show as ★ 4 in the library and in the stats Finished list.
+- Grid view redesigned after the original Voice: whole square covers without cards, two or three to a row (the books-per-row setting), a thin bar while a book is in progress, and one line under the title: time left while listening, the length when sorted by length, otherwise the author ([#42](https://github.com/M1sterMo/VoicePlus/discussions/42)).
+- Series stacks show the next book stepping out up and to the left behind the first, the one behind a tone darker and, in Grid, the front one raised on a soft shadow, with a count badge and a progress bar with one segment per book. An opened series follows the library's view and books per row.
+- Smoother scrolling and series animations on phones with slower graphics: book jackets are drawn once into their cover image and reused, instead of being redrawn every frame ([#43](https://github.com/M1sterMo/VoicePlus/issues/43)).
+- Renaming or moving a book's folder, or changing a folder's mode, keeps everything: progress and speed, bookmarks, listening history and stats, ratings, chapter names, characters, its shelf and series place, and up next.
+- Scanning ported from upstream Voice: adding or removing a folder scans right away, books copied in while the app was away show up when you return, read-only folders work, covers are found more cheaply, and the library opens straight onto your books without a progress bar.
+- Folders that lost access show "No access" with an "Allow access" button, the audiobook folders list now lives in Settings, and tips help when a folder adds no books.
+- Listening stats: a finished book's page shows the book's length beside your listening time, and tiles in a row share one height.
+- Appearance settings, the stats book page and the rating card open fully instead of half-way.
+- Backups include synopses and ratings (backup format 9; older backups still restore).
+
+---
+
 ## v1.30 — Up Next, Shared Characters & Refreshed Stats
 
 - Up next: queue books to play one after another from the book menu, and reorder them in the queue view or by dragging on the library's Up next shelf.

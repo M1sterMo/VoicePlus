@@ -4,9 +4,9 @@ import androidx.compose.runtime.Immutable
 import voice.core.data.Book
 import voice.core.data.BookContent
 import voice.core.data.BookId
+import voice.core.data.realTimeRemainingMs
 import voice.core.logging.api.Logger
 import voice.core.ui.ImmutableFile
-import voice.core.ui.formatTime
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -19,7 +19,8 @@ data class BookOverviewItemViewState(
   val cover: ImmutableFile?,
   val progress: Float,
   val id: BookId,
-  val remainingTime: String,
+  /** Wall-clock time left at the book's playback speed. */
+  val remainingMs: Long,
   val finished: Boolean = false,
   /** Localized finish date; null while in progress, or when a finished book has no usable date. */
   val finishedOn: String? = null,
@@ -31,6 +32,8 @@ data class BookOverviewItemViewState(
   val durationMs: Long = 0L,
   /** In a shelf sorted by length the row shows the book's full length, which is what it is sorted by. */
   val showLength: Boolean = false,
+  /** The listener's 1–5 star rating, shown beside the status; null when unrated. */
+  val rating: Int? = null,
 )
 
 /**
@@ -46,7 +49,7 @@ internal fun Book.toItemViewState(finishedAt: Instant? = null): BookOverviewItem
     cover = content.cover?.let(::ImmutableFile),
     id = id,
     progress = progress(),
-    remainingTime = formatTime(realTimeRemainingMs()),
+    remainingMs = realTimeRemainingMs(),
     finished = finished,
     finishedOn = if (finished) finishedOnLabel(finishedAt) else null,
     seriesGroup = content.seriesGroup,
@@ -55,6 +58,7 @@ internal fun Book.toItemViewState(finishedAt: Instant? = null): BookOverviewItem
     importedSeries = content.series,
     addedAt = content.addedAt.toEpochMilli(),
     durationMs = duration,
+    rating = content.rating,
   )
 }
 
@@ -66,16 +70,6 @@ private fun Book.finishedOnLabel(finishedAt: Instant?): String? {
     .atZone(ZoneId.systemDefault())
     .toLocalDate()
     .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
-}
-
-/**
- * Wall-clock listening time left at this book's playback speed, not raw audio time —
- * at 2x, a 2h remainder is one real hour (GitHub issue #6).
- */
-internal fun Book.realTimeRemainingMs(): Long {
-  val remaining = (duration - position).coerceAtLeast(0)
-  val speed = content.playbackSpeed
-  return if (speed > 0f) (remaining / speed.toDouble()).toLong() else remaining
 }
 
 private fun Book.progress(): Float {

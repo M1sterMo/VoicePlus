@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.captureToImage
@@ -39,6 +40,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
@@ -201,8 +203,14 @@ class SeriesGroupingTest {
         compose.onNodeWithText("Save series").performClick()
         waitForGroup("Chrysalis")
         compose.onNodeWithText(titles[1]).assertIsDisplayed()
-        // Covers and title starts align; short Books captions need not reserve a second line.
-        listOf(GridMode.BOOKS to 2, GridMode.GRID to 2, GridMode.LIST to 2, GridMode.BOOKS to 3).forEach { (mode, count) ->
+        // Covers and title starts align, and every tile has the same rows, so series and single books match.
+        listOf(
+          GridMode.BOOKS to 2,
+          GridMode.GRID to 2,
+          GridMode.GRID to 3,
+          GridMode.LIST to 2,
+          GridMode.BOOKS to 3,
+        ).forEach { (mode, count) ->
           runBlocking {
             layout.updateData { mode }
             booksPerRow.updateData { count }
@@ -215,9 +223,8 @@ class SeriesGroupingTest {
           compose.onNodeWithTag(stackKey()).assertWidthIsEqualTo(book.right - book.left)
           // Columns can differ by one physical pixel; a 2:3 cover magnifies that rounding in height.
           val heightDifference = abs((stack.bottom - stack.top).value - (book.bottom - book.top).value)
-          if (mode != GridMode.BOOKS) {
-            check(heightDifference <= 1f) { "$mode ($count columns) has unequal card heights: $stack vs $book" }
-          }
+          // Grid and Books tiles have one line of title and one of author, so every tile is the same height.
+          check(heightDifference <= 1f) { "$mode ($count columns) has unequal card heights: $stack vs $book" }
           if (mode != GridMode.LIST) {
             val stackTitle = compose.onNode(
               hasText("Chrysalis") and hasAnyAncestor(hasTestTag(stackKey())),
@@ -225,32 +232,65 @@ class SeriesGroupingTest {
             ).getUnclippedBoundsInRoot()
             val bookTitle = compose.onNodeWithText(titles[3], useUnmergedTree = true).getUnclippedBoundsInRoot()
             val titleDifference = abs((stackTitle.top - stack.top).value - (bookTitle.top - book.top).value)
-            check(titleDifference <= 1f) { "$mode ($count columns) titles are not aligned within their cards" }
+            check(titleDifference <= 1f) {
+              "$mode ($count columns) titles are not aligned within their cards: stack $stack title $stackTitle, book $book title $bookTitle"
+            }
             if (mode == GridMode.BOOKS) {
               val front = compose.onNodeWithTag("${stackKey()}:cover:0", useUnmergedTree = true).getUnclippedBoundsInRoot()
               val single = compose.onNodeWithTag("library-book-cover:${ids[3].value}", useUnmergedTree = true).getUnclippedBoundsInRoot()
-              check(abs((front.right - front.left - (single.right - single.left)).value) <= 1f)
-              check(abs((front.bottom - front.top - (single.bottom - single.top)).value) <= 1f)
-              // Semantic bounds include rotation; unclipped layout bounds above measure the unrotated front.
-              val frontPixels = compose.onNodeWithTag("${stackKey()}:cover:0", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-              (1..2).forEach { layer ->
-                val rear = compose.onNodeWithTag("${stackKey()}:cover:$layer", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-                check(rear.left < frontPixels.left && rear.right > frontPixels.right) {
-                  "Rear books must fan beyond the front cover: $rear vs $frontPixels"
-                }
-                check(rear.bottom < frontPixels.bottom) { "Rear books must not intrude into the caption" }
+              // The front jacket gives up width to the books behind it, but stands on the same shelf line.
+              val frontWidth = (front.right - front.left).value
+              val singleWidth = (single.right - single.left).value
+              check(frontWidth < singleWidth && frontWidth > singleWidth * 0.8f) { "Front jacket $frontWidth vs single $singleWidth" }
+              check(abs((front.bottom - single.bottom).value) <= 1f) { "Series and single jackets must share a shelf line" }
+              check(front.left >= stack.left - 1.dp && front.right <= stack.right + 1.dp) {
+                "The front jacket must stay inside its tile: $front vs $stack"
               }
-              check(abs((stackTitle.top - front.bottom).value - 8f) <= 1f) { "Series cover/caption gap must be 8dp" }
-              val labelHeightDifference = abs((stackTitle.bottom - stackTitle.top - (bookTitle.bottom - bookTitle.top)).value)
-              check(abs(heightDifference - labelHeightDifference) <= 1f) { "Only title wrapping should change Books tile height" }
-              val countBounds = compose.onNode(
-                hasText("8 books") and hasAnyAncestor(hasTestTag(stackKey())),
+              // Semantic bounds of the front cover, as placed.
+              val frontPixels = compose.onNodeWithTag("${stackKey()}:cover:0", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+              // One book behind, stepping out up and to the left, the front one's size.
+              compose.onAllNodes(hasTestTag("${stackKey()}:cover:2"), useUnmergedTree = true).assertCountEquals(0)
+              val rear = compose.onNodeWithTag("${stackKey()}:cover:1", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+              check(rear.left < frontPixels.left && rear.top < frontPixels.top) {
+                "The book behind must step out up-left: $rear vs $frontPixels"
+              }
+              check(abs(rear.width - frontPixels.width) <= 1f && abs(rear.height - frontPixels.height) <= 1f) {
+                "Both books are the same size"
+              }
+              val tileLeft = with(compose.density) { stack.left.toPx() }
+              val tileTop = with(compose.density) { stack.top.toPx() }
+              check(rear.left >= tileLeft - 1f && rear.top >= tileTop - 1f) {
+                "The book behind must stay inside the tile: $rear vs $stack"
+              }
+              // As in Grid: 6dp, the 3dp bar, 6dp, then the title, and the author 2dp under it.
+              check(abs((stackTitle.top - front.bottom).value - 15f) <= 1f) { "Series cover/title gap must be 15dp" }
+              val authorBounds = compose.onNode(
+                hasText("Demo author") and hasAnyAncestor(hasTestTag(stackKey())),
                 useUnmergedTree = true,
               ).getUnclippedBoundsInRoot()
-              check(abs((countBounds.top - stackTitle.bottom).value - 4f) <= 1f) { "Series title/count gap must be 4dp" }
+              check(abs((authorBounds.top - stackTitle.bottom).value - 2f) <= 1f) { "Series title/author gap must be 2dp" }
             }
           }
         }
+        // Grid view opens a series as Grid tiles rather than book jackets.
+        runBlocking { layout.updateData { GridMode.GRID } }
+        compose.waitForIdle()
+        showStack("NOT_STARTED")
+        compose.onNodeWithTag(stackKey()).performClick()
+        waitForPrepared()
+        compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("series-details")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle()
+        screenshot("series-open-grid")
+        val gridCover = compose.onNode(
+          hasTestTag("book-cover:${ids[2].value}") and hasAnyAncestor(hasTestTag("series-grid")),
+          useUnmergedTree = true,
+        ).getUnclippedBoundsInRoot()
+        val gridAspect = (gridCover.right - gridCover.left).value / (gridCover.bottom - gridCover.top).value
+        check(abs(gridAspect - 1f) < 0.05f) { "Grid view must open a series as square Grid tiles, was $gridAspect" }
+        compose.onNodeWithContentDescription("Close").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("series-details")).fetchSemanticsNodes().isEmpty() }
+        runBlocking { layout.updateData { GridMode.BOOKS } }
+        compose.waitForIdle()
         editStack()
         fun assertPosition(
           id: BookId,
@@ -433,7 +473,7 @@ class SeriesGroupingTest {
             "$id did not start returning to its stack immediately after swipe release"
           }
         }
-        // The first jacket stays upright; rotated jackets can briefly have wider axis-aligned bounds as they fan in.
+        // The cards fly in from the stack; the first one's bounds are checked once it has landed.
         val frontId = heldCovers.keys.first()
         check(
           abs(coverBounds(frontId).width - sourceCover.width) < abs(heldCovers.getValue(frontId).width - sourceCover.width),

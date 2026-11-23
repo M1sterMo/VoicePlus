@@ -13,6 +13,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.retain.retain
 import androidx.compose.ui.platform.LocalConfiguration
@@ -25,8 +26,10 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import voice.core.common.rootGraphAs
 import voice.core.data.BookId
+import voice.core.ui.AboutBookSheet
 import voice.features.playbackScreen.view.BookPlayView
 import voice.features.playbackScreen.view.PlaybackToolbarDialog
+import voice.features.playbackScreen.view.RatePromptSheet
 import voice.features.sleepTimer.SleepTimerDialog
 import voice.features.upNext.UpNextSheet
 import voice.navigation.Destination
@@ -87,6 +90,7 @@ fun BookPlayScreen(
     onListeningLogClick = viewModel::onListeningLogClick,
     onCharacterListClick = viewModel::onCharacterListClick,
     onUpNextClick = viewModel::onUpNextClick,
+    onAboutBookClick = viewModel::onAboutBookClick,
     onCustomizeToolbarClick = viewModel::onCustomizeToolbarClick,
     onCloseClick = viewModel::onCloseClick,
     onSkipToNext = viewModel::next,
@@ -97,6 +101,9 @@ fun BookPlayScreen(
     snackbarHostState = snackbarHostState,
     onEditChapterNamesClick = if (viewState.editChapterNamesVisible) viewModel::onEditChapterNamesClick else null,
   )
+  if (viewState.ratePrompt && dialogState == null) {
+    RatePromptSheet(title = viewState.title, onRate = viewModel::rate, onDismiss = viewModel::dismissRatePrompt)
+  }
   if (dialogState != null) {
     when (dialogState) {
       is BookPlayDialogViewState.SpeedDialog -> {
@@ -109,6 +116,10 @@ fun BookPlayScreen(
         SelectChapterDialog(dialogState, viewModel)
       }
       BookPlayDialogViewState.UpNext -> UpNextSheet(onDismiss = viewModel::dismissDialog)
+      BookPlayDialogViewState.AboutBook -> {
+        val about = remember(viewModel) { viewModel.aboutBook }.collectAsState(initial = null).value
+        if (about != null) AboutBookSheet(about, onDismiss = viewModel::dismissDialog, onRate = viewModel::rate, onEdit = null)
+      }
       BookPlayDialogViewState.ToolbarActions -> {
         PlaybackToolbarDialog(
           pinnedActions = viewState.toolbarActions,

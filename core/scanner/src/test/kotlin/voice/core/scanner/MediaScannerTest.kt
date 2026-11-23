@@ -553,6 +553,8 @@ class MediaScannerTest {
         playbackSpeed = 1.5f,
         name = "A name I picked",
         nameOverridden = true,
+        rating = 4,
+        userSynopsis = "My own summary",
       )
     }
 
@@ -566,6 +568,8 @@ class MediaScannerTest {
     moved.positionInChapter shouldBe 500
     moved.playbackSpeed shouldBe 1.5f
     moved.name shouldBe "A name I picked"
+    moved.rating shouldBe 4
+    moved.userSynopsis shouldBe "My own summary"
     bookContentRepo.get(oldId)!!.isActive shouldBe false
     bookMover.moves.single() shouldBe RecordingBookMover.Move(
       from = listOf(oldId),
@@ -583,6 +587,7 @@ class MediaScannerTest {
     bookContentRepo.get(oldId)!!.let {
       it.lastPlayedAt shouldBe Instant.EPOCH
       it.nameOverridden shouldBe false
+      it.rating shouldBe null
     }
   }
 
@@ -712,6 +717,7 @@ class MediaScannerTest {
         ignoreFileTagsStore = mockk { every { data } returns ignoreFileTags },
       ),
       bookParser = BookParser(
+        context = ApplicationProvider.getApplicationContext(),
         contentRepo = bookContentRepo,
         mediaAnalyzer = mediaAnalyzer,
         fileFactory = FileBasedDocumentFactory,

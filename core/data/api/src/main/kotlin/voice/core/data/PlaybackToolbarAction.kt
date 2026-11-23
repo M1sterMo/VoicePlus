@@ -14,6 +14,7 @@ public enum class PlaybackToolbarAction {
   CHAPTER_FIX,
   LISTENING_LOG,
   UP_NEXT,
+  ABOUT_BOOK,
   ;
 
   public companion object {

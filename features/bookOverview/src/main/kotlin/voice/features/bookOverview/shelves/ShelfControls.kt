@@ -496,7 +496,9 @@ private fun ShelfOrderSheet(
                 entries[id]?.let { entry ->
                   LibraryEntryTile(entry, layout, {
                     itemMenu = id
-                  }, null, { _, _ -> itemMenu = id }, null, {}, null, null, null, false, emptySet(), {})
+                  }, null, { _, _ ->
+                    itemMenu = id
+                  }, null, {}, null, null, null, false, emptySet(), {})
                 }
               }
               DropdownMenu(itemMenu == id, onDismissRequest = { itemMenu = null }) {

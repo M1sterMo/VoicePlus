@@ -108,7 +108,8 @@ class FeatureRegressionTest {
       // The menu opens once its items are ready.
       compose.waitUntilAtLeastOneExists(hasText("Edit book"), 10_000)
       compose.onNodeWithText("Edit book").performClick()
-      val titleField = hasSetTextAction() and hasAnyAncestor(isDialog())
+      // The title is the dialog's first text field, above the synopsis.
+      val titleField = hasSetTextAction() and hasAnyAncestor(isDialog()) and hasText(title, substring = true)
       compose.waitUntilAtLeastOneExists(titleField, 10_000)
       compose.onNodeWithText("Search covers").assertIsDisplayed()
       compose.onNodeWithText("Choose image").assertIsDisplayed()

@@ -87,6 +87,8 @@ internal class ProgressCarryOver(
           seriesGroup = null,
           seriesOrder = null,
           cover = null,
+          userSynopsis = null,
+          rating = null,
         )
       }
     }
@@ -101,6 +103,9 @@ internal class ProgressCarryOver(
       chapterNameOffset = if (chapterNameOffset == 0) sameBook.chapterNameOffset else chapterNameOffset,
       seriesGroup = seriesGroup ?: sameBook.seriesGroup,
       seriesOrder = seriesOrder ?: sameBook.seriesOrder,
+      userSynopsis = userSynopsis ?: sameBook.userSynopsis,
+      rating = rating ?: sameBook.rating,
+      ratingPrompted = ratingPrompted || sameBook.ratingPrompted,
       // the files are the same, so their cover is too, and a cover the listener picked stays
       cover = cover?.takeIf { it.exists() } ?: sameBook.cover?.takeIf { it.exists() },
     )

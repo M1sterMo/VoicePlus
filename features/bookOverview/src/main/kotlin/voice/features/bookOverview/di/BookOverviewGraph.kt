@@ -4,6 +4,7 @@ import androidx.compose.runtime.retain.RetainObserver
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.GraphExtension
+import voice.features.bookOverview.about.AboutBookViewModel
 import voice.features.bookOverview.bottomSheet.BottomSheetViewModel
 import voice.features.bookOverview.deleteBook.DeleteBookViewModel
 import voice.features.bookOverview.editBook.EditBookViewModel
@@ -17,6 +18,7 @@ abstract class BookOverviewScope private constructor()
 interface BookOverviewGraph : RetainObserver {
   val bookOverviewViewModel: BookOverviewViewModel
   val editBookViewModel: EditBookViewModel
+  val aboutBookViewModel: AboutBookViewModel
   val bottomSheetViewModel: BottomSheetViewModel
   val deleteBookViewModel: DeleteBookViewModel
   val seriesViewModel: SeriesViewModel
@@ -31,6 +33,7 @@ interface BookOverviewGraph : RetainObserver {
   override fun onRetired() {
     bookOverviewViewModel.onRetired()
     editBookViewModel.onRetired()
+    aboutBookViewModel.onRetired()
     bottomSheetViewModel.onRetired()
     deleteBookViewModel.onRetired()
     seriesViewModel.onRetired()
@@ -40,6 +43,7 @@ interface BookOverviewGraph : RetainObserver {
   override fun onUnused() {
     bookOverviewViewModel.onUnused()
     editBookViewModel.onUnused()
+    aboutBookViewModel.onUnused()
     bottomSheetViewModel.onUnused()
     deleteBookViewModel.onUnused()
     seriesViewModel.onUnused()

@@ -19,7 +19,7 @@ class LibrarySectionTest {
     author: String? = "Author",
     added: Long = 0,
   ) = mutableStateOf(
-    BookOverviewItemViewState(id, author, null, progress, BookId(id), "1h", finished = finished, addedAt = added),
+    BookOverviewItemViewState(id, author, null, progress, BookId(id), 3_600_000L, finished = finished, addedAt = added),
   )
   private val current = book("Book 2", .5f)
   private val finished = book("Book 1", 1f, true)
@@ -166,7 +166,7 @@ class LibrarySectionTest {
       id: String,
       minutes: Long,
     ) = mutableStateOf(
-      BookOverviewItemViewState(id, null, null, 0f, BookId(id), "1h", durationMs = minutes * 60_000),
+      BookOverviewItemViewState(id, null, null, 0f, BookId(id), 3_600_000L, durationMs = minutes * 60_000),
     )
     val short = timed("short", 30)
     val long = timed("long", 300)
