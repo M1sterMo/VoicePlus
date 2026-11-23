@@ -28,6 +28,7 @@ import voice.core.data.repo.ChapterRepo
 import voice.core.data.repo.LibraryOrganisationRepo
 import voice.core.data.store.GridModeStore
 import voice.core.data.store.OnboardingCompletedStore
+import voice.core.scanner.MediaScanTrigger
 import java.io.File
 import java.time.Instant
 import java.util.regex.Pattern
@@ -52,6 +53,8 @@ class LibraryScrollPerfTest {
   @Inject lateinit var chapters: ChapterRepo
 
   @Inject lateinit var organisation: LibraryOrganisationRepo
+
+  @Inject lateinit var scanner: MediaScanTrigger
   @field:[Inject GridModeStore] lateinit var layout: DataStore<GridMode>
   @field:[Inject OnboardingCompletedStore] lateinit var onboarding: DataStore<Boolean>
 
@@ -60,18 +63,83 @@ class LibraryScrollPerfTest {
     // Minutes long and only meaningful with animations on, so it runs only when asked for.
     assumeTrue(InstrumentationRegistry.getArguments().getString("perf") != null)
     rootGraphAs<TestGraph>().inject(this)
-    val instrumentation = InstrumentationRegistry.getInstrumentation()
-    val device = UiDevice.getInstance(instrumentation)
-    val packageName = instrumentation.targetContext.packageName
-    val directory = File(instrumentation.targetContext.filesDir, "perf-covers").apply { mkdirs() }
-    val chapter = ChapterId("file:///perf-fixture.m4a")
     val ids = (0 until BOOKS).map { BookId("perf-fixture-$it") }
+    withFixture(ids) {
+      listOf(GridMode.BOOKS, GridMode.GRID).forEach { mode ->
+        // The same number of tiles both times, so the lists are equally long: TILES single books, then
+        // TILES series of SERIES_SIZE books each.
+        runBlocking { layout.updateData { mode } }
+        inLibrary(ids.take(TILES), series = emptyList()) { measureScroll("$mode singles") }
+        inLibrary(ids, series = ids.chunked(SERIES_SIZE)) {
+          measureScroll("$mode series")
+          measureOpenClose("$mode series open/close")
+        }
+        ungroup(ids)
+      }
+    }
+  }
+
+  /**
+   * The library from issue #43: about 57 books, a third of them single and the rest in series of 3 to 12,
+   * scrolled past in Books and Grid view, then the largest series opened and scrolled through to pick a book,
+   * as its reporter did. Run with `-e class voice.app.LibraryScrollPerfTest#reporterLibrary`.
+   */
+  @Test
+  fun reporterLibrary() {
+    assumeTrue(InstrumentationRegistry.getArguments().getString("perf") != null)
+    rootGraphAs<TestGraph>().inject(this)
+    val ids = (0 until REPORTER_SINGLES + REPORTER_SERIES.sum()).map { BookId("perf-fixture-$it") }
+    var next = REPORTER_SINGLES
+    val series = REPORTER_SERIES.map { size -> ids.subList(next, next + size).also { next += size } }
+    withFixture(ids) {
+      listOf(GridMode.BOOKS, GridMode.GRID).forEach { mode ->
+        runBlocking { layout.updateData { mode } }
+        inLibrary(ids, series) {
+          measureScroll("$mode ${ids.size} books")
+          // Into the largest series, scrolling down its books and back towards the top.
+          showSeries()
+          openSeries()
+          check(device.wait(Until.hasObject(By.desc("Close")), 10_000)) { "The series did not open" }
+          Thread.sleep(1_000)
+          device.executeShellCommand("dumpsys gfxinfo $packageName reset")
+          repeat(3) {
+            swipe(device, up = true)
+            Thread.sleep(250)
+          }
+          // One swipe fewer back, so the last one cannot pull the panel closed from the top.
+          repeat(2) {
+            swipe(device, up = false)
+            Thread.sleep(250)
+          }
+          report(device, packageName, "$mode inside series")
+          device.pressBack()
+          check(device.wait(Until.gone(By.desc("Close")), 10_000)) { "The series did not close" }
+          Thread.sleep(1_000)
+          measureOpenClose("$mode open/close")
+        }
+      }
+      ungroup(ids)
+    }
+  }
+
+  private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
+  private val device get() = UiDevice.getInstance(instrumentation)
+  private val packageName get() = instrumentation.targetContext.packageName
+
+  /** Puts [ids] in the library as the only books, with full-size covers, and restores the library afterwards. */
+  private fun withFixture(
+    ids: List<BookId>,
+    block: () -> Unit,
+  ) {
+    val directory = File(instrumentation.targetContext.filesDir, "perf-covers").apply { mkdirs() }
     val oldLayout = runBlocking { layout.data.first() }
     val oldOnboarding = runBlocking { onboarding.data.first() }
     val previousActive = runBlocking { books.all().filter { it.isActive }.map { it.id } }
     runBlocking {
-      chapters.put(Chapter(chapter, "Chapter", 3_600_000L, Instant.EPOCH, emptyList()))
       ids.forEachIndexed { index, id ->
+        // A file of its own, as in a real library: books sharing files would count as copies of one book.
+        val chapter = ChapterId("file:///perf-fixture-$index.m4a")
+        chapters.put(Chapter(chapter, "Chapter", 3_600_000L, Instant.EPOCH, emptyList()))
         books.put(
           BookContent(
             id = id, name = "Perf book ${index + 1}", author = "Author ${index / 4}", playbackSpeed = 1f,
@@ -84,60 +152,8 @@ class LibraryScrollPerfTest {
       books.setAllInactiveExcept(ids)
       onboarding.updateData { true }
     }
-    fun scroll(label: String) {
-      ActivityScenario.launch(MainActivity::class.java).use {
-        check(device.wait(Until.hasObject(By.textStartsWith("Perf ")), 15_000)) { "The library did not show" }
-        device.waitForIdle()
-        // Warm up once, so decoding the first screen of covers is not counted.
-        swipe(device, up = true)
-        swipe(device, up = false)
-        Thread.sleep(500)
-        device.executeShellCommand("dumpsys gfxinfo $packageName reset")
-        repeat(SWIPES) {
-          swipe(device, up = true)
-          Thread.sleep(250)
-        }
-        repeat(SWIPES) {
-          swipe(device, up = false)
-          Thread.sleep(250)
-        }
-        report(device, packageName, label)
-        if (label.endsWith("series")) {
-          // The open and close animation of a stack, three times over.
-          // The tile merges its texts, so match the series name at the start of its label.
-          val stack = By.text(Pattern.compile("Perf series 1(\\D.*)?", Pattern.DOTALL))
-          repeat(SWIPES) { if (!device.hasObject(stack)) swipe(device, up = false) }
-          Thread.sleep(500)
-          device.executeShellCommand("dumpsys gfxinfo $packageName reset")
-          repeat(3) {
-            device.findObject(stack).click()
-            check(device.wait(Until.hasObject(By.desc("Close")), 10_000)) { "The series did not open" }
-            Thread.sleep(1_000)
-            device.pressBack()
-            check(device.wait(Until.gone(By.desc("Close")), 10_000)) { "The series did not close" }
-            Thread.sleep(1_000)
-          }
-          report(device, packageName, "$label open/close")
-        }
-      }
-    }
     try {
-      listOf(GridMode.BOOKS, GridMode.GRID).forEach { mode ->
-        // The same number of tiles both times, so the lists are equally long: TILES single books, then
-        // TILES series of SERIES_SIZE books each.
-        runBlocking {
-          layout.updateData { mode }
-          books.setAllInactiveExcept(ids.take(TILES))
-        }
-        ungroup(ids)
-        scroll("$mode singles")
-        runBlocking {
-          books.setAllInactiveExcept(ids)
-          ids.chunked(SERIES_SIZE).forEachIndexed { index, members -> organisation.saveSeries(null, "Perf series ${index + 1}", members) }
-        }
-        scroll("$mode series")
-        ungroup(ids)
-      }
+      block()
     } finally {
       runBlocking {
         ungroup(ids)
@@ -147,6 +163,90 @@ class LibraryScrollPerfTest {
         onboarding.updateData { oldOnboarding }
       }
     }
+  }
+
+  /**
+   * Opens the library with [active] as its books, grouped into [series]. Coming back to the app scans its folders,
+   * which retires these books as they are in none, so a scan runs first: the one at launch then counts as fresh.
+   */
+  private fun inLibrary(
+    active: List<BookId>,
+    series: List<List<BookId>>,
+    block: () -> Unit,
+  ) {
+    runBlocking { scanner.scanAndAwait() }
+    ungroup(active)
+    runBlocking {
+      books.setAllInactiveExcept(active)
+      series.forEachIndexed { index, members -> organisation.saveSeries(null, "Perf series ${index + 1}", members) }
+    }
+    ActivityScenario.launch(MainActivity::class.java).use {
+      check(device.wait(Until.hasObject(By.textContains("Perf ")), 15_000)) { "The library did not show" }
+      device.waitForIdle()
+      block()
+    }
+  }
+
+  /** Scrolls down the library and back, after one warm-up pass so decoding the first covers is not counted. */
+  private fun measureScroll(label: String) {
+    swipe(device, up = true)
+    swipe(device, up = false)
+    Thread.sleep(500)
+    device.executeShellCommand("dumpsys gfxinfo $packageName reset")
+    repeat(SWIPES) {
+      swipe(device, up = true)
+      Thread.sleep(250)
+    }
+    repeat(SWIPES) {
+      swipe(device, up = false)
+      Thread.sleep(250)
+    }
+    report(device, packageName, label)
+  }
+
+  // The tile merges its texts, the time on its cover first in v1.31, so match the series name anywhere in it.
+  private fun seriesStack() = By.text(Pattern.compile(".*Perf series 1(\\D.*)?", Pattern.DOTALL))
+
+  /** Scrolls the first series into view, down the library and then back up, in short drags that don't fling. */
+  private fun showSeries() {
+    val stack = seriesStack()
+    val x = device.displayWidth / 2
+    val middle = device.displayHeight / 2
+    val drag = device.displayHeight / 8
+    fun look(): Boolean {
+      device.waitForIdle()
+      return device.hasObject(stack)
+    }
+    fun step(down: Boolean) {
+      val (from, to) = if (down) middle + drag to middle - drag else middle - drag to middle + drag
+      device.swipe(x, from, x, to, 60)
+    }
+    repeat(SWIPES * 4) { if (!look()) step(down = true) }
+    repeat(SWIPES * 8) { if (!look()) step(down = false) }
+    check(look()) { "The series is not in the library" }
+  }
+
+  /** Taps the first series, again if the tile was redrawn between finding and tapping it. */
+  private fun openSeries() {
+    repeat(3) {
+      if (runCatching { device.findObject(seriesStack()).click() }.isSuccess) return
+    }
+    device.findObject(seriesStack()).click()
+  }
+
+  /** The open and close animation of the first series, three times over. */
+  private fun measureOpenClose(label: String) {
+    showSeries()
+    device.executeShellCommand("dumpsys gfxinfo $packageName reset")
+    repeat(3) {
+      openSeries()
+      check(device.wait(Until.hasObject(By.desc("Close")), 10_000)) { "The series did not open" }
+      Thread.sleep(1_000)
+      device.pressBack()
+      check(device.wait(Until.gone(By.desc("Close")), 10_000)) { "The series did not close" }
+      Thread.sleep(1_000)
+    }
+    report(device, packageName, label)
   }
 
   private fun report(
@@ -229,6 +329,10 @@ class LibraryScrollPerfTest {
     const val SERIES_SIZE = 3
     const val BOOKS = TILES * SERIES_SIZE
     const val SWIPES = 8
+
+    // Issue #43's library: 57 books, 20 of them single and the rest in series of these sizes.
+    const val REPORTER_SINGLES = 20
+    val REPORTER_SERIES = listOf(12, 6, 5, 4, 4, 3, 3)
     val SUMMARY_KEYS =
       listOf("Total frames rendered", "Janky frames:", "50th percentile", "90th percentile", "95th percentile", "99th percentile")
   }
