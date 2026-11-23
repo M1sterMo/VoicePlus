@@ -1,7 +1,9 @@
 package voice.core.scanner
 
 import android.content.Context
+import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -11,6 +13,8 @@ import kotlinx.coroutines.withContext
 import voice.core.documentfile.CachedDocumentFile
 import voice.core.logging.api.Logger
 
+// App-scoped: the scanner sets the flag and the library reads it, so both must share one instance.
+@SingleIn(AppScope::class)
 @Inject
 public class DeviceHasStoragePermissionBug(private val context: Context) {
 

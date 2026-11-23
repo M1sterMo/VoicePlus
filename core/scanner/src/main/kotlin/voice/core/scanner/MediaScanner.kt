@@ -5,6 +5,7 @@ import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.first
 import voice.core.data.BookId
 import voice.core.data.audioFileCount
+import voice.core.data.fitIntoOneBook
 import voice.core.data.folders.AudiobookFolders
 import voice.core.data.folders.FolderType
 import voice.core.data.isAudioFile
@@ -114,9 +115,13 @@ internal class MediaScanner(
       // or unreadable folder is left alone: that is what a dropped permission or an unmounted volume
       // looks like, and its books must not be blanked. Progress stays stored either way.
       if (file.isDirectory && file.children.isNotEmpty() && file.audioFileCount() == 0) {
-        val content = contentRepo.get(BookId(file.uri))
-        if (content?.isActive == true) contentRepo.put(content.copy(isActive = false))
+        contentRepo.update(BookId(file.uri)) { it.copy(isActive = false) }
       }
+      return
+    }
+    val chapterIds = chapters.map { it.id }
+    if (!chapterIds.fitIntoOneBook()) {
+      Logger.e("Skipping $file, its ${chapters.size} chapters are too many for one book")
       return
     }
 
@@ -127,7 +132,6 @@ internal class MediaScanner(
       forceReParse = forceReParse,
     )
 
-    val chapterIds = chapters.map { it.id }
     // Gate activation on the LIVE folder set rather than blindly forcing isActive=true. This scan may have
     // snapshotted its folder list (in MediaScanTrigger) before the user removed the folder; without this
     // check, the slow per-book loop would re-activate the removed folder's books AFTER remove() already

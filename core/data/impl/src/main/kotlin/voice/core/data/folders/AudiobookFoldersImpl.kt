@@ -81,18 +81,28 @@ internal constructor(
     uri: Uri,
     type: FolderType,
   ) {
-    try {
-      context.contentResolver.takePersistableUriPermission(
-        uri,
-        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-      )
-    } catch (_: SecurityException) {
-      Logger.w("Could not release uri permission for $uri")
-    }
+    takePermission(uri)
     scope.launch {
       dataStore(type).updateData {
         it + uri
       }
+    }
+  }
+
+  // One at a time: asking for both takes nothing when the picker only granted reading, and all() drops a
+  // folder without a persisted grant.
+  private fun takePermission(uri: Uri) {
+    val resolver = context.contentResolver
+    try {
+      resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    } catch (_: SecurityException) {
+      Logger.w("Could not take the read permission for $uri")
+      return
+    }
+    try {
+      resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    } catch (_: SecurityException) {
+      Logger.w("Could only take the read permission for $uri")
     }
   }
 
@@ -120,7 +130,8 @@ internal constructor(
       try {
         bookContentRepo.all()
           .filter { it.isActive && FolderMembership.isBookUnderFolder(it.id.value.toUri(), uri, folderType) }
-          .forEach { bookContentRepo.put(it.copy(isActive = false)) }
+          // update, not put: a scan may write the same book meanwhile, and a put of this stale copy would undo it
+          .forEach { book -> bookContentRepo.update(book.id) { it.copy(isActive = false) } }
       } catch (e: CancellationException) {
         throw e
       } catch (t: Throwable) {
