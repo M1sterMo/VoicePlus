@@ -14,9 +14,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.updateAndGet
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Test
+import voice.core.common.DispatcherProvider
 import voice.core.data.BookId
 import voice.core.data.GridMode
 import voice.core.data.repo.BookContentRepo
@@ -47,6 +49,7 @@ class BookOverviewViewModelTest {
       repo = mockk<BookRepository> {
         every { flow() } returns library
       },
+      dispatcherProvider = StandardTestDispatcher(testScheduler).let { DispatcherProvider(it, it, it) },
       mediaScanner = mockk<MediaScanTrigger> {
         every { scannerActive } returns MutableStateFlow(false)
         every { scan(any()) } just Runs
@@ -82,7 +85,8 @@ class BookOverviewViewModelTest {
       viewModel.state()
     }.test {
       awaitItem() shouldBe BookOverviewViewState.Loading
-      yield()
+      // let the library arrive through its io hop, so only the missing density holds the state back
+      testScheduler.runCurrent()
       expectNoEvents()
       savedDensity.emit(3)
       val initial = awaitItem()

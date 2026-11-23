@@ -8,12 +8,17 @@ import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import voice.core.data.BookId
 import voice.core.data.repo.BookContentRepo
 import voice.core.documentfile.CachedDocumentFile
@@ -21,6 +26,8 @@ import voice.core.documentfile.CachedDocumentFileFactory
 import voice.core.logging.api.Logger
 import kotlin.coroutines.cancellation.CancellationException
 
+// App-scoped, so a grant taken in one screen shows in every flow of the others.
+@SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 public class AudiobookFoldersImpl
 internal constructor(
@@ -40,10 +47,17 @@ internal constructor(
 
   private val scope = MainScope()
 
+  // Adding a folder edits several stores; two quick edits of one folder must not interleave and lose it.
+  private val storeEdits = Mutex()
+
+  // Grants live outside the stores, so a grant taken again for a folder that is already configured would change
+  // nothing the flows below see.
+  private val grantsChanged = MutableStateFlow(0)
+
   public override fun all(): Flow<Map<FolderType, List<DocumentFileWithUri>>> {
     val flows = FolderType.entries
       .map { folderType ->
-        dataStore(folderType).data.map { uris ->
+        combine(dataStore(folderType).data, grantsChanged) { uris, _ ->
           val persistedUris = persistedUriPermissions.persistedUris()
           val documentFiles = uris
             .filter {
@@ -58,6 +72,16 @@ internal constructor(
           folderType to documentFiles
         }
       }
+    return combine(flows) { it.toMap() }
+  }
+
+  public override fun withoutAccess(): Flow<Map<FolderType, List<Uri>>> {
+    val flows = FolderType.entries.map { folderType ->
+      combine(dataStore(folderType).data, grantsChanged) { uris, _ ->
+        val persistedUris = persistedUriPermissions.persistedUris()
+        folderType to uris.filter { it !in persistedUris }
+      }
+    }
     return combine(flows) { it.toMap() }
   }
 
@@ -81,18 +105,37 @@ internal constructor(
     uri: Uri,
     type: FolderType,
   ) {
-    try {
-      context.contentResolver.takePersistableUriPermission(
-        uri,
-        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-      )
-    } catch (_: SecurityException) {
-      Logger.w("Could not release uri permission for $uri")
-    }
+    takePermission(uri)
+    grantsChanged.update { it + 1 }
     scope.launch {
-      dataStore(type).updateData {
-        it + uri
+      storeEdits.withLock {
+        dataStore(type).updateData {
+          it + uri
+        }
+        // A folder has one type, so adding it again with another type moves it instead of finding its books
+        // twice. The other stores are edited directly: remove() would release the grant just taken and
+        // deactivate the folder's books. Added first, so a scan in between never misses its books.
+        FolderType.entries
+          .filter { it != type }
+          .forEach { otherType -> dataStore(otherType).updateData { it - uri } }
       }
+    }
+  }
+
+  // One at a time: asking for both takes nothing when the picker only granted reading, and all() drops a
+  // folder without a persisted grant.
+  private fun takePermission(uri: Uri) {
+    val resolver = context.contentResolver
+    try {
+      resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    } catch (_: SecurityException) {
+      Logger.w("Could not take the read permission for $uri")
+      return
+    }
+    try {
+      resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    } catch (_: SecurityException) {
+      Logger.w("Could only take the read permission for $uri")
     }
   }
 
@@ -109,22 +152,25 @@ internal constructor(
       Logger.w("Could not release uri permission for $uri")
     }
     scope.launch {
-      dataStore(folderType).updateData { folders ->
-        folders - uri
-      }
-      // Deactivate the books that came from the removed folder, so the library reflects the removal
-      // immediately — scoped to that folder's books via pure URI membership, no scanner reconcile.
-      // Best-effort: a DB failure is logged, not propagated, so it can't crash the app or leave the
-      // folder half-removed; the next overview scan reconciles regardless (and a book that also sits
-      // under a separately-configured overlapping grant simply re-activates on that scan).
-      try {
-        bookContentRepo.all()
-          .filter { it.isActive && FolderMembership.isBookUnderFolder(it.id.value.toUri(), uri, folderType) }
-          .forEach { bookContentRepo.put(it.copy(isActive = false)) }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (t: Throwable) {
-        Logger.e(t, "Failed to deactivate books for removed folder $uri")
+      storeEdits.withLock {
+        dataStore(folderType).updateData { folders ->
+          folders - uri
+        }
+        // Deactivate the books that came from the removed folder, so the library reflects the removal
+        // immediately — scoped to that folder's books via pure URI membership, no scanner reconcile.
+        // Best-effort: a DB failure is logged, not propagated, so it can't crash the app or leave the
+        // folder half-removed; the next overview scan reconciles regardless (and a book that also sits
+        // under a separately-configured overlapping grant simply re-activates on that scan).
+        try {
+          bookContentRepo.all()
+            .filter { it.isActive && FolderMembership.isBookUnderFolder(it.id.value.toUri(), uri, folderType) }
+            // update, not put: a scan may write the same book meanwhile, and a put of this stale copy would undo it
+            .forEach { book -> bookContentRepo.update(book.id) { it.copy(isActive = false) } }
+        } catch (e: CancellationException) {
+          throw e
+        } catch (t: Throwable) {
+          Logger.e(t, "Failed to deactivate books for removed folder $uri")
+        }
       }
     }
   }

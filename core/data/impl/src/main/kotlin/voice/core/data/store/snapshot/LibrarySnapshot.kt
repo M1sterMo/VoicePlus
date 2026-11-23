@@ -54,7 +54,8 @@ internal data class LibrarySnapshot(
     // v6 adds home shelves, stable series identity and independent manual/shelf ordering.
     // v7 preserves whether the user explicitly edited a book title.
     // v8 adds character lists shared by a series.
-    const val SCHEMA_VERSION = 8
+    // v9 adds synopses (from files and typed) and the listener's star rating.
+    const val SCHEMA_VERSION = 9
   }
 }
 
@@ -90,6 +91,10 @@ internal data class BookContentDto(
   val seriesGroup: String? = null,
   val seriesOrder: Int? = null,
   val nameOverridden: Boolean = false,
+  val synopsis: String? = null,
+  val userSynopsis: String? = null,
+  val rating: Int? = null,
+  val ratingPrompted: Boolean = false,
 )
 
 @Serializable
@@ -185,6 +190,10 @@ internal fun BookContent.toDto() = BookContentDto(
   seriesGroup = seriesGroup,
   seriesOrder = seriesOrder,
   nameOverridden = nameOverridden,
+  synopsis = synopsis,
+  userSynopsis = userSynopsis,
+  rating = rating,
+  ratingPrompted = ratingPrompted,
 )
 
 // Reconstruction runs BookContent.init{ require(...) }; wrap so one bad row is dropped, not fatal.
@@ -211,6 +220,10 @@ internal fun BookContentDto.toBookContentOrNull(): BookContent? = runCatching {
     seriesGroup = seriesGroup,
     seriesOrder = seriesOrder,
     nameOverridden = nameOverridden,
+    synopsis = synopsis,
+    userSynopsis = userSynopsis,
+    rating = rating?.takeIf { it in 1..5 },
+    ratingPrompted = ratingPrompted,
   )
 }.getOrNull()
 

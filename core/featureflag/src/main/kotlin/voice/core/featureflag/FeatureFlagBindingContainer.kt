@@ -44,6 +44,8 @@ interface FeatureFlagBindingContainer {
     return factory.boolean(
       key = "folder_picker_in_settings",
       description = "Shows the folder picker entry directly in settings.",
+      // the library bar has no folders button, so settings is the only way to manage folders (Voice #3602)
+      defaultValue = true,
     )
   }
 

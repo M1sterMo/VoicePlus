@@ -9,13 +9,16 @@ internal data class RealCachedDocumentFile(
   private val preFilledContent: FileContents?,
 ) : CachedDocumentFile {
 
-  override val children: List<CachedDocumentFile> by lazy {
+  private val listing: List<CachedDocumentFile>? by lazy {
     if (isDirectory) {
       parseContents(uri, context)
     } else {
       emptyList()
     }
   }
+
+  override val children: List<CachedDocumentFile> get() = listing.orEmpty()
+  override val childrenListed: Boolean get() = listing != null
 
   private val content: FileContents? by lazy {
     preFilledContent ?: FileContents.query(context, uri)

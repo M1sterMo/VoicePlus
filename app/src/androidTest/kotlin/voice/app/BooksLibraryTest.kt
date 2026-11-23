@@ -187,8 +187,9 @@ class BooksLibraryTest {
         }
         firstRow[0].top shouldBe firstRow[1].top
         firstRow[1].top shouldBe firstRow[2].top
-        firstRow[0].height shouldBe firstRow[1].height
-        assertTrue("Short titles should not reserve an empty second line", firstRow[2].height < firstRow[0].height)
+        // Every title is one line, so every tile in the row is the same height, give or take the pixel or two
+        // a 2:3 jacket gains from rounding its column's width.
+        firstRow.forEach { assertTrue("Tiles in a row share a height: $firstRow", abs(it.height - firstRow[0].height) <= 3f) }
         assertTrue("Compact titles should use the smaller type scale", firstRow.first().height < twoColumnTitleHeight)
         compose.waitForIdle()
         UiDevice.getInstance(instrumentation).takeScreenshot(File(directory, "library-three-columns.png"))

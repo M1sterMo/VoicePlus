@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.TrackGroupArray
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.metadata.id3.ChapterFrame
+import androidx.media3.extractor.metadata.id3.CommentFrame
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
 import androidx.media3.inspector.MetadataRetriever
@@ -63,6 +64,9 @@ internal class MediaAnalyzer(
                 is ChapterFrame -> visitChapter(entry, builder)
                 is VorbisComment -> visitVorbis(entry, builder)
                 is MdtaMetadataEntry -> visitMdta(entry, builder)
+                // ID3 COMM, and the MP4 ©cmt atom, which Media3 also reports as a comment frame.
+                // iTunes stores encoder data (iTunNORM, iTunSMPB) in comments too; those are not prose.
+                is CommentFrame -> if (!entry.description.startsWith("iTun")) builder.comment = builder.comment.orIfBlank(entry.text)
                 else -> Logger.d("Unknown metadata entry: $entry")
               }
             }
@@ -135,6 +139,8 @@ internal class MediaAnalyzer(
       key == "ARTIST" -> builder.artist = value
       key == "ALBUM" -> builder.album = value
       key == "TITLE" -> builder.title = value
+      key.uppercase() in DESCRIPTION_KEYS -> builder.description = builder.description.orIfBlank(value)
+      key.equals("COMMENT", ignoreCase = true) -> builder.comment = builder.comment.orIfBlank(value)
       key.startsWith("CHAPTER") -> {
         val withoutPrefix = key.removePrefix("CHAPTER")
         val isName = withoutPrefix.endsWith("NAME")
@@ -185,7 +191,11 @@ internal class MediaAnalyzer(
         "MVIN" -> builder.part = if (builder.part.isNullOrBlank()) value else builder.part
         "TXXX:PART" -> builder.part = value
         "TXXX:NARRATOR" -> builder.narrator = if (builder.narrator.isNullOrBlank()) value else builder.narrator
-        else -> Logger.v("Unknown TXXX frame description:  ${entry.description}, value: $value")
+        else -> if (entry.description?.uppercase() in DESCRIPTION_KEYS) {
+          builder.description = builder.description.orIfBlank(value)
+        } else {
+          Logger.v("Unknown TXXX frame description:  ${entry.description}, value: $value")
+        }
       }
       "TRCK", "TYER", "TSSE" -> {}
       else -> Logger.v("Unknown frame ID: ${entry.id}, value: $value")
@@ -239,3 +249,9 @@ internal class MediaAnalyzer(
     }
   }
 }
+
+/** Tag names that hold a book's description, in Vorbis comments and ID3 TXXX frames. */
+private val DESCRIPTION_KEYS = setOf("DESCRIPTION", "SYNOPSIS", "SUMMARY")
+
+/** Keeps the first non-blank value a file declares. */
+private fun String?.orIfBlank(value: String?): String? = if (isNullOrBlank()) value?.takeIf { it.isNotBlank() } else this

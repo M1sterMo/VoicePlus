@@ -47,6 +47,9 @@ class EditBookViewModel(
   internal fun titleChanged(title: String) {
     if (!busy) drafts.titleChanged(title)
   }
+  internal fun synopsisChanged(synopsis: String) {
+    if (!busy) drafts.synopsisChanged(synopsis)
+  }
   internal fun dismiss() {
     if (!busy) scope.launch { drafts.discard() }
   }

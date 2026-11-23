@@ -24,6 +24,10 @@ public data class BookEditDraft(
   val title: String,
   val cover: File?,
   val coverChanged: Boolean = false,
+  /** The synopsis as shown in the editor: the typed one if any, else the file's. */
+  val synopsis: String = "",
+  /** The synopsis read from the book's files, which "Use the file's synopsis" restores. */
+  val fileSynopsis: String = "",
 )
 
 /** One editor session shared with the existing cover search/crop routes. Nothing writes until Save. */
@@ -42,7 +46,15 @@ public class BookEditDraftStore internal constructor(
     mutex.withLock {
       val book = repo.get(id) ?: return
       val previous = mutable.value
-      mutable.value = BookEditDraft(UUID.randomUUID().toString(), id, book.content.name, book.content.cover)
+      val content = book.content
+      mutable.value = BookEditDraft(
+        token = UUID.randomUUID().toString(),
+        bookId = id,
+        title = content.name,
+        cover = content.cover,
+        synopsis = content.userSynopsis ?: content.synopsis.orEmpty(),
+        fileSynopsis = content.synopsis.orEmpty(),
+      )
       discardCover(previous)
       purgeStaleDraftCovers()
     }
@@ -50,6 +62,10 @@ public class BookEditDraftStore internal constructor(
 
   public fun titleChanged(title: String) {
     mutable.update { it?.copy(title = title) }
+  }
+
+  public fun synopsisChanged(synopsis: String) {
+    mutable.update { it?.copy(synopsis = synopsis) }
   }
 
   @IgnorableReturnValue
@@ -89,6 +105,8 @@ public class BookEditDraftStore internal constructor(
           name = title,
           cover = if (current.coverChanged) committedCover else it.cover,
           nameOverridden = it.nameOverridden || title != original.content.name,
+          // Matching the file's text follows the file again; anything else, even empty, is the listener's.
+          userSynopsis = current.synopsis.trim().takeUnless { synopsis -> synopsis == it.synopsis.orEmpty().trim() },
         )
       }
       mutable.value = null
@@ -108,7 +126,7 @@ public class BookEditDraftStore internal constructor(
     }
     var adopted = false
     try {
-      if (book.chapters.take(5).any { extractor.extractCover(it.id.toUri(), cover) }) {
+      if (book.chapters.take(5).any { extractor.extractCover(it.id.toUri(), cover) == true }) {
         withContext(NonCancellable) { adopted = stageCover(current.token, cover) }
         return adopted
       }

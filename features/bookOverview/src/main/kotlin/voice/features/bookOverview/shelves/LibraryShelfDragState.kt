@@ -13,6 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -70,8 +72,10 @@ internal class LibraryShelfDragState(
     private set
   val settle = Animatable(Offset.Zero, Offset.VectorConverter)
 
-  private val shelfBounds = mutableMapOf<String, Rect>()
-  private val entryBounds = mutableMapOf<String, Triple<String, String, Rect>>()
+  // Ways to find bounds, not bounds: positions are only worked out while something is being dragged,
+  // so scrolling the library does no hit-testing work at all.
+  private val shelfBounds = mutableMapOf<String, () -> Rect?>()
+  private val entryBounds = mutableMapOf<String, Triple<String, String, () -> Rect?>>()
   private var draggedItem = ""
   private var books = emptySet<BookId>()
   private var sourceShelf = ""
@@ -80,10 +84,10 @@ internal class LibraryShelfDragState(
 
   fun registerShelf(
     id: String,
-    bounds: Rect,
+    bounds: () -> Rect?,
   ) {
     shelfBounds[id] = bounds
-    updateHoveredShelf()
+    if (dragged != null) updateHoveredShelf()
   }
 
   fun unregisterShelf(id: String) {
@@ -95,15 +99,15 @@ internal class LibraryShelfDragState(
     key: String,
     shelfId: String,
     itemId: String,
-    bounds: Rect,
+    bounds: () -> Rect?,
   ) {
     entryBounds[key] = Triple(shelfId, itemId, bounds)
-    updateHoveredShelf()
+    if (dragged != null) updateHoveredShelf()
   }
 
   fun unregisterEntry(key: String) {
     entryBounds.remove(key)
-    updateHoveredShelf()
+    if (dragged != null) updateHoveredShelf()
   }
 
   fun start(
@@ -164,8 +168,8 @@ internal class LibraryShelfDragState(
 
   private fun updateHoveredShelf() {
     hoveredShelf = (
-      shelfBounds.entries.firstOrNull { (id, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.key
-        ?: entryBounds.values.firstOrNull { (id, _, bounds) -> id != sourceShelf && bounds.contains(pointer) }?.first
+      shelfBounds.entries.firstOrNull { (id, layout) -> id != sourceShelf && layout.contains(pointer) }?.key
+        ?: entryBounds.values.firstOrNull { (id, _, layout) -> id != sourceShelf && layout.contains(pointer) }?.first
       )?.takeIf { canDrop(sourceShelf) && canDrop(it) }
     hoveredEntry = if (hoveredShelf == null && dragged != null && canReorder(sourceShelf)) {
       entryBounds.entries.firstOrNull { (key, entry) -> entry.first == sourceShelf && key != dragged && entry.third.contains(pointer) }?.key
@@ -199,3 +203,8 @@ internal class LibraryShelfDragState(
     offset = Offset.Zero
   }
 }
+
+private fun (() -> Rect?).contains(pointerInRoot: Offset): Boolean = this()?.contains(pointerInRoot) == true
+
+/** Where a placed layout is in the root, or null once it has left the screen. */
+internal fun LayoutCoordinates.boundsInRootOrNull(): Rect? = if (isAttached) boundsInRoot() else null

@@ -8,22 +8,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -43,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,16 +61,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavEntry
@@ -77,6 +85,8 @@ import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import kotlinx.coroutines.launch
 import voice.core.common.rootGraphAs
+import voice.core.ui.BookshelfCover
+import voice.core.ui.RatingStars
 import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import java.text.DecimalFormat
@@ -115,6 +125,7 @@ fun ListeningStatsScreen() {
     viewState = viewState,
     onClose = viewModel::onClose,
     onChangeFinishDate = { book, date -> scope.launch { viewModel.changeFinishDate(book, date) } },
+    onRate = { book, rating -> scope.launch { viewModel.rate(book, rating) } },
   )
 }
 
@@ -124,6 +135,7 @@ internal fun ListeningStatsScreen(
   onClose: () -> Unit,
   modifier: Modifier = Modifier,
   onChangeFinishDate: (FinishedBookStats, LocalDate) -> Unit = { _, _ -> },
+  onRate: (FinishedBookStats, Int?) -> Unit = { _, _ -> },
 ) {
   var selectedBook by remember { mutableStateOf<FinishedBookStats?>(null) }
   Scaffold(
@@ -180,6 +192,7 @@ internal fun ListeningStatsScreen(
         if (viewState.finishedBooks.isNotEmpty()) {
           FinishedBooks(
             books = viewState.finishedBooks,
+            jacket = viewState.bookJackets,
             onBookClick = { selectedBook = it },
           )
         }
@@ -212,11 +225,13 @@ internal fun ListeningStatsScreen(
   selectedBook?.let { book ->
     FinishedBookDetailsSheet(
       book = book,
+      jacket = viewState.bookJackets,
       onDismiss = { selectedBook = null },
       onChangeFinishDate = { date ->
         onChangeFinishDate(book, date)
         selectedBook = null
       },
+      onRate = { onRate(book, it) },
     )
   }
 }
@@ -237,6 +252,7 @@ private fun TotalListening(viewState: ListeningStatsViewState) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
+        .height(IntrinsicSize.Max)
         .padding(top = 10.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -273,15 +289,16 @@ private fun UnitTile(
   containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
 ) {
   Card(
-    modifier = modifier,
+    modifier = modifier.fillMaxHeight(),
     colors = CardDefaults.cardColors(containerColor = containerColor),
     shape = MaterialTheme.shapes.large,
   ) {
     Column(
       modifier = Modifier
-        .fillMaxWidth()
+        .fillMaxSize()
         .padding(vertical = 14.dp, horizontal = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
     ) {
       Text(
         text = value,
@@ -309,9 +326,11 @@ private fun UnitTile(
 private fun Recently(viewState: ListeningStatsViewState) {
   Column {
     SectionTitle(stringResource(StringsR.string.listening_stats_recently))
+    // Every tile takes the tallest one's height, so the week's change line does not make it stand out.
     Row(
       modifier = Modifier
         .fillMaxWidth()
+        .height(IntrinsicSize.Max)
         .padding(top = 8.dp),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -509,8 +528,8 @@ private fun Records(viewState: ListeningStatsViewState) {
       verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       records.chunked(2).forEach { pair ->
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-          pair.forEach { (value, label) -> RecordTile(value, label, Modifier.weight(1f)) }
+        Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+          pair.forEach { (value, label) -> RecordTile(value, label, Modifier.weight(1f).fillMaxHeight()) }
         }
       }
     }
@@ -554,6 +573,7 @@ private fun RecordTile(
 @Composable
 private fun FinishedBooks(
   books: List<FinishedBookStats>,
+  jacket: Boolean,
   onBookClick: (FinishedBookStats) -> Unit,
 ) {
   var showAll by remember { mutableStateOf(false) }
@@ -579,18 +599,15 @@ private fun FinishedBooks(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         shape = MaterialTheme.shapes.large,
       ) {
-        group.forEachIndexed { index, book ->
-          if (index > 0) {
-            HorizontalDivider(
-              modifier = Modifier.padding(start = 70.dp),
-              color = MaterialTheme.colorScheme.outlineVariant,
-            )
-          }
+        Spacer(Modifier.height(6.dp))
+        group.forEach { book ->
           FinishedBookRow(
             book = book,
+            jacket = jacket,
             onClick = { onBookClick(book) },
           )
         }
+        Spacer(Modifier.height(6.dp))
       }
     }
     if (books.size > RECENT_FINISHED_BOOKS) {
@@ -613,67 +630,137 @@ private fun FinishedBooks(
 @Composable
 private fun FinishedBookRow(
   book: FinishedBookStats,
+  jacket: Boolean,
   onClick: () -> Unit,
 ) {
   val days = book.daysToFinish()
-  val meta = listOfNotNull(
-    book.finishedDate?.let { stringResource(StringsR.string.book_finished_on, it.format(monthDayFormatter())) },
+  val detailParts = listOfNotNull(
     formatDuration(book.listenedMs).takeIf { book.listenedMs > 0 },
     days?.let { pluralStringResource(StringsR.plurals.listening_stats_streak_days, it, it) },
-  ).joinToString(" · ")
-  ListItem(
+  )
+  val details = detailParts.joinToString(" · ")
+  val finishedOn = book.finishedDate?.let { stringResource(StringsR.string.book_finished_on, it.format(monthDayFormatter())) }
+  val rating = book.rating?.let { pluralStringResource(StringsR.plurals.rating_label, it, it) }
+  // Screen readers hear the title first, then this: when, how long, and the rating.
+  val spoken = (listOfNotNull(finishedOn) + detailParts + listOfNotNull(rating)).joinToString(", ")
+  val locale = LocalConfiguration.current.locales[0]
+  val month = remember(book.finishedDate, locale) {
+    book.finishedDate?.month?.getDisplayName(java.time.format.TextStyle.SHORT_STANDALONE, locale)?.uppercase(locale)
+  }
+  // One line each and a fixed height, rated or not, so the list reads as an even timeline.
+  Row(
     modifier = Modifier
       .fillMaxWidth()
-      .clickable(role = Role.Button, onClick = onClick),
-    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    headlineContent = {
+      .clickable(role = Role.Button, onClick = onClick)
+      .padding(start = 12.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    // The finish date as a small calendar mark: the day, and the month under it. Each shrinks rather
+    // than wraps, so long month names and large text keep the row one height.
+    Column(
+      modifier = Modifier.width(34.dp).clearAndSetSemantics {},
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      if (book.finishedDate != null && month != null) {
+        val day = MaterialTheme.typography.titleMedium
+        val monthStyle = MaterialTheme.typography.labelSmall
+        Text(
+          book.finishedDate.dayOfMonth.toString(),
+          style = day,
+          maxLines = 1,
+          autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = day.fontSize),
+        )
+        Text(
+          month,
+          style = monthStyle,
+          color = MaterialTheme.colorScheme.primary,
+          maxLines = 1,
+          autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = monthStyle.fontSize),
+        )
+      }
+    }
+    // Sized by the cover alone: the rating tag overhangs it without widening the row.
+    Box {
+      StatsCover(book, jacket, width = if (jacket) 30.dp else 44.dp, compact = true)
+      // The rating rides on the cover's corner, in the finished medal's colours, so no line ever wraps for it.
+      book.rating?.let {
+        Text(
+          text = "★$it",
+          modifier = Modifier
+            .matchParentSize()
+            .wrapContentSize(Alignment.BottomEnd, unbounded = true)
+            .offset(x = 6.dp, y = 5.dp)
+            .clearAndSetSemantics {}
+            // A ring in the card's colour around the tag, outside it so it never covers the text.
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, CircleShape)
+            .padding(2.dp)
+            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+            .padding(horizontal = 5.dp, vertical = 1.dp),
+          style = MaterialTheme.typography.labelSmall,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+      }
+    }
+    Column(Modifier.weight(1f).padding(start = 4.dp)) {
       Text(
         text = book.name,
         style = MaterialTheme.typography.bodyMedium,
-        maxLines = 2,
+        maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )
-    },
-    supportingContent = if (meta.isNotEmpty()) {
-      {
-        Text(
-          text = meta,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-    } else {
-      null
-    },
-    leadingContent = {
-      AsyncImage(
-        modifier = Modifier
-          .size(width = 42.dp, height = 58.dp)
-          .clip(MaterialTheme.shapes.small),
-        model = book.cover?.file,
-        placeholder = painterResource(id = UiR.drawable.album_art),
-        error = painterResource(id = UiR.drawable.album_art),
-        contentScale = ContentScale.Crop,
-        contentDescription = null,
+      Text(
+        text = details,
+        modifier = Modifier.semantics { contentDescription = spoken },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
       )
-    },
-    trailingContent = {
-      Icon(
-        Icons.Outlined.ChevronRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    },
-  )
+    }
+  }
+}
+
+/**
+ * A finished book's cover in the library's look, like the player's: a 2:3 book jacket in Books, and
+ * otherwise a square like the Grid and List covers, which suits audiobook art.
+ */
+@Composable
+private fun StatsCover(
+  book: FinishedBookStats,
+  jacket: Boolean,
+  width: Dp,
+  compact: Boolean = false,
+) {
+  if (jacket) {
+    BookshelfCover(book.bookId, book.cover, Modifier.width(width).testTag("finished-cover:jacket"), compact = compact)
+  } else {
+    AsyncImage(
+      modifier = Modifier
+        .testTag("finished-cover:square")
+        .size(width)
+        .clip(if (compact) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.medium),
+      model = book.cover?.file,
+      placeholder = painterResource(id = UiR.drawable.album_art),
+      error = painterResource(id = UiR.drawable.album_art),
+      contentScale = ContentScale.Crop,
+      contentDescription = null,
+    )
+  }
 }
 
 @Composable
 private fun FinishedBookDetailsSheet(
   book: FinishedBookStats,
+  jacket: Boolean,
   onDismiss: () -> Unit,
   onChangeFinishDate: (LocalDate) -> Unit,
+  onRate: (Int?) -> Unit,
 ) {
   var pickingDate by remember { mutableStateOf(false) }
+  // The sheet holds a snapshot of the book; show a new rating straight away.
+  var rating by remember(book) { mutableStateOf(book.rating) }
   val speedFormat = remember { DecimalFormat("0.##") }
   if (pickingDate) {
     FinishDatePicker(
@@ -686,7 +773,7 @@ private fun FinishedBookDetailsSheet(
       onDismiss = { pickingDate = false },
     )
   }
-  ModalBottomSheet(onDismissRequest = onDismiss) {
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
     Box(
       modifier = Modifier.fillMaxWidth(),
       contentAlignment = Alignment.TopCenter,
@@ -700,6 +787,8 @@ private fun FinishedBookDetailsSheet(
           .padding(bottom = 32.dp),
       ) {
         ListItem(
+          // The sheet's own colour, not a lighter box behind the title.
+          colors = ListItemDefaults.colors(containerColor = Color.Transparent),
           headlineContent = {
             Text(
               text = book.name,
@@ -717,23 +806,21 @@ private fun FinishedBookDetailsSheet(
               )
             }
           },
-          leadingContent = {
-            AsyncImage(
-              modifier = Modifier
-                .size(width = 56.dp, height = 78.dp)
-                .clip(MaterialTheme.shapes.medium),
-              model = book.cover?.file,
-              placeholder = painterResource(id = UiR.drawable.album_art),
-              error = painterResource(id = UiR.drawable.album_art),
-              contentScale = ContentScale.Crop,
-              contentDescription = null,
-            )
-          },
+          leadingContent = { StatsCover(book, jacket, width = if (jacket) 56.dp else 72.dp) },
         )
-        if (book.sessionCount > 0) {
+        RatingStars(
+          rating = rating,
+          onRate = {
+            rating = it
+            onRate(it)
+          },
+          modifier = Modifier.padding(start = 4.dp),
+        )
+        if (book.sessionCount > 0 || book.durationMs > 0) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
+              .height(IntrinsicSize.Max)
               .padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
           ) {
@@ -747,14 +834,17 @@ private fun FinishedBookDetailsSheet(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
               )
             }
-            tile(formatDuration(book.listenedMs), stringResource(StringsR.string.listening_stats_listening))
-            book.daysToFinish()?.let { days ->
-              tile(
-                pluralStringResource(StringsR.plurals.listening_stats_streak_days, days, days),
-                stringResource(StringsR.string.listening_stats_start_to_finish),
-              )
+            if (book.sessionCount > 0) tile(formatDuration(book.listenedMs), stringResource(StringsR.string.listening_stats_listening))
+            if (book.durationMs > 0) tile(formatDuration(book.durationMs), stringResource(StringsR.string.listening_stats_book_length))
+            if (book.sessionCount > 0) {
+              book.daysToFinish()?.let { days ->
+                tile(
+                  pluralStringResource(StringsR.plurals.listening_stats_streak_days, days, days),
+                  stringResource(StringsR.string.listening_stats_start_to_finish),
+                )
+              }
+              tile(book.sessionCount.toString(), stringResource(StringsR.string.listening_stats_sessions))
             }
-            tile(book.sessionCount.toString(), stringResource(StringsR.string.listening_stats_sessions))
           }
         }
         if (book.dailyMs.size > 1) {

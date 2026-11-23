@@ -23,3 +23,5 @@ ij_kotlin_line_break_after_multiline_when_entry = false
 ij_kotlin_name_count_to_use_star_import = 999
 ij_kotlin_name_count_to_use_star_import_for_members = 999
 ij_kotlin_packages_to_use_import_on_demand = ""
+# the splash screen hold is provided by the activity to whichever screen the app opens on
+compose_allowed_composition_locals = LocalSplashScreenHolds

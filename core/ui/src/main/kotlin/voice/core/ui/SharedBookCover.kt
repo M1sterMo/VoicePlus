@@ -22,16 +22,22 @@ private val bookCoverBoundsTransform = BoundsTransform { initialBounds, targetBo
   }
 }
 
+/** The shared-element state of a book's cover, to see whether it is the one flying between screens. */
+@Composable
+fun SharedTransitionScope.rememberBookCoverState(bookId: BookId): SharedTransitionScope.SharedContentState =
+  rememberSharedContentState(key = "book-cover:${bookId.value}")
+
 @Composable
 fun Modifier.sharedBookCover(
   bookId: BookId,
   sharedTransitionScope: SharedTransitionScope?,
+  state: SharedTransitionScope.SharedContentState? = null,
 ): Modifier {
   sharedTransitionScope ?: return this
   val animatedVisibilityScope = LocalNavAnimatedContentScope.current
   return with(sharedTransitionScope) {
     sharedElement(
-      sharedContentState = rememberSharedContentState(key = "book-cover:${bookId.value}"),
+      sharedContentState = state ?: rememberBookCoverState(bookId),
       animatedVisibilityScope = animatedVisibilityScope,
       boundsTransform = bookCoverBoundsTransform,
     )

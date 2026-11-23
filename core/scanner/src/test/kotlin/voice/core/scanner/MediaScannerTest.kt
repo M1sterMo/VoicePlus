@@ -32,6 +32,7 @@ import voice.core.documentfile.FileBasedDocumentFile
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Files
+import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class MediaScannerTest {
@@ -358,15 +359,36 @@ class MediaScannerTest {
       BookContentView(book2, chapters = listOf(chapter2)),
     )
 
-    // root2 comes back empty (e.g. a dropped SAF permission / unmounted volume). Its books must
-    // NOT be deactivated just because this single scan couldn't see them.
-    book2.deleteRecursively()
-    scan(FolderType.Root, root1, root2)
+    // root2 can't be listed. Its books must NOT be deactivated just because this single scan couldn't see them.
+    check(root2.setReadable(false))
+    try {
+      check(root2.listFiles() == null)
+      scan(FolderType.Root, root1, root2)
+    } finally {
+      root2.setReadable(true)
+    }
 
     assertBookContents(
       BookContentView(book1, chapters = listOf(chapter1)),
       BookContentView(book2, chapters = listOf(chapter2)),
     )
+  }
+
+  @Test
+  fun aBookMovedOutOfAFolderThatIsNowEmptyKeepsItsProgress() = test {
+    val emptied = folder("EmptyLib")
+    val other = folder("Lib")
+    val before = File(emptied, "Golf Book")
+    audioFile(before, "1.mp3").writeText("audio")
+    scan(FolderType.Root, emptied, other)
+    bookContentRepo.update(BookId(before.toUri())) { it.copy(positionInChapter = 4997, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+
+    val after = File(other, "Golf Book")
+    check(before.renameTo(after))
+    scan(FolderType.Root, emptied, other)
+
+    assertBookContents(BookContentView(after, chapters = listOf(File(after, "1.mp3"))))
+    bookContentRepo.get(BookId(after.toUri()))!!.positionInChapter shouldBe 4997
   }
 
   @Test
@@ -516,6 +538,152 @@ class MediaScannerTest {
     bookContentRepo.get(BookId(book.toUri()))!!.isActive shouldBe false
   }
 
+  @Test
+  fun aRenamedBookKeepsWhatTheListenerBuiltUp() = test {
+    val audiobooks = folder("audiobooks")
+    val before = File(audiobooks, "Old name")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(before, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    val oldId = BookId(before.toUri())
+    bookContentRepo.update(oldId) {
+      it.copy(
+        currentChapter = ChapterId(File(before, "2.mp3").toUri()),
+        positionInChapter = 500,
+        lastPlayedAt = Instant.ofEpochMilli(1_000),
+        playbackSpeed = 1.5f,
+        name = "A name I picked",
+        nameOverridden = true,
+        rating = 4,
+        userSynopsis = "My own summary",
+      )
+    }
+
+    val after = File(audiobooks, "New name")
+    check(before.renameTo(after))
+    scan(FolderType.Root, audiobooks)
+
+    val newId = BookId(after.toUri())
+    val moved = bookContentRepo.get(newId)!!
+    moved.currentChapter shouldBe ChapterId(File(after, "2.mp3").toUri())
+    moved.positionInChapter shouldBe 500
+    moved.playbackSpeed shouldBe 1.5f
+    moved.name shouldBe "A name I picked"
+    moved.rating shouldBe 4
+    moved.userSynopsis shouldBe "My own summary"
+    bookContentRepo.get(oldId)!!.isActive shouldBe false
+    bookMover.moves.single() shouldBe RecordingBookMover.Move(
+      from = listOf(oldId),
+      to = newId,
+      chapters = listOf("1.mp3", "2.mp3").associate { ChapterId(File(before, it).toUri()) to ChapterId(File(after, it).toUri()) },
+      sameBook = oldId,
+      playedHere = listOf(oldId),
+    )
+
+    // the next scan finds nothing new to carry over
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.get(newId) shouldBe moved
+
+    // the old book handed everything over, so its files showing up again elsewhere start fresh
+    bookContentRepo.get(oldId)!!.let {
+      it.lastPlayedAt shouldBe Instant.EPOCH
+      it.nameOverridden shouldBe false
+      it.rating shouldBe null
+    }
+  }
+
+  @Test
+  fun aFolderModeChangedAndBackKeepsTheBookTogether() = test {
+    val audiobooks = folder("audiobooks")
+    val shelf = File(audiobooks, "Shelf")
+    val bookFolder = File(shelf, "Bravo Book")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(bookFolder, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    val rootId = BookId(shelf.toUri())
+    bookContentRepo.update(rootId) {
+      it.copy(
+        currentChapter = ChapterId(File(bookFolder, "2.mp3").toUri()),
+        positionInChapter = 2130,
+        lastPlayedAt = Instant.ofEpochMilli(1_000),
+        name = "A name I picked",
+        nameOverridden = true,
+      )
+    }
+
+    scan(FolderType.Author, audiobooks)
+    val authorId = BookId(bookFolder.toUri())
+    bookContentRepo.get(authorId)!!.let {
+      it.positionInChapter shouldBe 2130
+      it.name shouldBe "A name I picked"
+    }
+    bookMover.moves.last().sameBook shouldBe rootId
+    bookContentRepo.update(authorId) { it.copy(positionInChapter = 6635, lastPlayedAt = Instant.ofEpochMilli(2_000)) }
+
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.get(rootId)!!.let {
+      it.isActive shouldBe true
+      it.positionInChapter shouldBe 6635
+      it.name shouldBe "A name I picked"
+    }
+    bookMover.moves.last().sameBook shouldBe authorId
+    bookContentRepo.get(authorId)!!.let {
+      it.isActive shouldBe false
+      it.lastPlayedAt shouldBe Instant.EPOCH
+    }
+  }
+
+  @Test
+  fun aCopyOfABookInTheLibraryStartsFresh() = test {
+    val audiobooks = folder("audiobooks")
+    val original = File(audiobooks, "Original")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(original, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.update(BookId(original.toUri())) { it.copy(positionInChapter = 500, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+
+    val copy = File(audiobooks, "Copy")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(copy, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+
+    bookContentRepo.get(BookId(copy.toUri()))!!.positionInChapter shouldBe 0
+    bookMover.moves shouldBe emptyList()
+  }
+
+  @Test
+  fun aCopyOfAMovedBookTakesNothingFromWhereItWasBefore() = test {
+    val audiobooks = folder("audiobooks")
+    val before = File(audiobooks, "Bravo")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(before, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.update(BookId(before.toUri())) { it.copy(positionInChapter = 500, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+    val after = File(audiobooks, "Bravo Moved")
+    check(before.renameTo(after))
+    scan(FolderType.Root, audiobooks)
+    bookMover.moves.size shouldBe 1
+
+    val copy = File(audiobooks, "Copy")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(copy, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+
+    bookMover.moves.size shouldBe 1
+    bookContentRepo.get(BookId(copy.toUri()))!!.positionInChapter shouldBe 0
+  }
+
+  @Test
+  fun aHiddenBookThatMovedDoesNotHandItsProgressOn() = test {
+    val audiobooks = folder("audiobooks")
+    val before = File(audiobooks, "Old name")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(before, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.update(BookId(before.toUri())) { it.copy(positionInChapter = 500, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+    excludedBooks.value = setOf(BookId(before.toUri()).value)
+
+    val after = File(audiobooks, "New name")
+    check(before.renameTo(after))
+    scan(FolderType.Root, audiobooks)
+
+    bookContentRepo.get(BookId(after.toUri()))!!.positionInChapter shouldBe 0
+    bookMover.moves shouldBe emptyList()
+  }
+
   private fun test(test: suspend TestEnvironment.() -> Unit) {
     runTest {
       TestEnvironment().use { test(it) }
@@ -538,6 +706,7 @@ class MediaScannerTest {
     // passed to scan() is treated as currently-configured. (The remove-during-scan race — where this set diverges
     // from the snapshot mid-scan — is covered by ScanFolderRemovalRaceTest.)
     val configuredFolders = FakeManagedFolders()
+    val bookMover = RecordingBookMover()
     private val scannedRepo = ScannedBooksRecordingRepo(bookContentRepo)
     val scannedBooks: List<BookId> get() = scannedRepo.scannedBooks
     private val scanner = MediaScanner(
@@ -548,6 +717,7 @@ class MediaScannerTest {
         ignoreFileTagsStore = mockk { every { data } returns ignoreFileTags },
       ),
       bookParser = BookParser(
+        context = ApplicationProvider.getApplicationContext(),
         contentRepo = bookContentRepo,
         mediaAnalyzer = mediaAnalyzer,
         fileFactory = FileBasedDocumentFactory,
@@ -556,6 +726,8 @@ class MediaScannerTest {
       deviceHasPermissionBug = mockk(),
       audiobookFolders = configuredFolders,
       excludedBooksStore = mockk { every { data } returns excludedBooks },
+      chapterRepo = chapterRepo,
+      progressCarryOver = ProgressCarryOver(scannedRepo, bookMover),
     )
 
     val bookRepo = BookRepositoryImpl(chapterRepo, bookContentRepo)

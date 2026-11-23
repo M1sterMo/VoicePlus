@@ -18,6 +18,7 @@ import voice.core.data.BookContent
 import voice.core.data.BookId
 import voice.core.data.ChapterId
 import voice.core.data.repo.BookRepository
+import voice.core.data.shownSynopsis
 import java.io.File
 import java.io.IOException
 import java.time.Instant
@@ -28,18 +29,56 @@ class BookEditDraftTest {
   private val chapter = ChapterId("file:///chapter.mp3")
   private val repo = mockk<BookRepository>()
 
-  private fun setup(): Pair<BookEditDraftStore, () -> BookContent> {
+  private fun setup(
+    synopsis: String? = null,
+    userSynopsis: String? = null,
+  ): Pair<BookEditDraftStore, () -> BookContent> {
     var content = BookContent(
       id = id, name = "Original title", cover = temporary.newFile("original.png"),
       playbackSpeed = 1f, skipSilence = false, isActive = true,
       lastPlayedAt = Instant.EPOCH, addedAt = Instant.EPOCH,
       chapters = listOf(chapter), currentChapter = chapter, positionInChapter = 42L,
       author = null, gain = 0f, genre = null, narrator = null, series = null, part = null,
+      synopsis = synopsis, userSynopsis = userSynopsis,
     )
     coEvery { repo.get(id) } answers { mockk<Book> { every { this@mockk.content } returns content } }
     coEvery { repo.updateBook(id, any()) } answers { content = secondArg<(BookContent) -> BookContent>()(content) }
     val context = mockk<Context> { every { filesDir } returns temporary.root }
     return BookEditDraftStore(repo, context, mockk()) to { content }
+  }
+
+  @Test fun `a synopsis typed in the editor is kept as the listener's own`() = runTest {
+    val (store, content) = setup(synopsis = "From the file")
+    store.begin(id)
+    store.draft.value!!.synopsis shouldBe "From the file"
+    store.synopsisChanged("  My own words ")
+    store.save() shouldBe true
+    content().userSynopsis shouldBe "My own words"
+    content().synopsis shouldBe "From the file"
+  }
+
+  @Test fun `saving the file's synopsis unchanged keeps following the file`() = runTest {
+    val (store, content) = setup(synopsis = "From the file")
+    store.begin(id)
+    store.titleChanged("New title")
+    store.save() shouldBe true
+    content().userSynopsis shouldBe null
+  }
+
+  @Test fun `clearing the synopsis hides the file's, and restoring it follows the file again`() = runTest {
+    val (store, content) = setup(synopsis = "From the file", userSynopsis = "Mine")
+    store.begin(id)
+    store.draft.value!!.synopsis shouldBe "Mine"
+    store.synopsisChanged("")
+    store.save() shouldBe true
+    content().userSynopsis shouldBe ""
+    content().shownSynopsis shouldBe null
+
+    store.begin(id)
+    store.synopsisChanged(store.draft.value!!.fileSynopsis)
+    store.save() shouldBe true
+    content().userSynopsis shouldBe null
+    content().shownSynopsis shouldBe "From the file"
   }
 
   @Test fun `cancel leaves the original title and cover untouched`() = runTest {

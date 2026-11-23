@@ -12,11 +12,18 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import voice.core.common.DispatcherProvider
 import voice.core.data.MediaScanWaiter
 import voice.core.data.folders.AudiobookFolders
+import voice.core.data.folders.DocumentFileWithUri
 import voice.core.data.folders.FolderType
 import voice.core.data.repo.BookRepository
 import voice.core.documentfile.CachedDocumentFile
@@ -54,15 +61,26 @@ internal constructor(
       },
   )
   private val scanLock = Any()
+
+  // The file phase only. Covers run in their own job, so a request while covers are looked for starts a
+  // new scan instead of being folded into one that has already read the folders.
   private var scanningJob: Job? = null
+  private var coverJob: Job? = null
+
+  // One file scan at a time: a restart cancels the running scan, and the new one waits here until the old
+  // one has fully unwound, however many restarts queue up behind it.
+  private val scanMutex = Mutex()
+
+  // A forced re-parse (the tag mode was toggled) carries over to the scans that restart it, until one finishes.
+  @Volatile
+  private var forceReParsePending = false
 
   @Volatile
   private var lastScanCompletedAt: Instant? = null
 
   // The folder configuration the last completed scan actually saw. Freshness is time AND
-  // configuration: nothing triggers a scan when a folder is added or removed (the overview's
-  // entry scan is what picks it up), so a purely time-based cooldown would hide a folder the
-  // user just added until the window lapsed.
+  // configuration, so a cooldown can never hide a folder the user just added, even if the scan that
+  // [scanOnFolderChanges] starts for it is missed.
   @Volatile
   private var lastScanFolderKeys: Set<Pair<FolderType, Uri>>? = null
 
@@ -96,59 +114,99 @@ internal constructor(
     if (current?.isActive == true && !restartIfScanning) {
       return@synchronized current
     }
+    if (forceReParse) forceReParsePending = true
+    // cancelled right away, so a restart that is itself restarted before it runs can't leave it scanning
+    current?.cancel()
     val job = scope.launch {
-      // Cancel any in-flight scan before marking active, so a restart can't leave the flag stuck.
-      current?.cancelAndJoin()
-      val foldersWithUri = audiobookFolders.all().first()
-      val folderKeys = foldersWithUri
-        .flatMap { (type, files) -> files.map { type to it.uri } }
-        .toSet()
-      if (skipIfCompletedWithin != null &&
-        isFresh(lastScanCompletedAt, clock(), skipIfCompletedWithin) &&
-        folderKeys == lastScanFolderKeys
-      ) {
-        Logger.v("Skipping scan; last one completed within $skipIfCompletedWithin over the same folders")
-        return@launch
-      }
-      _scannerActive.value = true
-      try {
-        measureTime {
-          val folders: Map<FolderType, List<CachedDocumentFile>> = foldersWithUri
-            .mapValues { (_, documentFilesWithUri) ->
-              documentFilesWithUri.map {
-                documentFileFactory.create(it.documentFile.uri)
-              }
-            }
-          scanner.scan(folders, forceReParse)
-        }.also {
-          Logger.i("scan took $it")
+      // The scan mutex makes this wait until the cancelled scan has unwound, so a restart can't leave the
+      // flag stuck.
+      scanMutex.withLock {
+        val force = forceReParsePending
+        val foldersWithUri = audiobookFolders.all().first()
+        val folderKeys = foldersWithUri.keys()
+        if (!force &&
+          skipIfCompletedWithin != null &&
+          isFresh(lastScanCompletedAt, clock(), skipIfCompletedWithin) &&
+          folderKeys == lastScanFolderKeys
+        ) {
+          Logger.v("Skipping scan; last one completed within $skipIfCompletedWithin over the same folders")
+          return@launch
         }
-        // Only a run that got this far refreshes the window; a cancelled or thrown scan must not
-        // suppress the retry.
-        lastScanCompletedAt = clock()
-        lastScanFolderKeys = folderKeys
-      } finally {
-        // Always clear the flag, even if the scan throws, so the progress indicator can't hang.
-        _scannerActive.value = false
+        // The covers are looked for again after this scan, over the books it finds.
+        synchronized(scanLock) { coverJob }?.cancelAndJoin()
+        _scannerActive.value = true
+        try {
+          measureTime {
+            val folders: Map<FolderType, List<CachedDocumentFile>> = foldersWithUri
+              .mapValues { (_, documentFilesWithUri) ->
+                documentFilesWithUri.map {
+                  documentFileFactory.create(it.documentFile.uri)
+                }
+              }
+            scanner.scan(folders, force)
+          }.also {
+            Logger.i("scan took $it")
+          }
+          // Only a run that got this far refreshes the window; a cancelled or thrown scan must not
+          // suppress the retry.
+          lastScanCompletedAt = clock()
+          lastScanFolderKeys = folderKeys
+          if (force) forceReParsePending = false
+        } finally {
+          // Always clear the flag, even if the scan throws, so the progress indicator can't hang.
+          _scannerActive.value = false
+          // A failed scan still looks for the covers it cancelled; a restarted one leaves that to its successor.
+          if (isActive) startCoverScan()
+        }
       }
-
-      val books = bookRepo.all()
-      coverScanner.scan(books)
     }
     scanningJob = job
     job
   }
 
+  private fun startCoverScan() = synchronized(scanLock) {
+    coverJob?.cancel()
+    coverJob = scope.launch {
+      coverScanner.scan(bookRepo.all())
+    }
+  }
+
   /**
-   * Starts a scan and suspends until it (and its active-book reconcile inside [MediaScanner.scan]) has
-   * finished. Joins the EXACT job it started (not the shared [scanningJob] field, which a concurrent scan
-   * could overwrite) — and never observes the racy [scannerActive] flag. Always scans with
-   * `restartIfScanning = true` so a restore's scan is not collapsed into an in-flight App-start /
-   * overview scan by the re-entrancy guard — a guarantee of the interface, not a caller choice.
+   * Scans again whenever an audiobook folder is added or removed, restarting a scan that is still reading
+   * the old folders. Nothing else scans on a folder change: without this, a new folder would wait for the
+   * library to be opened again, and a scan that was already running would drop it.
+   */
+  public fun scanOnFolderChanges() {
+    scope.launch {
+      audiobookFolders.all()
+        .map { it.keys() }
+        .distinctUntilChanged()
+        .drop(1)
+        .collect { scan(restartIfScanning = true) }
+    }
+  }
+
+  /**
+   * Starts a scan and suspends until it, its active-book reconcile inside [MediaScanner.scan] and its cover
+   * search have finished; never observes the racy [scannerActive] flag. Always scans with
+   * `restartIfScanning = true` so a restore's scan is not collapsed into an in-flight App-start / overview
+   * scan by the re-entrancy guard — a guarantee of the interface, not a caller choice. If another scan
+   * restarts this one (a folder change), it waits for that one instead, so it never returns before a scan
+   * over the current folders has finished.
    */
   override suspend fun scanAndAwait() {
-    scanInternal(restartIfScanning = true, forceReParse = false).join()
+    scanInternal(restartIfScanning = true, forceReParse = false)
+    while (true) {
+      val (scan, covers) = synchronized(scanLock) { scanningJob to coverJob }
+      scan?.join()
+      covers?.join()
+      if (synchronized(scanLock) { scanningJob === scan && coverJob === covers }) return
+    }
   }
+}
+
+private fun Map<FolderType, List<DocumentFileWithUri>>.keys(): Set<Pair<FolderType, Uri>> {
+  return flatMap { (type, files) -> files.map { type to it.uri } }.toSet()
 }
 
 // Pure so the cooldown window is testable without the scan rig.

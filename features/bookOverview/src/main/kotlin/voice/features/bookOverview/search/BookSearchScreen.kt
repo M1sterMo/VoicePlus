@@ -110,7 +110,8 @@ internal fun BookSearchContent(
             LazyVerticalGrid(
               modifier = Modifier.testTag("book-search-results"),
               columns = GridCells.Fixed(columns),
-              verticalArrangement = Arrangement.spacedBy(8.dp),
+              // 20dp between rows, as in the library: Books tiles bring their own padding.
+              verticalArrangement = Arrangement.spacedBy(if (booksMode) 0.dp else 20.dp),
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               contentPadding = PaddingValues(horizontal = if (booksMode) 12.dp else 8.dp, vertical = 8.dp),
               content = {

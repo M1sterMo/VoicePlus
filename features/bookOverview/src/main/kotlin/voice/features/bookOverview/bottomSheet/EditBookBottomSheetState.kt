@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.outlined.PlaylistAdd
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NotStarted
 import androidx.compose.material.icons.outlined.PlaylistRemove
 import androidx.compose.material.icons.outlined.Title
@@ -19,6 +20,7 @@ enum class BottomSheetItem(
   @StringRes val titleRes: Int,
   val icon: ImageVector,
 ) {
+  AboutBook(StringsR.string.about_book, Icons.Outlined.Info),
   AddToUpNext(StringsR.string.up_next_add, Icons.AutoMirrored.Outlined.PlaylistAdd),
   RemoveFromUpNext(StringsR.string.up_next_remove, Icons.Outlined.PlaylistRemove),
   EditBook(StringsR.string.edit_book_title, Icons.Outlined.Title),

@@ -55,9 +55,13 @@ public class BookContentRepoImpl(private val dao: BookContentDao) : BookContentR
 
   override suspend fun setAllInactiveExcept(ids: List<BookId>) {
     fillCache()
+    val active = ids.toSet()
     cacheMutex.withLock {
-      val contents = cache.value!!.map { it.copy(isActive = it.id in ids) }
-      contents.forEach { dao.insert(it) }
+      // Every scan runs this, so write only the books whose state flips instead of the whole table.
+      val contents = cache.value!!.map { content ->
+        val isActive = content.id in active
+        if (isActive == content.isActive) content else content.copy(isActive = isActive).also { dao.insert(it) }
+      }
       cache.value = contents
     }
   }

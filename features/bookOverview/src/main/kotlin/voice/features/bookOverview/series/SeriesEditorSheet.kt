@@ -67,6 +67,8 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import voice.core.data.BookContent
 import voice.core.data.BookId
+import voice.core.ui.BookshelfCover
+import voice.core.ui.ImmutableFile
 import voice.core.ui.rememberBookReorderState
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
@@ -82,6 +84,8 @@ internal fun SeriesEditorSheet(
   onSave: () -> Unit,
   onUngroup: () -> Unit,
   onShelfChange: (String) -> Unit = {},
+  /** Covers follow the library's look: book jackets in Books, square covers otherwise. */
+  jackets: Boolean = false,
 ) {
   var adding by rememberSaveable { mutableStateOf(false) }
   var query by rememberSaveable { mutableStateOf("") }
@@ -161,7 +165,7 @@ internal fun SeriesEditorSheet(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-              EditorCover(book)
+              EditorCover(book, jackets)
               Column(Modifier.weight(1f)) {
                 Text(book.name, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (book.seriesGroup != null && book.seriesGroup != state.originalName) {
@@ -304,7 +308,7 @@ internal fun SeriesEditorSheet(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
-              EditorCover(book)
+              EditorCover(book, jackets)
               Text(
                 book.name,
                 Modifier.weight(1f),
@@ -391,13 +395,21 @@ internal fun SeriesEditorSheet(
 }
 
 @Composable
-private fun EditorCover(book: BookContent) {
-  AsyncImage(
-    model = book.cover,
-    contentDescription = null,
-    contentScale = ContentScale.Crop,
-    placeholder = painterResource(UiR.drawable.album_art),
-    error = painterResource(UiR.drawable.album_art),
-    modifier = Modifier.size(40.dp, 56.dp).clip(MaterialTheme.shapes.extraSmall),
-  )
+private fun EditorCover(
+  book: BookContent,
+  jacket: Boolean,
+) {
+  if (jacket) {
+    BookshelfCover(book.id, book.cover?.let(::ImmutableFile), Modifier.width(36.dp), compact = true)
+  } else {
+    // A square, like the Grid and List covers, which suits audiobook art.
+    AsyncImage(
+      model = book.cover,
+      contentDescription = null,
+      contentScale = ContentScale.Crop,
+      placeholder = painterResource(UiR.drawable.album_art),
+      error = painterResource(UiR.drawable.album_art),
+      modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.extraSmall),
+    )
+  }
 }

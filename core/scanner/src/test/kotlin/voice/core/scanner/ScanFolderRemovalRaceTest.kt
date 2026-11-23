@@ -186,6 +186,7 @@ class ScanFolderRemovalRaceTest {
         ignoreFileTagsStore = mockk { every { data } returns ignoreFileTags },
       ),
       bookParser = BookParser(
+        context = ApplicationProvider.getApplicationContext(),
         contentRepo = bookContentRepo,
         mediaAnalyzer = mediaAnalyzer,
         fileFactory = FileBasedDocumentFactory,
@@ -194,6 +195,8 @@ class ScanFolderRemovalRaceTest {
       deviceHasPermissionBug = mockk(relaxed = true),
       audiobookFolders = folders,
       excludedBooksStore = mockk { every { data } returns MutableStateFlow(emptySet()) },
+      chapterRepo = chapterRepo,
+      progressCarryOver = ProgressCarryOver(bookContentRepo, RecordingBookMover()),
     )
 
     private val documentFileFactory = object : CachedDocumentFileFactory {

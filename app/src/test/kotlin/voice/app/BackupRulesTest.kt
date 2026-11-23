@@ -170,6 +170,7 @@ class BackupRulesTest {
       "datastore/librarySnapshot2",
       "datastore/snapshotBackupState",
       "datastore/openListeningSession",
+      "datastore/noEmbeddedCover",
     )
   }
 }

@@ -19,8 +19,11 @@ import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import voice.core.common.DispatcherProvider
 import voice.core.common.RetainedViewModel
 import voice.core.common.comparator.sortedNaturally
 import voice.core.data.Book
@@ -59,6 +62,7 @@ import kotlin.time.Duration.Companion.minutes
 @Inject
 class BookOverviewViewModel(
   private val repo: BookRepository,
+  private val dispatcherProvider: DispatcherProvider,
   private val mediaScanner: MediaScanTrigger,
   private val playStateManager: PlayStateManager,
   private val playerController: PlayerController,
@@ -97,7 +101,9 @@ class BookOverviewViewModel(
       .collectAsState(initial = PlayStateManager.PlayState.Paused).value
     val hasStoragePermissionBug = remember { deviceHasStoragePermissionBug.hasBug }
       .collectAsState().value
-    val books = remember { repo.flow() }
+    // Building every book from its chapters, and grouping every listening session, runs again on each
+    // position save while a book plays, so it stays off the main thread; only the latest result matters.
+    val books = remember { repo.flow().flowOn(dispatcherProvider.io).conflate() }
       .collectAsState(initial = null).value
     val finishedAt = remember {
       sessionRepo.allSessions().map { sessions ->
@@ -107,7 +113,7 @@ class BookOverviewViewModel(
           .mapValues { (_, bookSessions) ->
             (bookSessions.filter { it.isCompletion }.ifEmpty { bookSessions }).maxOf { it.endedAt }
           }
-      }
+      }.flowOn(dispatcherProvider.io).conflate()
     }.collectAsState(initial = emptyMap()).value
     val currentBookId = remember { currentBookStoreDataStore.data }
       .collectAsState(initial = null).value

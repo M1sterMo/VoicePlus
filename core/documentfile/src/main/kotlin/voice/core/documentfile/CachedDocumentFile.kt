@@ -4,6 +4,9 @@ import android.net.Uri
 
 interface CachedDocumentFile {
   val children: List<CachedDocumentFile>
+
+  /** False for a folder whose entries couldn't be listed: its [children] are empty then, like an empty folder's. */
+  val childrenListed: Boolean
   val name: String?
   val isDirectory: Boolean
   val isFile: Boolean
@@ -29,4 +32,14 @@ fun CachedDocumentFile.nameWithoutExtension(): String {
       name
     }
   }
+}
+
+/** A name for a file or folder that can't be asked for it, like one without access: the last part of its path. */
+fun Uri.nameFromPath(): String {
+  return pathSegments
+    .lastOrNull()
+    ?.dropWhile { it != ':' }
+    ?.removePrefix(":")
+    ?.substringAfterLast('/')
+    ?.takeUnless { it.isBlank() } ?: toString()
 }

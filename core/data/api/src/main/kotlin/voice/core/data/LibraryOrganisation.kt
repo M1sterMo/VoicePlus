@@ -77,3 +77,9 @@ public data class LibraryChange(
 
 public enum class LibraryEditError { EMPTY_NAME, DUPLICATE_SHELF, DUPLICATE_SERIES, CHOOSE_SHELF, STALE_ORDER }
 public class LibraryEditException(public val reason: LibraryEditError) : IllegalArgumentException(reason.name)
+
+/** The name of the library series [bookId] is grouped into, if any. */
+public fun LibraryOrganisation.seriesNameOf(bookId: BookId): String? {
+  val seriesId = placements.firstOrNull { it.bookId == bookId.value }?.seriesId ?: return null
+  return series.firstOrNull { it.id == seriesId }?.name
+}

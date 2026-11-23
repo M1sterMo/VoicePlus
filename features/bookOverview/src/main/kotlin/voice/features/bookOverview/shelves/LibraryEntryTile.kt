@@ -11,10 +11,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,8 +20,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -59,7 +56,9 @@ internal fun LibraryEntryTile(
 ) {
   val ids = entry.allBooks.map { it.value.id }.toSet()
   val toggle = { onSelect(ids) }
-  var bounds by remember(entry.key) { mutableStateOf(Rect.Zero) }
+  // Where the tile is, read only when a drag starts; recording it each frame cost every tile work while scrolling.
+  val placed = remember(entry.key) { arrayOfNulls<LayoutCoordinates>(1) }
+  val bounds = remember(entry.key) { { placed[0]?.boundsInRootOrNull() } }
   DisposableEffect(dragState, entry.key) {
     onDispose { dragState?.unregisterEntry(entry.key) }
   }
@@ -75,15 +74,16 @@ internal fun LibraryEntryTile(
     Modifier
   } else {
     Modifier
-      .onGloballyPositioned {
-        bounds = it.boundsInRoot()
+      .onPlaced {
+        placed[0] = it
         dragState.registerEntry(entry.key, entry.sectionId, entry.itemId, bounds)
       }
       .pointerInput(entry.key, dragState, holdMenu) {
         awaitEachGesture {
           val down = awaitFirstDown(requireUnconsumed = false)
           val press = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
-          dragState.start(entry.key, entry.itemId, ids, entry.sectionId, bounds.topLeft + press.position)
+          val pointer = placed[0]?.takeIf { it.isAttached }?.localToRoot(press.position) ?: return@awaitEachGesture
+          dragState.start(entry.key, entry.itemId, ids, entry.sectionId, pointer)
           // After the hold this gesture owns the finger: it reads events before the row does and consumes
           // them, so the row never turns the release into a tap.
           while (true) {

@@ -36,10 +36,12 @@ Built on [Voice](https://github.com/PaulWoitaschek/Voice) by Paul Woitaschek and
 
 - **Library**: personal shelves, series stacks with shared character lists, drag to arrange, and sorting by title, author, date added or length
 - **Up next**: queue books to play one after another
+- **About this book**: synopsis, narrator and details for every book, and your own 1–5 star ratings
 - **Listening history**: a log with chapter positions, plus statistics with finish dates and records
 - **Sleep timer**: chapter countdowns, and a reset when you interact
 - **Your edits**: bookmarks, chapter names, titles and covers, all without changing your audio files
 - **Controls your way**: player toolbar, lock screen, media buttons, widget, theme and colors
+- **Your folders**: rename or move a book's folder and it keeps its progress, bookmarks and history
 - **Backups**: Android system backup, plus automatic and manual saves to a folder you choose
 - **Private**: no accounts, ads, analytics or telemetry
 

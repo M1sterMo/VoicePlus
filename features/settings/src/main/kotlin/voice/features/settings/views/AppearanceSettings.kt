@@ -35,6 +35,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +64,7 @@ internal fun AppearanceSettingsRow(
   onClick: () -> Unit,
 ) {
   val layout = stringResource(state.gridMode.toLabelRes())
-  val librarySummary = if (state.gridMode == GridMode.BOOKS) {
+  val librarySummary = if (state.gridMode == GridMode.BOOKS || state.gridMode == GridMode.GRID) {
     stringResource(StringsR.string.settings_appearance_books_summary, layout, state.booksPerRow)
   } else {
     layout
@@ -93,7 +94,7 @@ internal fun AppearanceSettingsSheet(
   listener: SettingsListener,
   onDismiss: () -> Unit,
 ) {
-  ModalBottomSheet(onDismissRequest = onDismiss) {
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
     Column(
       Modifier
         .verticalScroll(rememberScrollState())
@@ -172,7 +173,8 @@ private fun LibraryViewSettings(
       }
     }
   }
-  if (state.gridMode == GridMode.BOOKS) {
+  // Books and Grid both fit two or three to a row.
+  if (state.gridMode == GridMode.BOOKS || state.gridMode == GridMode.GRID) {
     Row(
       Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(8.dp),

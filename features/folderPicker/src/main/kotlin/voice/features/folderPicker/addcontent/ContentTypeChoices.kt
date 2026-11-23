@@ -27,6 +27,8 @@ import voice.features.folderPicker.rememberFolderPicker
 @Composable
 internal fun ContentTypeChoices(
   onAdd: (FileTypeSelection, Uri) -> Unit,
+  onFolderPickerCancel: () -> Unit,
+  onNoPicker: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val openDocumentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -34,7 +36,11 @@ internal fun ContentTypeChoices(
       onAdd(FileTypeSelection.File, uri)
     }
   }
-  val pickFolder = rememberFolderPicker { onAdd(FileTypeSelection.Folder, it) }
+  val pickFolder = rememberFolderPicker(
+    onPick = { onAdd(FileTypeSelection.Folder, it) },
+    onCancel = onFolderPickerCancel,
+    onNoPicker = onNoPicker,
+  )
   Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Button(
       modifier = Modifier
@@ -51,6 +57,7 @@ internal fun ContentTypeChoices(
           openDocumentLauncher.launch(arrayOf("*/*"))
         } catch (e: ActivityNotFoundException) {
           Logger.w(e, "Could not add file")
+          onNoPicker()
         }
       },
     ) {

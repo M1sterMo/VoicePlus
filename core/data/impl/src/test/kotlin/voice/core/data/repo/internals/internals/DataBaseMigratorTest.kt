@@ -141,6 +141,33 @@ class DataBaseMigratorTest {
   }
 
   @Test
+  fun synopsisAndRatingMigrationLeavesBooksUnratedAndDueForASynopsisScan() {
+    val dbName = "synopsis-rating-migration"
+    helper.createDatabase(dbName, 72).use { db ->
+      db.execSQL(
+        """INSERT INTO content2 (id, playbackSpeed, skipSilence, isActive, lastPlayedAt,
+          author, name, addedAt, chapters, currentChapter, positionInChapter, cover, gain,
+          genre, narrator, series, part, chapterNameOffset, seriesGroup, seriesOrder, nameOverridden)
+          VALUES ('book', 1, 0, 1, 0, NULL, 'Title', 0, '["chapter"]',
+          'chapter', 42, NULL, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL, 1)""",
+      )
+    }
+
+    helper.runMigrationsAndValidate(dbName, AppDb.VERSION, true, *allMigrations()).use { db ->
+      db.query("SELECT synopsis, userSynopsis, rating, ratingPrompted, positionInChapter, nameOverridden FROM content2").use { cursor ->
+        cursor.moveToFirst() shouldBe true
+        // A null synopsis makes the next scan read the book's files once more.
+        cursor.isNull(0) shouldBe true
+        cursor.isNull(1) shouldBe true
+        cursor.isNull(2) shouldBe true
+        cursor.getInt(3) shouldBe 0
+        cursor.getInt(4) shouldBe 42
+        cursor.getInt(5) shouldBe 1
+      }
+    }
+  }
+
+  @Test
   fun titleOverrideMigrationProtectsExistingUserTitles() {
     val dbName = "title-override-migration"
     helper.createDatabase(dbName, 69).use { db ->

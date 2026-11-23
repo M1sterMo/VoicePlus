@@ -35,6 +35,7 @@ internal fun BookPlayView(
   onListeningLogClick: () -> Unit,
   onCharacterListClick: () -> Unit,
   onUpNextClick: () -> Unit,
+  onAboutBookClick: () -> Unit,
   onCustomizeToolbarClick: () -> Unit,
   onSkipToNext: () -> Unit,
   onSkipToPrevious: () -> Unit,
@@ -60,6 +61,7 @@ internal fun BookPlayView(
         onListeningLogClick = onListeningLogClick,
         onCharacterListClick = onCharacterListClick,
         onUpNextClick = onUpNextClick,
+        onAboutBookClick = onAboutBookClick,
         onCustomizeToolbarClick = onCustomizeToolbarClick,
         onCloseClick = onCloseClick,
         useLandscapeLayout = useLandscapeLayout,
@@ -110,6 +112,7 @@ private fun BookPlayPreview(
       onListeningLogClick = {},
       onCharacterListClick = {},
       onUpNextClick = {},
+      onAboutBookClick = {},
       onCustomizeToolbarClick = {},
       onSkipToNext = {},
       onSkipToPrevious = {},
@@ -142,6 +145,7 @@ private class BookPlayViewStatePreviewProvider : PreviewParameterProvider<BookPl
       characterCount = 0,
       editChapterNamesVisible = false,
       toolbarActions = PlaybackToolbarAction.DEFAULT,
+      ratePrompt = false,
     )
     yield(initial)
     yield(

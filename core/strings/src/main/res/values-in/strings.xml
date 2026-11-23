@@ -108,13 +108,6 @@
     <string name="onboarding.completion.title">Semua Siap!</string>
     <string name="onboarding.completion.subtitle">Buku audio pertama Anda siap diputar. Nikmati perjalanan Anda bersama Voice!</string>
     <string name="onboarding.completion.next_button">Mulai Mendengarkan</string>
-    <string name="onboarding_analytics_consent_title">Bantu tingkatkan Voice</string>
-    <string name="onboarding_analytics_consent_description">Izinkan kami mengumpulkan data penggunaan anonim untuk membantu meningkatkan aplikasi. Anda dapat mengubah ini nanti di pengaturan.</string>
-    <string name="onboarding_analytics_consent_button_enable">Lanjutkan dengan analitik</string>
-    <string name="onboarding_analytics_consent_button_disable">Lanjutkan tanpa analitik</string>
-    <string name="onboarding_analytics_consent_privacy_policy">Kebijakan Privasi</string>
-    <string name="settings_analytics_consent_title">Analitik</string>
-    <string name="settings_analytics_consent_description">Izinkan pengumpulan data penggunaan anonim untuk membantu meningkatkan aplikasi</string>
     <string name="review.request.title">Menikmati Voice?</string>
     <string name="review.request.content">Masukan Anda berarti bagi kami! Jika Anda punya waktu, beri kami penilaian dan bagikan pengalaman Anda. Ini membantu kami melakukan perbaikan dan memberikan pengalaman mendengarkan yang lebih baik.</string>
     <string name="review.request.button.yes">Beri Nilai Sekarang</string>

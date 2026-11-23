@@ -68,6 +68,20 @@ internal fun EditBookDialog(
           enabled = !model.busy,
           maxLines = 4,
         )
+        OutlinedTextField(
+          value = draft.synopsis,
+          onValueChange = model::synopsisChanged,
+          label = { Text(stringResource(StringsR.string.edit_book_synopsis_label)) },
+          modifier = Modifier.fillMaxWidth(),
+          enabled = !model.busy,
+          minLines = 3,
+          maxLines = 8,
+        )
+        if (draft.fileSynopsis.isNotBlank() && draft.synopsis.trim() != draft.fileSynopsis.trim()) {
+          TextButton(onClick = { model.synopsisChanged(draft.fileSynopsis) }, enabled = !model.busy) {
+            Text(stringResource(StringsR.string.edit_book_file_synopsis))
+          }
+        }
         Text(stringResource(StringsR.string.edit_book_local_description), style = MaterialTheme.typography.bodySmall)
         model.error?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
         if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())

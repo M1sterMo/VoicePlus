@@ -50,8 +50,9 @@ import coil.compose.AsyncImage
 import voice.core.common.rootGraphAs
 import voice.core.data.Book
 import voice.core.data.BookId
+import voice.core.data.realTimeRemainingMs
 import voice.core.ui.BookReorderState
-import voice.core.ui.formatTime
+import voice.core.ui.formatShortTime
 import voice.core.ui.rememberBookReorderState
 import voice.core.strings.R as StringsR
 import voice.core.ui.R as UiR
@@ -185,7 +186,7 @@ private fun QueuedBook(
     ) {
       Text("$position", Modifier.width(20.dp), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
       Cover(book, 56.dp)
-      BookText(book, listOfNotNull(book.content.author, formatTime(book.duration)).joinToString(" · "), Modifier.weight(1f))
+      BookText(book, listOfNotNull(book.content.author, formatShortTime(book.duration)).joinToString(" · "), Modifier.weight(1f))
       Icon(
         Icons.Outlined.DragHandle,
         contentDescription = stringResource(StringsR.string.series_reorder_book, book.content.name),
@@ -207,7 +208,8 @@ private fun QueuedBook(
 
 @Composable
 private fun NowPlaying(book: Book) {
-  val timeLeft = stringResource(StringsR.string.book_time_left, formatTime(book.duration - book.position))
+  // At the listener's speed, as the library and player say it.
+  val timeLeft = stringResource(StringsR.string.book_time_left, formatShortTime(book.realTimeRemainingMs()))
   Row(
     Modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraLarge).background(MaterialTheme.colorScheme.primaryContainer).padding(12.dp),
     verticalAlignment = Alignment.CenterVertically,
