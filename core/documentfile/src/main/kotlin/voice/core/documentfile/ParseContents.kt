@@ -7,13 +7,14 @@ import android.provider.DocumentsContract
 import androidx.core.database.getStringOrNull
 import voice.core.logging.api.Logger
 
+// null when the folder couldn't be listed
 internal fun parseContents(
   uri: Uri,
   context: Context,
-): List<CachedDocumentFile> {
+): List<CachedDocumentFile>? {
   return context.query(uri)?.use { cursor ->
     cursor.parseRows(uri, context)
-  } ?: emptyList()
+  }
 }
 
 private fun Cursor.parseRows(

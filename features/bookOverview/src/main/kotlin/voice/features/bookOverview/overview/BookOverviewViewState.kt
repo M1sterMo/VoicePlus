@@ -30,7 +30,8 @@ data class BookOverviewViewState(
       playButtonState = null,
       showAddBookHint = false,
       showSearchIcon = false,
-      isLoading = true,
+      // the first data isn't there yet; isLoading means a scan runs, and this state is told apart by identity
+      isLoading = false,
       searchActive = false,
       searchViewState = BookSearchViewState.EmptySearch(
         suggestedAuthors = emptyList(),

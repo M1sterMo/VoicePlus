@@ -385,6 +385,30 @@
     <string name="folder_add_action_folder">Choose a folder</string>
     <!-- Text button on the add content screen for adding one audio file instead of a folder. -->
     <string name="folder_add_action_file">Add a single file instead</string>
+    <!-- Title of the tips on the add screen, shown after the system folder picker was closed without a folder. -->
+    <string name="folder_add_help_title">Didn\'t find your audiobooks?</string>
+    <!-- One of the answers to "Didn't find your audiobooks?". Picking it only shows a tip; nothing is sent anywhere. -->
+    <string name="folder_add_help_answer_no_files">No audiobooks yet</string>
+    <!-- One of the answers to "Didn't find your audiobooks?". -->
+    <string name="folder_add_help_answer_not_found">Can\'t find them</string>
+    <!-- One of the answers to "Didn't find your audiobooks?". -->
+    <string name="folder_add_help_answer_other_app">They\'re in another app</string>
+    <!-- Tip for a listener without audiobook files. Keep the name LibriVox as it is: it becomes a link to librivox.org. -->
+    <string name="folder_add_help_no_files">VoicePlus plays audiobook files from your phone. LibriVox has thousands of free ones to download.</string>
+    <!-- Tip after the folder picker was closed. Android 11 and newer don't let apps pick the Download folder itself. Download is the folder's name on the phone, so keep it untranslated. -->
+    <string name="folder_add_help_download">Android doesn\'t let apps open the Download folder itself. Pick a folder inside it.</string>
+    <!-- Tip after the folder picker was closed. The second Audiobooks is the folder's name on the phone, so keep it untranslated. -->
+    <string name="folder_add_help_computer">Audiobooks still on your computer? Copy them to your phone first, for example into the Audiobooks folder.</string>
+    <!-- Tip for a listener whose books are in a streaming or store app. -->
+    <string name="folder_add_help_other_app">Books from apps like Audible or Spotify only play in those apps. VoicePlus plays audiobook files, like MP3 or M4B.</string>
+    <!-- Title on the add screen when the device has no system file picker, so the add buttons can't open anything. Happens on reduced Android builds like bike computers. -->
+    <string name="folder_add_no_picker_title">This device has no file picker</string>
+    <!-- Text on the add screen when the device has no system file picker. -->
+    <!-- Label on a row of the audiobook folders screen for a folder or file VoicePlus can no longer open, like a removed SD card. -->
+    <string name="library_folders_no_access">No access</string>
+    <!-- Button on a folder row without access. Opens the system picker so VoicePlus may open the folder or file again. -->
+    <string name="library_folders_no_access_action">Allow access</string>
+    <string name="folder_add_no_picker_message">VoicePlus opens your audiobooks through Android\'s file picker. Without it, VoicePlus can\'t open your folders or files.</string>
     <string name="onboarding_welcome_title">Welcome to VoicePlus!</string>
     <string name="onboarding_welcome_subtitle">Your personal pocket audiobook player. Let\'s get you set up.</string>
     <string name="onboarding.button_next">Next</string>
@@ -393,13 +417,6 @@
     <string name="onboarding.completion.title">You\'re All Set!</string>
     <string name="onboarding.completion.subtitle">Your first audiobook is ready to play. Enjoy your journey with VoicePlus!</string>
     <string name="onboarding.completion.next_button">Start Listening</string>
-    <string name="onboarding_analytics_consent_title">Help improve VoicePlus</string>
-    <string name="onboarding_analytics_consent_description">Allow us to collect anonymous usage data to help improve the app. You can change this later in settings.</string>
-    <string name="onboarding_analytics_consent_button_enable">Continue with analytics</string>
-    <string name="onboarding_analytics_consent_button_disable">Continue without analytics</string>
-    <string name="onboarding_analytics_consent_privacy_policy">Privacy Policy</string>
-    <string name="settings_analytics_consent_title">Analytics</string>
-    <string name="settings_analytics_consent_description">Allow anonymous usage data collection to help improve the app</string>
     <string name="review.request.title">Enjoying VoicePlus?</string>
     <string name="review.request.content">Your feedback matters to us! If you have a moment, rate us and share your experience. It helps us to make improvements and offer a better listening experience.</string>
     <string name="review.request.button.yes">Rate Now</string>

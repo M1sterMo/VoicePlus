@@ -194,6 +194,8 @@ class ScanFolderRemovalRaceTest {
       deviceHasPermissionBug = mockk(relaxed = true),
       audiobookFolders = folders,
       excludedBooksStore = mockk { every { data } returns MutableStateFlow(emptySet()) },
+      chapterRepo = chapterRepo,
+      progressCarryOver = ProgressCarryOver(bookContentRepo, RecordingBookMover()),
     )
 
     private val documentFileFactory = object : CachedDocumentFileFactory {

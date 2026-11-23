@@ -17,6 +17,7 @@ import voice.core.data.ListeningSession
 import voice.core.data.RecentBookSearch
 import voice.core.data.repo.internals.dao.BookCharacterDao
 import voice.core.data.repo.internals.dao.BookContentDao
+import voice.core.data.repo.internals.dao.BookMoveDao
 import voice.core.data.repo.internals.dao.BookSearchFts
 import voice.core.data.repo.internals.dao.BookmarkDao
 import voice.core.data.repo.internals.dao.ChapterDao
@@ -81,6 +82,7 @@ public abstract class AppDb : RoomDatabase() {
   public abstract fun recentBookSearchDao(): RecentBookSearchDao
   public abstract fun chapterNameOverrideDao(): ChapterNameOverrideDao
   public abstract fun libraryOrganisationDao(): LibraryOrganisationDao
+  internal abstract fun bookMoveDao(): BookMoveDao
 
   internal companion object {
     const val VERSION = 72

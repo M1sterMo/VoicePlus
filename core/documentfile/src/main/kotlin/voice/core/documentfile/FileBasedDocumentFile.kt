@@ -8,6 +8,7 @@ import java.io.File
 data class FileBasedDocumentFile(private val file: File) : CachedDocumentFile {
 
   override val children: List<CachedDocumentFile> get() = file.listFiles()?.map { FileBasedDocumentFile(it) } ?: emptyList()
+  override val childrenListed: Boolean get() = !file.isDirectory || file.listFiles() != null
   override val name: String? get() = file.name
   override val isDirectory: Boolean get() = file.isDirectory
   override val isFile: Boolean get() = file.isFile

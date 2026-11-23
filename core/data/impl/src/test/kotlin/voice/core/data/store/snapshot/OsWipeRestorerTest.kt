@@ -398,6 +398,34 @@ class OsWipeRestorerTest {
   }
 
   @Test
+  fun `a session carried over to a renamed book since the backup isn't restored a second time`() = runTest {
+    val (ghost, ghostChapters) = snapshotBookOf("primary:Books/Ghost", listOf("a.mp3"), "a.mp3", position = 10, lastPlayed = 5_000)
+    val session = ListeningSessionDto(
+      id = 1, bookId = oldUri("primary:Books/Ghost"), chapterId = oldUri("primary:Books/Ghost/a.mp3"),
+      startedAtEpochMillis = 100, endedAtEpochMillis = 200, durationMs = 100,
+      startPositionMs = 0, endPositionMs = 100, endChapterId = null,
+    )
+    // the folder was renamed after the backup, and the session followed the book to its new id
+    val renamed = BookId("renamed")
+    db.listeningSessionDao().insert(
+      ListeningSession(
+        bookId = renamed,
+        chapterId = ChapterId("renamed/a.mp3"),
+        startedAt = Instant.ofEpochMilli(100),
+        endedAt = Instant.ofEpochMilli(200),
+        durationMs = 100,
+        startPositionMs = 0,
+        endPositionMs = 100,
+      ),
+    )
+    onScan = {}
+
+    restorer().run(snapshotOf(listOf(ghost), ghostChapters, sessions = listOf(session)))
+
+    db.listeningSessionDao().all().single().bookId shouldBe renamed
+  }
+
+  @Test
   fun `a retry that matches the book migrates its old-id sessions without double-counting`() = runTest {
     val (dune, duneChapters) = snapshotBookOf("primary:Books/Dune", listOf("01.mp3"), "01.mp3", position = 400, lastPlayed = 5_000)
     val session = ListeningSessionDto(

@@ -174,8 +174,12 @@ internal class OsWipeRestorer(
       val reKeyedSessions = result.matched.associate { matched ->
         matched.sourceId to matched.sessions.mapTo(mutableSetOf()) { it.startedAt to it.startPositionMs }
       }
+      // A book whose folder was renamed since the backup carried its sessions over to its new id, so the live
+      // copy of a session no longer shares the old id: told apart by when and where it started instead.
+      val liveSessionStarts = listeningSessionDao.all().mapTo(mutableSetOf()) { it.startedAt to it.startPositionMs }
       snapshot.sessions
         .filter { it.bookId !in excludedIds || it.bookId in snapshot.hiddenBooks }
+        .filter { dto -> (Instant.ofEpochMilli(dto.startedAtEpochMillis) to dto.startPositionMs) !in liveSessionStarts }
         .filter { dto ->
           dto.bookId !in matchedSourceIds ||
             (Instant.ofEpochMilli(dto.startedAtEpochMillis) to dto.startPositionMs) !in

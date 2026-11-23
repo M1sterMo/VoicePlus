@@ -5,10 +5,12 @@ import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.first
 import voice.core.data.BookId
 import voice.core.data.audioFileCount
+import voice.core.data.fitIntoOneBook
 import voice.core.data.folders.AudiobookFolders
 import voice.core.data.folders.FolderType
 import voice.core.data.isAudioFile
 import voice.core.data.repo.BookContentRepo
+import voice.core.data.repo.ChapterRepo
 import voice.core.data.store.ExcludedBooksStore
 import voice.core.documentfile.CachedDocumentFile
 import voice.core.documentfile.walk
@@ -23,6 +25,8 @@ internal class MediaScanner(
   private val audiobookFolders: AudiobookFolders,
   @ExcludedBooksStore
   private val excludedBooksStore: DataStore<Set<String>>,
+  private val chapterRepo: ChapterRepo,
+  private val progressCarryOver: ProgressCarryOver,
 ) {
 
   suspend fun scan(
@@ -64,17 +68,25 @@ internal class MediaScanner(
     for (id in foundIds) {
       if (audiobookFolders.isManaged(id)) activeIds += id
     }
-    // A scan that finds no files, or one where a configured folder came back empty, is almost
-    // always a transient read failure (dropped SAF permission, unmounted SD card) rather than the
-    // user emptying their library. Reconciling then would deactivate the books under that folder
-    // and blank them from the library, so only reconcile when the scan looks healthy. This catches
-    // a whole folder dropping out (the multi-folder case); a partial failure deeper inside a
-    // still-readable folder is not detected.
-    val aConfiguredFolderIsEmpty = folders.values.flatten().any { it.isDirectory && it.children.isEmpty() }
-    if (files.isNotEmpty() && !aConfiguredFolderIsEmpty) {
+    // A scan that finds no files, or one where a configured folder couldn't be listed, can't tell
+    // the books it missed from deleted ones. Reconciling then would deactivate the books under that
+    // folder and blank them from the library, so only reconcile when the scan looks healthy. A
+    // folder that lists no entries was emptied, like when its books moved to another folder, so it
+    // doesn't hold reconciling back. A partial failure deeper inside a folder is not detected.
+    val aConfiguredFolderIsUnlisted = folders.values.flatten().any { !it.childrenListed }
+    val reconciles = files.isNotEmpty() && !aConfiguredFolderIsUnlisted
+    // before the books found again are reconciled, so they can be told apart from the ones that moved
+    val previousBooks = PreviousBooks(
+      library = contentRepo.all(),
+      scanned = foundIds.toSet(),
+      excluded = excludedIds,
+      reconciles = reconciles,
+      chapterRepo = chapterRepo,
+    )
+    if (reconciles) {
       contentRepo.setAllInactiveExcept(activeIds)
     } else if (files.isNotEmpty()) {
-      Logger.w("Skipping reconciliation: a configured folder returned no entries (likely dropped permission).")
+      Logger.w("Skipping reconciliation: a configured folder could not be listed.")
     }
 
     val probeFile = folders.values.flatten().findProbeFile()
@@ -88,7 +100,7 @@ internal class MediaScanner(
     files
       .sortedBy { it.audioFileCount() }
       .forEach { file ->
-        scan(file, excludedIds, forceReParse)
+        scan(file, excludedIds, forceReParse, previousBooks)
       }
   }
 
@@ -103,6 +115,7 @@ internal class MediaScanner(
     file: CachedDocumentFile,
     excludedIds: Set<String>,
     forceReParse: Boolean,
+    previousBooks: PreviousBooks,
   ) {
     if (BookId(file.uri).value in excludedIds) return
 
@@ -114,9 +127,13 @@ internal class MediaScanner(
       // or unreadable folder is left alone: that is what a dropped permission or an unmounted volume
       // looks like, and its books must not be blanked. Progress stays stored either way.
       if (file.isDirectory && file.children.isNotEmpty() && file.audioFileCount() == 0) {
-        val content = contentRepo.get(BookId(file.uri))
-        if (content?.isActive == true) contentRepo.put(content.copy(isActive = false))
+        contentRepo.update(BookId(file.uri)) { it.copy(isActive = false) }
       }
+      return
+    }
+    val chapterIds = chapters.map { it.id }
+    if (!chapterIds.fitIntoOneBook()) {
+      Logger.e("Skipping $file, its ${chapters.size} chapters are too many for one book")
       return
     }
 
@@ -127,7 +144,6 @@ internal class MediaScanner(
       forceReParse = forceReParse,
     )
 
-    val chapterIds = chapters.map { it.id }
     // Gate activation on the LIVE folder set rather than blindly forcing isActive=true. This scan may have
     // snapshotted its folder list (in MediaScanTrigger) before the user removed the folder; without this
     // check, the slow per-book loop would re-activate the removed folder's books AFTER remove() already
@@ -145,5 +161,7 @@ internal class MediaScanner(
       validateIntegrity(updated, chapters)
       updated
     }
+    // a removed folder's book doesn't take over anyone's progress
+    if (isManaged) progressCarryOver.carryOver(content.id, previousBooks)
   }
 }

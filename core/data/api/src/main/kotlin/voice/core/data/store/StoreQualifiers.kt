@@ -56,6 +56,10 @@ public annotation class ReviewDialogShownStore
 @Qualifier
 public annotation class ExcludedBooksStore
 
+/** Books whose first files were read and hold no embedded cover, keyed by book and those files' state. */
+@Qualifier
+public annotation class NoEmbeddedCoverStore
+
 @Qualifier
 public annotation class NotStartedExpandedStore
 
