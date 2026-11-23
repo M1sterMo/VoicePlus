@@ -4,6 +4,9 @@ import android.net.Uri
 
 interface CachedDocumentFile {
   val children: List<CachedDocumentFile>
+
+  /** False for a folder whose entries couldn't be listed: its [children] are empty then, like an empty folder's. */
+  val childrenListed: Boolean
   val name: String?
   val isDirectory: Boolean
   val isFile: Boolean

@@ -359,15 +359,36 @@ class MediaScannerTest {
       BookContentView(book2, chapters = listOf(chapter2)),
     )
 
-    // root2 comes back empty (e.g. a dropped SAF permission / unmounted volume). Its books must
-    // NOT be deactivated just because this single scan couldn't see them.
-    book2.deleteRecursively()
-    scan(FolderType.Root, root1, root2)
+    // root2 can't be listed. Its books must NOT be deactivated just because this single scan couldn't see them.
+    check(root2.setReadable(false))
+    try {
+      check(root2.listFiles() == null)
+      scan(FolderType.Root, root1, root2)
+    } finally {
+      root2.setReadable(true)
+    }
 
     assertBookContents(
       BookContentView(book1, chapters = listOf(chapter1)),
       BookContentView(book2, chapters = listOf(chapter2)),
     )
+  }
+
+  @Test
+  fun aBookMovedOutOfAFolderThatIsNowEmptyKeepsItsProgress() = test {
+    val emptied = folder("EmptyLib")
+    val other = folder("Lib")
+    val before = File(emptied, "Golf Book")
+    audioFile(before, "1.mp3").writeText("audio")
+    scan(FolderType.Root, emptied, other)
+    bookContentRepo.update(BookId(before.toUri())) { it.copy(positionInChapter = 4997, lastPlayedAt = Instant.ofEpochMilli(1_000)) }
+
+    val after = File(other, "Golf Book")
+    check(before.renameTo(after))
+    scan(FolderType.Root, emptied, other)
+
+    assertBookContents(BookContentView(after, chapters = listOf(File(after, "1.mp3"))))
+    bookContentRepo.get(BookId(after.toUri()))!!.positionInChapter shouldBe 4997
   }
 
   @Test

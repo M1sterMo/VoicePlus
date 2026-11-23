@@ -68,14 +68,13 @@ internal class MediaScanner(
     for (id in foundIds) {
       if (audiobookFolders.isManaged(id)) activeIds += id
     }
-    // A scan that finds no files, or one where a configured folder came back empty, is almost
-    // always a transient read failure (dropped SAF permission, unmounted SD card) rather than the
-    // user emptying their library. Reconciling then would deactivate the books under that folder
-    // and blank them from the library, so only reconcile when the scan looks healthy. This catches
-    // a whole folder dropping out (the multi-folder case); a partial failure deeper inside a
-    // still-readable folder is not detected.
-    val aConfiguredFolderIsEmpty = folders.values.flatten().any { it.isDirectory && it.children.isEmpty() }
-    val reconciles = files.isNotEmpty() && !aConfiguredFolderIsEmpty
+    // A scan that finds no files, or one where a configured folder couldn't be listed, can't tell
+    // the books it missed from deleted ones. Reconciling then would deactivate the books under that
+    // folder and blank them from the library, so only reconcile when the scan looks healthy. A
+    // folder that lists no entries was emptied, like when its books moved to another folder, so it
+    // doesn't hold reconciling back. A partial failure deeper inside a folder is not detected.
+    val aConfiguredFolderIsUnlisted = folders.values.flatten().any { !it.childrenListed }
+    val reconciles = files.isNotEmpty() && !aConfiguredFolderIsUnlisted
     // Before the books found again are reconciled, so they can be told apart from the ones that moved. A scan
     // that can't reconcile can't tell a moved book from an unreadable one, so only books gone before count.
     val previousBooks = PreviousBooks(
@@ -87,7 +86,7 @@ internal class MediaScanner(
     if (reconciles) {
       contentRepo.setAllInactiveExcept(activeIds)
     } else if (files.isNotEmpty()) {
-      Logger.w("Skipping reconciliation: a configured folder returned no entries (likely dropped permission).")
+      Logger.w("Skipping reconciliation: a configured folder could not be listed.")
     }
 
     val probeFile = folders.values.flatten().findProbeFile()
