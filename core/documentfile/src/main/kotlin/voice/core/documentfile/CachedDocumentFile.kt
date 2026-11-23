@@ -30,3 +30,13 @@ fun CachedDocumentFile.nameWithoutExtension(): String {
     }
   }
 }
+
+/** A name for a file or folder that can't be asked for it, like one without access: the last part of its path. */
+fun Uri.nameFromPath(): String {
+  return pathSegments
+    .lastOrNull()
+    ?.dropWhile { it != ':' }
+    ?.removePrefix(":")
+    ?.substringAfterLast('/')
+    ?.takeUnless { it.isBlank() } ?: toString()
+}

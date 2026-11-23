@@ -2,6 +2,7 @@ package voice.features.folderPicker.folderPicker
 
 import android.net.Uri
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,12 +15,15 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.retain.retain
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -64,6 +68,7 @@ fun FolderOverview() {
   val viewState = viewModel.viewState()
   FolderOverviewView(
     viewState = viewState,
+    onAllowAccessClick = rememberAllowAccess(viewModel::onAccessAllowed),
     onAddClick = {
       viewModel.add()
     },
@@ -80,6 +85,7 @@ private fun FolderOverviewView(
   onAddClick: () -> Unit,
   onDeleteClick: (FolderPickerViewState.Item) -> Unit,
   onCloseClick: () -> Unit,
+  onAllowAccessClick: (FolderPickerViewState.Item) -> Unit = {},
 ) {
   val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
   Scaffold(
@@ -127,20 +133,37 @@ private fun FolderOverviewView(
             FolderTypeIcon(folderType = item.folderType)
           },
           trailingContent = {
-            IconButton(
-              onClick = {
-                onDeleteClick(item)
-              },
-              content = {
-                Icon(
-                  imageVector = Icons.Outlined.Delete,
-                  contentDescription = stringResource(StringsR.string.delete),
-                )
-              },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              if (!item.hasAccess) {
+                TextButton(onClick = { onAllowAccessClick(item) }) {
+                  Text(stringResource(StringsR.string.library_folders_no_access_action))
+                }
+              }
+              IconButton(
+                onClick = {
+                  onDeleteClick(item)
+                },
+                content = {
+                  Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = stringResource(StringsR.string.delete),
+                  )
+                },
+              )
+            }
           },
           headlineContent = {
             Text(text = item.name)
+          },
+          supportingContent = if (item.hasAccess) {
+            null
+          } else {
+            {
+              Text(
+                text = stringResource(StringsR.string.library_folders_no_access),
+                color = MaterialTheme.colorScheme.error,
+              )
+            }
           },
         )
       }
@@ -170,10 +193,16 @@ fun FolderOverviewPreview() {
           id = Uri.EMPTY,
           folderType = FolderType.SingleFile,
         ),
+        FolderPickerViewState.Item(
+          name = "SD card books",
+          id = Uri.EMPTY,
+          folderType = FolderType.Root,
+          hasAccess = false,
+        ),
       ),
     ),
     onAddClick = { },
     onDeleteClick = {},
-  ) {
-  }
+    onCloseClick = {},
+  )
 }

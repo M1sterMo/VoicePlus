@@ -6,7 +6,11 @@ import voice.core.data.BookId
 import voice.core.documentfile.CachedDocumentFile
 
 public interface AudiobookFolders {
+  /** The configured folders VoicePlus may open. */
   public fun all(): Flow<Map<FolderType, List<DocumentFileWithUri>>>
+
+  /** Configured folders whose access is gone, like a removed SD card or a provider that was reinstalled. */
+  public fun withoutAccess(): Flow<Map<FolderType, List<Uri>>>
 
   public fun add(
     uri: Uri,

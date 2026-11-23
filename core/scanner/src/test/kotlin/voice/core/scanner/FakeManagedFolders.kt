@@ -44,6 +44,8 @@ internal class FakeManagedFolders : AudiobookFolders {
     }
   }
 
+  override fun withoutAccess(): Flow<Map<FolderType, List<Uri>>> = state.map { byType -> byType.mapValues { emptyList() } }
+
   override fun add(
     uri: Uri,
     type: FolderType,

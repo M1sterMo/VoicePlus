@@ -109,13 +109,6 @@
     <string name="onboarding.completion.title">Alles is gereed!</string>
     <string name="onboarding.completion.subtitle">Jou eerste luisterboek is gereed om te speel. Geniet jou reis met Voice!</string>
     <string name="onboarding.completion.next_button">Begin om te luister</string>
-    <string name="onboarding_analytics_consent_title">Help verbeter Voice</string>
-    <string name="onboarding_analytics_consent_description">Laat ons anonieme gebruiksdata insamel om die toep te verbeter. Jy kan dit later in die instellings verander.</string>
-    <string name="onboarding_analytics_consent_button_enable">Gaan voort met analise</string>
-    <string name="onboarding_analytics_consent_button_disable">Gaan voort sonder analise</string>
-    <string name="onboarding_analytics_consent_privacy_policy">Privaatheidsbeleid</string>
-    <string name="settings_analytics_consent_title">Analise</string>
-    <string name="settings_analytics_consent_description">Laat anonieme gebruiksdata insamel om die toep te verbeter</string>
     <string name="review.request.title">Geniet jy Voice?</string>
     <string name="review.request.content">Jou terugvoer beteken baie vir ons! As jy ’n oomblik het, gee vir ons ’n gradering en deel jou ervaring. Dit help ons om verbeteringe aan te bring en ’n beter luisterervaring te bied.</string>
     <string name="review.request.button.yes">Gradeer nou</string>

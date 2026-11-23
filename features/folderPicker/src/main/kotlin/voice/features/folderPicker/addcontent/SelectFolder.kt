@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -77,7 +81,23 @@ internal fun SelectFolder(
             style = MaterialTheme.typography.bodyLarge,
           )
           Spacer(modifier = Modifier.size(24.dp))
-          ContentTypeChoices(onAdd = onAdd, modifier = Modifier.padding(horizontal = 24.dp))
+          // saved, so the tips survive a rotation; a new visit starts without them
+          var help by rememberSaveable { mutableStateOf<FolderHelp?>(null) }
+          var answer by rememberSaveable { mutableStateOf<FolderHelpAnswer?>(null) }
+          ContentTypeChoices(
+            onAdd = onAdd,
+            onFolderPickerCancel = { if (help == null) help = FolderHelp.PickerClosed },
+            onNoPicker = { help = FolderHelp.NoPicker },
+            modifier = Modifier.padding(horizontal = 24.dp),
+          )
+          help?.let { shownHelp ->
+            FolderHelpCard(
+              help = shownHelp,
+              answer = answer,
+              onAnswer = { answer = it },
+              modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 24.dp),
+            )
+          }
         }
       }
     },

@@ -9,6 +9,8 @@ data class FolderPickerViewState(val items: List<Item>) {
     val name: String,
     val id: Uri,
     val folderType: FolderType,
+    // false for a folder VoicePlus can no longer open, like a removed SD card
+    val hasAccess: Boolean = true,
   ) : Comparable<Item> {
     override fun compareTo(other: Item): Int {
       return compareValuesBy(this, other, { it.folderType }, { it.name })

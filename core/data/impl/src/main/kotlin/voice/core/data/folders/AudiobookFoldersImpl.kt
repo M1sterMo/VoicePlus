@@ -8,11 +8,14 @@ import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import voice.core.data.BookId
 import voice.core.data.repo.BookContentRepo
@@ -21,6 +24,8 @@ import voice.core.documentfile.CachedDocumentFileFactory
 import voice.core.logging.api.Logger
 import kotlin.coroutines.cancellation.CancellationException
 
+// App-scoped, so a grant taken in one screen shows in every flow of the others.
+@SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 public class AudiobookFoldersImpl
 internal constructor(
@@ -40,10 +45,14 @@ internal constructor(
 
   private val scope = MainScope()
 
+  // Grants live outside the stores, so a grant taken again for a folder that is already configured would change
+  // nothing the flows below see.
+  private val grantsChanged = MutableStateFlow(0)
+
   public override fun all(): Flow<Map<FolderType, List<DocumentFileWithUri>>> {
     val flows = FolderType.entries
       .map { folderType ->
-        dataStore(folderType).data.map { uris ->
+        combine(dataStore(folderType).data, grantsChanged) { uris, _ ->
           val persistedUris = persistedUriPermissions.persistedUris()
           val documentFiles = uris
             .filter {
@@ -58,6 +67,16 @@ internal constructor(
           folderType to documentFiles
         }
       }
+    return combine(flows) { it.toMap() }
+  }
+
+  public override fun withoutAccess(): Flow<Map<FolderType, List<Uri>>> {
+    val flows = FolderType.entries.map { folderType ->
+      combine(dataStore(folderType).data, grantsChanged) { uris, _ ->
+        val persistedUris = persistedUriPermissions.persistedUris()
+        folderType to uris.filter { it !in persistedUris }
+      }
+    }
     return combine(flows) { it.toMap() }
   }
 
@@ -82,10 +101,17 @@ internal constructor(
     type: FolderType,
   ) {
     takePermission(uri)
+    grantsChanged.update { it + 1 }
     scope.launch {
       dataStore(type).updateData {
         it + uri
       }
+      // A folder has one type, so adding it again with another type moves it instead of finding its books
+      // twice. The other stores are edited directly: remove() would release the grant just taken and
+      // deactivate the folder's books. Added first, so a scan in between never misses its books.
+      FolderType.entries
+        .filter { it != type }
+        .forEach { otherType -> dataStore(otherType).updateData { it - uri } }
     }
   }
 
