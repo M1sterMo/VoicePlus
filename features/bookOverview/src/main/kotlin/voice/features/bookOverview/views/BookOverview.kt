@@ -1,7 +1,10 @@
 package voice.features.bookOverview.views
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.LinearProgressIndicator
@@ -35,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Rect
@@ -55,6 +60,7 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.IntoSet
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
@@ -62,6 +68,7 @@ import voice.core.common.rootGraphAs
 import voice.core.data.BookId
 import voice.core.data.LibraryOrganisation
 import voice.core.data.ShelfSort
+import voice.core.ui.HoldSplashScreenWhile
 import voice.core.ui.PlayButton
 import voice.core.ui.VoiceTheme
 import voice.features.bookOverview.bottomSheet.BottomSheetContent
@@ -91,6 +98,7 @@ import voice.navigation.Destination
 import voice.navigation.NavEntryProvider
 import voice.navigation.SharedTransitionNavEntryProvider
 import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
 import voice.core.strings.R as StringsR
 
 @ContributesTo(AppScope::class)
@@ -223,6 +231,9 @@ fun BookOverviewScreen(
     bookOverviewViewModel.attach()
   }
   val viewState = bookOverviewViewModel.state()
+  // the app opens onto the library with its books, not onto an empty one that fills in
+  HoldSplashScreenWhile(viewState === BookOverviewViewState.Loading)
+  val loaded = viewState !== BookOverviewViewState.Loading
   val libraryDrag = rememberLibraryShelfDragState(
     onDrop = shelfViewModel::dropOnShelf,
     canDrop = { shelfId -> viewState.organisation?.shelves?.any { it.id == shelfId } == true },
@@ -294,8 +305,10 @@ fun BookOverviewScreen(
     librarySections(flatBooks, current, viewState.organisation ?: LibraryOrganisation(), shelfViewModel.filter, viewState.upNext)
   }
   val seriesEntries = sections.flatMap { it.entries }
-  LaunchedEffect(viewState.isLoading, sections.map { it.id }, viewState.layoutMode) {
-    if (!viewState.isLoading && sections.isNotEmpty()) {
+  // Once the library has its books, not once a scan ends: a scan can run for long, and restoring then would
+  // jump a list the user already scrolled.
+  LaunchedEffect(loaded, sections.map { it.id }, viewState.layoutMode) {
+    if (loaded && sections.isNotEmpty()) {
       val keys = (if (viewState.showStoragePermissionBugCard) listOf("permission") else emptyList()) + sections.flatMap { section ->
         listOf("header:${section.id}") +
           if (!section.expanded) {
@@ -318,8 +331,8 @@ fun BookOverviewScreen(
       if (gridState.firstVisibleItemIndex <= upNextRows) gridState.animateScrollToItem(0)
     }
   }
-  LaunchedEffect(viewState.isLoading, openSeries, seriesEntries.map { it.key }) {
-    if (!viewState.isLoading && openSeries != null && seriesEntries.none { it.key == openSeries }) openSeries = null
+  LaunchedEffect(loaded, openSeries, seriesEntries.map { it.key }) {
+    if (loaded && openSeries != null && seriesEntries.none { it.key == openSeries }) openSeries = null
   }
   Box {
     val overlayOpen =
@@ -533,8 +546,17 @@ internal fun BookOverview(
     topBar = {
       if (!viewState.searchActive) {
         Column {
-          libraryBar()
-          if (viewState.isLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+          Box {
+            libraryBar()
+            // drawn over the bar's bottom edge, so the library doesn't move when it shows
+            ScanProgress(
+              scanning = viewState.isLoading,
+              libraryEmpty = viewState.books.isEmpty(),
+              modifier = Modifier
+                .matchParentSize()
+                .wrapContentHeight(Alignment.Bottom),
+            )
+          }
           if (viewState.showAddBookHint) {
             TextButton(onClick = onBookFolderClick, modifier = Modifier.padding(horizontal = 16.dp)) {
               Text(stringResource(StringsR.string.library_add_audiobooks))
@@ -708,4 +730,24 @@ internal class BookOverviewPreviewParameterProvider : PreviewParameterProvider<B
       showFolderPickerIcon = true,
     ),
   )
+}
+
+/**
+ * Shows a running scan, but only one that takes a while: the scan on every app start usually finishes unseen.
+ * A first import into an empty library shows it right away, as there is nothing else to look at.
+ */
+@Composable
+private fun ScanProgress(
+  scanning: Boolean,
+  libraryEmpty: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  var show by remember { mutableStateOf(false) }
+  LaunchedEffect(scanning, libraryEmpty) {
+    if (scanning && !libraryEmpty) delay(3.seconds)
+    show = scanning
+  }
+  AnimatedVisibility(visible = show, modifier = modifier, enter = fadeIn(), exit = fadeOut()) {
+    LinearProgressIndicator(Modifier.fillMaxWidth())
+  }
 }
