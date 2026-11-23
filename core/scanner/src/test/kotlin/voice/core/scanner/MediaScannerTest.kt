@@ -587,6 +587,46 @@ class MediaScannerTest {
   }
 
   @Test
+  fun aFolderModeChangedAndBackKeepsTheBookTogether() = test {
+    val audiobooks = folder("audiobooks")
+    val shelf = File(audiobooks, "Shelf")
+    val bookFolder = File(shelf, "Bravo Book")
+    listOf("1.mp3", "2.mp3").forEach { audioFile(bookFolder, it).writeText("audio of $it") }
+    scan(FolderType.Root, audiobooks)
+    val rootId = BookId(shelf.toUri())
+    bookContentRepo.update(rootId) {
+      it.copy(
+        currentChapter = ChapterId(File(bookFolder, "2.mp3").toUri()),
+        positionInChapter = 2130,
+        lastPlayedAt = Instant.ofEpochMilli(1_000),
+        name = "A name I picked",
+        nameOverridden = true,
+      )
+    }
+
+    scan(FolderType.Author, audiobooks)
+    val authorId = BookId(bookFolder.toUri())
+    bookContentRepo.get(authorId)!!.let {
+      it.positionInChapter shouldBe 2130
+      it.name shouldBe "A name I picked"
+    }
+    bookMover.moves.last().sameBook shouldBe rootId
+    bookContentRepo.update(authorId) { it.copy(positionInChapter = 6635, lastPlayedAt = Instant.ofEpochMilli(2_000)) }
+
+    scan(FolderType.Root, audiobooks)
+    bookContentRepo.get(rootId)!!.let {
+      it.isActive shouldBe true
+      it.positionInChapter shouldBe 6635
+      it.name shouldBe "A name I picked"
+    }
+    bookMover.moves.last().sameBook shouldBe authorId
+    bookContentRepo.get(authorId)!!.let {
+      it.isActive shouldBe false
+      it.lastPlayedAt shouldBe Instant.EPOCH
+    }
+  }
+
+  @Test
   fun aCopyOfABookInTheLibraryStartsFresh() = test {
     val audiobooks = folder("audiobooks")
     val original = File(audiobooks, "Original")

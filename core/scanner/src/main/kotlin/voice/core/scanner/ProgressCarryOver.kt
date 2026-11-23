@@ -147,10 +147,14 @@ internal class PreviousBooks(
       .filter { (old, new) -> sameSize(old, new) }
       .toMap()
     if (moved.isEmpty()) return null
-    // a split up book gets its names from its files, and a book that was in the library already keeps its own
+    // A split up book gets its names from its files, and a book that was in the library already keeps its own.
+    // The same book is in the same folder, or has the same files after its folder's mode changed.
     val bookKey = content.id.toUri().documentKey()
+    val files = content.chapters.toSet()
     val sameBook = if (isNew) {
-      books.filter { it.id.toUri().documentKey() == bookKey }.maxByOrNull { it.lastPlayedAt }
+      books
+        .filter { book -> book.id.toUri().documentKey() == bookKey || book.chapters.mapTo(mutableSetOf()) { moved[it] } == files }
+        .maxByOrNull { it.lastPlayedAt }
     } else {
       null
     }
