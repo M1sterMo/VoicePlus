@@ -66,7 +66,9 @@ internal class MediaAnalyzer(
                 is MdtaMetadataEntry -> visitMdta(entry, builder)
                 // ID3 COMM, and the MP4 ©cmt atom, which Media3 also reports as a comment frame.
                 // iTunes stores encoder data (iTunNORM, iTunSMPB) in comments too; those are not prose.
-                is CommentFrame -> if (!entry.description.startsWith("iTun")) builder.comment = builder.comment.orIfBlank(entry.text)
+                is CommentFrame -> if (!entry.description.startsWith("iTun")) {
+                  builder.comment = builder.comment.orIfBlank(repairLegacyTagText(entry.text))
+                }
                 else -> Logger.d("Unknown metadata entry: $entry")
               }
             }
@@ -170,7 +172,9 @@ internal class MediaAnalyzer(
     repeat(entry.subFrameCount) { subFrameIndex ->
       val subFrame = entry.getSubFrame(subFrameIndex)
       if (subFrame is TextInformationFrame) {
-        builder.chapters.add(MarkData(startMs = entry.startTimeMs.toLong(), name = subFrame.values.first()))
+        builder.chapters.add(
+          MarkData(startMs = entry.startTimeMs.toLong(), name = repairLegacyTagText(subFrame.values.first())),
+        )
       }
     }
   }
@@ -179,7 +183,7 @@ internal class MediaAnalyzer(
     entry: TextInformationFrame,
     builder: Metadata.Builder,
   ) {
-    val value = entry.values.first()
+    val value = repairLegacyTagText(entry.values.first())
     when (entry.id) {
       "TIT2" -> builder.title = value
       "TPE1" -> builder.artist = value
