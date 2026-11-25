@@ -1,5 +1,11 @@
 # VoicePlus Changelog
 
+## Unreleased
+
+- Titles, authors, narrators and chapter names that were tagged in Windows-1251, or in UTF-8, into a frame declaring ISO-8859-1 now read as they were written instead of turning into "Âàëèñ". Latin names keep their accents, and files whose tags are already correct are left untouched. Books scanned before the update take their names over on the next scan of their folder, which the "Use folder names instead of file tags" setting also forces.
+
+---
+
 ## v1.31 — About This Book, Ratings & a New Grid
 
 - About this book: a sheet with the cover, author, narrator, series, genre, length and synopsis, opened from the first item of a book's long-press menu or from an optional player toolbar button ([#39](https://github.com/M1sterMo/VoicePlus/discussions/39)).

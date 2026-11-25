@@ -107,6 +107,21 @@ internal class MediaAnalyzerTest {
   }
 
   @Test
+  fun mp3WithLegacyCyrillicTags() {
+    // The frames declare ISO-8859-1 but hold Windows-1251, which is how taggers with a Cyrillic locale wrote
+    // them. See create_legacy_cp1251_mp3.sh.
+    val metadata = parse("legacy_cp1251_tags.mp3")
+
+    assertSoftly {
+      metadata.shouldNotBeNull()
+      metadata.title shouldBe "Валис"
+      metadata.artist shouldBe "Ф. Дик"
+      metadata.album shouldBe "Миры Филипа Дика"
+      metadata.narrator shouldBe "Кирилл Петров"
+    }
+  }
+
+  @Test
   fun ogg() {
     val metadata = parse("auphonic_chapters_demo.ogg")
 
